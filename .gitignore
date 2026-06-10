@@ -1,0 +1,53 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Next.js
+.next
+out
+build
+dist
+
+# Production
+.env.local
+.env.*.local
+.env
+
+# Misc
+.DS_Store
+*.pem
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Prisma
+prisma/migrations
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# TypeScript
+*.tsbuildinfo
+
+# Database
+*.sqlite
+*.sqlite-journal

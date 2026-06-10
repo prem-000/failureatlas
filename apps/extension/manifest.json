@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "FailureAtlas",
+  "version": "1.0.0",
+  "description": "FailureAtlas Chrome Extension — LeetCode submission capture",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "webNavigation",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://leetcode.com/*",
+    "https://api.failureatlas.dev/*",
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://leetcode.com/problems/*",
+        "https://leetcode.com/contest/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "FailureAtlas"
+  },
+  "icons": {
+    "16": "icons/icon.svg",
+    "48": "icons/icon.svg",
+    "128": "icons/icon.svg"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["*.js"],
+      "matches": ["https://leetcode.com/*"]
+    }
+  ]
+}

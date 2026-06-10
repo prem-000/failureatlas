@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>FailureAtlas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="header">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 22H22L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M12 8V14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M12 18H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-name">FailureAtlas</span>
+      </div>
+      <div class="status-indicator">
+        <span id="statusDot" class="status-dot disconnected"></span>
+        <span id="statusText" class="status-text">Offline</span>
+      </div>
+    </header>
+
+    <main id="view-container">
+      <!-- Dynamic views (login, dashboard, settings) will be rendered here -->
+    </main>
+  </div>
+</body>
+</html>

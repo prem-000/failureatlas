@@ -1,0 +1,52 @@
+{
+  "name": "failureatlas",
+  "version": "0.1.0",
+  "description": "AI-powered competitive programming failure intelligence platform",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "prisma db seed",
+    "neo4j:setup": "ts-node scripts/neo4j-setup.ts",
+    "test:phase3": "tsx scripts/test-phase3-api.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.9",
+    "@auth/prisma-adapter": "^2.11.2",
+    "@prisma/client": "^5.7.1",
+    "@tanstack/react-query": "^5.28.0",
+    "bcryptjs": "^2.4.3",
+    "framer-motion": "link:framer-motion",
+    "jose": "^5.2.3",
+    "lucide-react": "^0.344.0",
+    "neo4j-driver": "^5.17.0",
+    "next": "15.0.0",
+    "openai": "^4.52.7",
+    "prisma": "^5.7.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "reactflow": "^11.10.4",
+    "tailwindcss": "^3.4.1",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/chrome": "^0.1.42",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.19.42",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@types/uuid": "^9.0.7",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.15",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  }
+}

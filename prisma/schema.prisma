@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String            @id @default(cuid())
+  email         String            @unique
+  password      String
+  name          String
+  apiKey        String?           @unique
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  diagnoses     DiagnosisResult[]
+  learningPlans LearningPlan[]
+  submissions   SubmissionEvent[]
+
+  @@map("users")
+}
+
+model Problem {
+  id               String                @id @default(cuid())
+  slug             String                @unique
+  title            String
+  difficulty       String
+  topics           String[]
+  url              String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  rootCauseHistory RootCauseOccurrence[]
+  submissions      SubmissionEvent[]
+
+  @@map("problems")
+}
+
+model SubmissionEvent {
+  id              String           @id @default(cuid())
+  userId          String
+  problemId       String
+  eventId         String           @unique
+  submissionTraceId String?
+  sessionId       String
+  timestamp       DateTime
+  status          String
+  language        String
+  code            String
+  runtime         Int?
+  memory          Int?
+  testCasesPassed Int?
+  totalTestCases  Int?
+  failedTestCase  String?
+  timeSpent       Int
+  attemptNumber   Int
+  rapidSubmission Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  diagnosis       DiagnosisResult?
+  evidence        Evidence[]
+  problem         Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([problemId])
+  @@index([timestamp])
+  @@map("submission_events")
+}
+
+model Evidence {
+  id                  String                @id @default(cuid())
+  submissionId        String
+  type                String
+  description         String
+  confidence          Float
+  source              String
+  rawData             Json                  @default("{}")
+  extractedAt         DateTime              @default(now())
+  createdAt           DateTime              @default(now())
+  submission          SubmissionEvent       @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  rootCauseHypotheses RootCauseHypothesis[]
+
+  @@index([submissionId])
+  @@map("evidence")
+}
+
+model RootCauseHypothesis {
+  id            String    @id @default(cuid())
+  evidenceId    String?
+  rootCauseType String
+  name          String
+  confidence    Float
+  createdAt     DateTime  @default(now())
+  evidence      Evidence? @relation(fields: [evidenceId], references: [id])
+
+  @@index([evidenceId])
+  @@map("root_cause_hypotheses")
+}
+
+model RootCauseOccurrence {
+  id                String   @id @default(cuid())
+  rootCauseType     String
+  problemId         String
+  occurrenceCount   Int      @default(1)
+  firstOccurrence   DateTime @default(now())
+  lastOccurrence    DateTime @updatedAt
+  averageConfidence Float    @default(0)
+  problem           Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([rootCauseType, problemId])
+  @@index([problemId])
+  @@map("root_cause_occurrences")
+}
+
+model SystemicWeakness {
+  id                  String              @id @default(cuid())
+  name                String              @unique
+  type                String
+  severity            String
+  confidence          Float
+  frequency           Int                 @default(0)
+  lastOccurrence      DateTime            @default(now())
+  riskIndex           Float               @default(0)
+  pageRankScore       Float               @default(0)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  diagnoses           DiagnosisResult[]   @relation("PrimaryWeakness")
+  diagnosisWeaknesses DiagnosisWeakness[]
+  strategies          LearningStrategy[]
+
+  @@map("systemic_weaknesses")
+}
+
+model DiagnosisResult {
+  id                String                   @id @default(cuid())
+  userId            String
+  submissionId      String                   @unique
+  primaryWeaknessId String
+  generatedAt       DateTime                 @default(now())
+  progressMetrics   Json                     @default("{}")
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  primaryWeakness   SystemicWeakness         @relation("PrimaryWeakness", fields: [primaryWeaknessId], references: [id])
+  submission        SubmissionEvent          @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendations   LearningRecommendation[]
+
+  @@index([userId])
+  @@index([submissionId])
+  @@map("diagnosis_results")
+}
+
+model DiagnosisWeakness {
+  id          String           @id @default(cuid())
+  diagnosisId String
+  weaknessId  String
+  isSecondary Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  weakness    SystemicWeakness @relation(fields: [weaknessId], references: [id], onDelete: Cascade)
+
+  @@unique([diagnosisId, weaknessId, isSecondary])
+  @@index([weaknessId])
+  @@map("diagnosis_weaknesses")
+}
+
+model LearningStrategy {
+  id               String                   @id @default(cuid())
+  weaknessId       String
+  name             String
+  description      String
+  estimatedTime    Int
+  priority         String
+  practiceProblems String[]
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  recommendations  LearningRecommendation[]
+  weakness         SystemicWeakness         @relation(fields: [weaknessId], references: [id], onDelete: Cascade)
+
+  @@index([weaknessId])
+  @@map("learning_strategies")
+}
+
+model LearningRecommendation {
+  id          String           @id @default(cuid())
+  diagnosisId String
+  strategyId  String
+  completed   Boolean          @default(false)
+  completedAt DateTime?
+  createdAt   DateTime         @default(now())
+  diagnosis   DiagnosisResult  @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
+  strategy    LearningStrategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+
+  @@index([diagnosisId])
+  @@index([strategyId])
+  @@map("learning_recommendations")
+}
+
+model LearningPlan {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  progress  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("learning_plans")
+}
+
+model TextEmbedding {
+  id             String   @id @default(cuid())
+  content        String
+  embedding      Json?
+  embeddingModel String   @default("text-embedding-3-large")
+  sourceType     String
+  sourceId       String
+  createdAt      DateTime @default(now())
+
+  @@index([sourceType, sourceId])
+  @@map("text_embeddings")
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("api_keys")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  userId    String?
+  details   Json?
+  timestamp DateTime @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
