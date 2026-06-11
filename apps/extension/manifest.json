@@ -8,12 +8,20 @@
     "activeTab",
     "scripting",
     "webNavigation",
+    "webRequest",
     "alarms"
   ],
   "host_permissions": [
     "https://leetcode.com/*",
     "https://api.failureatlas.dev/*",
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "http://localhost:3000/api/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content.js"],
+      "matches": ["https://leetcode.com/*"]
+    }
   ],
   "background": {
     "service_worker": "background.js",
@@ -21,12 +29,9 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://leetcode.com/problems/*",
-        "https://leetcode.com/contest/*"
-      ],
+      "matches": ["https://leetcode.com/*"],
       "js": ["content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "action": {
@@ -37,11 +42,5 @@
     "16": "icons/icon.svg",
     "48": "icons/icon.svg",
     "128": "icons/icon.svg"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["*.js"],
-      "matches": ["https://leetcode.com/*"]
-    }
-  ]
+  }
 }

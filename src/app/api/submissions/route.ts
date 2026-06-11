@@ -27,6 +27,19 @@ import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
 import { generateAIDiagnosis } from '@/lib/diagnosis/generator';
 import type { SubmissionEvent, Evidence } from '@/types';
 
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
+}
+
 // ─── GET /api/submissions ─────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   const auth = await resolveUserId(request);
@@ -114,7 +127,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // ── Deduplicate ───────────────────────────────────────────────────────────
+    // ── Deduplicate by eventId ────────────────────────────────────────────────
     const existing = await prisma.submissionEvent.findUnique({ where: { eventId } });
     if (existing) {
       return NextResponse.json(
@@ -123,7 +136,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Upsert problem ────────────────────────────────────────────────────────
+    // ── Upsert problem (needed for both dedup check and creation) ─────────────
     const problem = await prisma.problem.upsert({
       where: { slug: problemSlug },
       update: {
@@ -140,6 +153,27 @@ export async function POST(request: NextRequest) {
         url: problemUrl ?? null,
       },
     });
+
+    // ── Deduplicate by content: same user+problem+code+status within 60s ─────
+    // Catches cases where the extension fires two separate eventIds for one
+    // physical LeetCode submission (e.g. two DOM mutation detections).
+    const sixtySecondsAgo = new Date(Date.now() - 60_000);
+    const recentDupe = await prisma.submissionEvent.findFirst({
+      where: {
+        userId,
+        problemId: problem.id,
+        status: submissionStatus,
+        code: submissionCode,
+        timestamp: { gte: sixtySecondsAgo },
+      },
+    });
+    if (recentDupe) {
+      console.log(`⚠️ Content-level duplicate blocked for user=${userId} problem=${problemSlug} (existing id=${recentDupe.id})`);
+      return NextResponse.json(
+        { success: true, submissionId: recentDupe.id, analysisQueued: false, message: 'Duplicate submission detected within 60s.' },
+        { status: 200 }
+      );
+    }
 
     // ── Save submission — this is the critical write ──────────────────────────
     const subRecord = await prisma.submissionEvent.create({
@@ -435,8 +469,16 @@ async function runAnalysisPipeline(
       },
     });
 
-    const diagnosis = await prisma.diagnosisResult.create({
-      data: {
+    const diagnosis = await prisma.diagnosisResult.upsert({
+      where: { submissionId: subRecord.id },
+      update: {
+        primaryWeaknessId: primaryWeaknessNode.id,
+        progressMetrics: {
+          confidence: aiDiagnosis.confidence,
+          reasoningChain: aiDiagnosis.reasoningChain,
+        },
+      },
+      create: {
         userId,
         submissionId: subRecord.id,
         primaryWeaknessId: primaryWeaknessNode.id,

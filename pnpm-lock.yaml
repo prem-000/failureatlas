@@ -20,9 +20,6 @@ importers:
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
-      framer-motion:
-        specifier: link:framer-motion
-        version: link:framer-motion
       jose:
         specifier: ^5.2.3
         version: 5.10.0

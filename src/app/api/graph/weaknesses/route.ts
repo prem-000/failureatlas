@@ -9,6 +9,19 @@ const WEAKNESS_TO_ROOT_CAUSES: Record<string, string[]> = {
   'implementation-precision': ['implementation-detail-error']
 };
 
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
+}
+
 export async function GET(request: NextRequest) {
   try {
     // 1. Authenticate user

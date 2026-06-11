@@ -19,7 +19,6 @@
     "@prisma/client": "^5.7.1",
     "@tanstack/react-query": "^5.28.0",
     "bcryptjs": "^2.4.3",
-    "framer-motion": "link:framer-motion",
     "jose": "^5.2.3",
     "lucide-react": "^0.344.0",
     "next": "15.0.0",

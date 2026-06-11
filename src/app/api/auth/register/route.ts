@@ -5,6 +5,19 @@ import { generateToken } from '@/lib/auth/jwt';
 import { RegisterRequest, RegisterResponse } from '@/types/api';
 import type { ApiResponse } from '@/types';
 
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<RegisterResponse>>> {
   try {
     const body: RegisterRequest = await request.json();

@@ -86,20 +86,19 @@ function getFallbackDiagnosis(
 export async function generateAIDiagnosis(
   current: SubmissionEvent,
   similarFailures: RetrievedFailure[],
-  weaknessScores: WeaknessScore[]
+  weaknessScores: WeaknessScore[],
+  userQuery?: string
 ): Promise<StructuredDiagnosis> {
   const groqApiKey = process.env.GROQ_API_KEY;
-  console.log(`[TRACE] GROQ_API_KEY exists: ${!!groqApiKey}`);
-
-  if (!groqApiKey) {
-    console.warn('⚠️ GROQ_API_KEY is not defined. Falling back to rules-based diagnosis.');
+  if (!groqApiKey || groqApiKey === 'your_groq_key_here') {
+    console.warn('⚠️ GROQ_API_KEY is not defined or is a placeholder. Falling back to rules-based diagnosis.');
     return getFallbackDiagnosis(current, weaknessScores);
   }
 
   console.log('[TRACE] Groq client created successfully');
 
   const prompt = `
-You are analyzing a competitive programming failure to identify learning opportunities.
+You are an AI Failure Analyst for competitive programming. You help users understand their coding weaknesses by analyzing their submission history.
 
 ## Current Failure Context
 Problem: ${current.problemTitle} (${current.problemDifficulty})
@@ -111,21 +110,25 @@ ${current.submissionCode}
 \`\`\`
 ${current.failedTestCase ? `Failed Test Case: ${current.failedTestCase}` : ''}
 
-## Similar Past Failures
-${similarFailures.map(sf => `- Problem: ${sf.problemTitle} (${sf.submissionStatus}). Score: ${sf.similarityScore.toFixed(2)}. Code: ${sf.code}`).join('\n')}
+## Similar Past Failures (from embedding search)
+${similarFailures.length > 0
+  ? similarFailures.map(sf => `- Problem: ${sf.problemTitle} (${sf.submissionStatus}). Similarity: ${sf.similarityScore.toFixed(2)}. Code snippet: ${sf.code?.slice(0, 200)}`).join('\n')
+  : '- No similar past failures found.'}
 
 ## Weakness Pattern Analysis (PageRank Scores)
-${weaknessScores.map(ws => `- ${ws.name} (${ws.id}): PageRank = ${ws.pageRankScore.toFixed(3)}, Freq = ${ws.frequency}`).join('\n')}
-
+${weaknessScores.length > 0
+  ? weaknessScores.map(ws => `- ${ws.name} (${ws.id}): PageRank = ${ws.pageRankScore.toFixed(3)}, Frequency = ${ws.frequency}`).join('\n')
+  : '- No weakness patterns computed yet.'}
+${userQuery ? `\n## User's Specific Question\nThe user is asking: "${userQuery}"\nMake sure your reasoningChain directly addresses this question using the evidence above.\n` : ''}
 ## Instructions
-Reason step by step about the root cause and compile a custom learning plan. Output your response as a valid, parsable JSON object matching the schema below. Do not wrap the JSON in Markdown formatting.
+Reason step by step about the root cause. If the user asked a specific question, answer it directly in the reasoningChain field. Compile a custom learning plan tailored to their weaknesses. Output your response as a valid, parsable JSON object matching the schema below. Do not wrap the JSON in Markdown formatting.
 
 JSON Schema:
 {
   "primaryWeaknessId": "edge-case-reasoning" | "algorithmic-pattern-recognition" | "performance-analysis" | "implementation-precision",
   "primaryWeaknessName": "Edge Case Reasoning" | "Algorithmic Pattern Recognition" | "Performance Analysis" | "Implementation Precision",
   "confidence": number (between 0 and 100),
-  "reasoningChain": string (2-3 sentences explaining your reasoning),
+  "reasoningChain": string (2-3 sentences that answer the user question and explain your reasoning),
   "learningRecommendations": [
     {
       "name": string,
@@ -153,7 +156,7 @@ JSON Schema:
         'Authorization': `Bearer ${groqApiKey}`
       },
       body: JSON.stringify({
-        model: 'llama3-8b-8192',
+        model: 'llama-3.1-8b-instant',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.2,
         response_format: { type: 'json_object' }

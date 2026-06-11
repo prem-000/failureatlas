@@ -6,6 +6,19 @@ import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
 import { generateAIDiagnosis } from '@/lib/diagnosis/generator';
 import type { SubmissionEvent } from '@/types';
 
+
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
+}
+
 export async function POST(request: NextRequest) {
   console.log("[TRACE] Route /api/diagnosis/generate reached");
   try {
@@ -167,8 +180,8 @@ export async function POST(request: NextRequest) {
         });
       }
     } else {
-      // 5. Generate AI Diagnosis
-      const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores);
+      // 5. Generate AI Diagnosis (pass userQuery so Groq can answer it directly)
+      const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores, userQuery || undefined);
       aiDiagnosisPrimaryName = aiDiagnosis.primaryWeaknessName;
       aiDiagnosisConfidence = aiDiagnosis.confidence;
       aiDiagnosisReasoning = aiDiagnosis.reasoningChain;
@@ -186,8 +199,16 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      const created = await prisma.diagnosisResult.create({
-        data: {
+      const created = await prisma.diagnosisResult.upsert({
+        where: { submissionId: latestFailure.id },
+        update: {
+          primaryWeaknessId: primaryWeaknessNode.id,
+          progressMetrics: {
+            confidence: aiDiagnosis.confidence,
+            reasoningChain: aiDiagnosis.reasoningChain
+          }
+        },
+        create: {
           userId,
           submissionId: latestFailure.id,
           primaryWeaknessId: primaryWeaknessNode.id,
@@ -197,7 +218,7 @@ export async function POST(request: NextRequest) {
           }
         }
       });
-      console.log(`[TRACE] Diagnosis saved: id=${created.id}`);
+      console.log(`[TRACE] Diagnosis saved/updated: id=${created.id}`);
 
       diagnosis = await prisma.diagnosisResult.findUnique({
         where: { id: created.id },
@@ -324,12 +345,10 @@ export async function POST(request: NextRequest) {
         ? reasoningRaw.split('\n').map((s) => s.trim()).filter(Boolean)
         : ['Identified gap area from historical failure patterns.'];
 
-    const baseAnalysis = typeof aiDiagnosisReasoning === 'string'
+    // Use Groq's reasoning chain directly — it already addresses the user's query
+    const analysis = typeof aiDiagnosisReasoning === 'string'
       ? aiDiagnosisReasoning
       : `Primary weakness: ${aiDiagnosisPrimaryName}. Confidence ${aiDiagnosisConfidence}/100.`;
-    const analysis = userQuery
-      ? `${baseAnalysis}\n\n(Query: "${userQuery}")`
-      : baseAnalysis;
 
     const uiRecommendations = responseRecs.map((r) => ({
       name: r.name,

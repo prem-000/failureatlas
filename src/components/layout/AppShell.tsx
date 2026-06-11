@@ -7,9 +7,10 @@ import { Sidebar } from '@/components/navigation/Sidebar';
 interface AppShellProps {
   children: React.ReactNode;
   fullscreen?: boolean; // graph page needs full viewport height
+  hideSidebar?: boolean;
 }
 
-export function AppShell({ children, fullscreen = false }: AppShellProps) {
+export function AppShell({ children, fullscreen = false, hideSidebar = false }: AppShellProps) {
   const router = useRouter();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
 
@@ -33,11 +34,11 @@ export function AppShell({ children, fullscreen = false }: AppShellProps) {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#131313', fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Sidebar */}
-      <Sidebar user={user || undefined} onSignOut={handleLogout} />
+      {!hideSidebar && <Sidebar user={user || undefined} onSignOut={handleLogout} />}
 
       {/* Main content */}
       <main
-        className="pl-[72px]"
+        className={hideSidebar ? "" : "pl-[100px]"}
         style={{
           flex: 1,
           ...(fullscreen ? { display: 'flex', flexDirection: 'column' } : {}),

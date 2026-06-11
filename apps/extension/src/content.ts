@@ -10,9 +10,17 @@ import {
 interface CustomWindow extends Window {
   __fa_lastSentKey?: string;
   __fa_lastSentTime?: number;
-  __fa_cachedCode?: string;  // ✅ NEW: Cache code before submission
+  __fa_cachedCode?: string;
+  __fa_attemptCount?: number; // persist attempts across re-activations
 }
 const customWindow = window as unknown as CustomWindow;
+
+// Simple string hash (djb2) for dedup key
+function hashCode(str: string): string {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
+  return (h >>> 0).toString(36);
+}
 
 // ─── Problem Metadata Extractor ──────────────────────────────────────────────
 class ProblemMetadataExtractor {
@@ -545,7 +553,6 @@ class FailureAtlasCollector {
   }
 
   private async onResultDetected(result: DetectedResult): Promise<void> {
-    this.attemptCount++;
     const traceId = Math.random().toString(36).substring(2, 10).toUpperCase();
 
     console.log(`[TRACE ${traceId}]\nDetected`);
@@ -565,22 +572,28 @@ class FailureAtlasCollector {
       }
     }
 
-    const event = this.buildSubmissionEvent(result, code, traceId);
-
-    console.log(`[TRACE ${traceId}]\nPayload Created`);
-
     // ── Deduplication ─────────────────────────────────────────────────────────
-    const dedupKey = `${event.problemSlug}-${event.submissionStatus}-${event.attemptNumber}`;
+    // Key: problem + status + code-hash (NOT attemptNumber — it increments on every
+    // DOM mutation, so two rapid detections of the same submit get different numbers).
+    const codeHash = hashCode(code.slice(0, 500)); // first 500 chars is enough
+    const dedupKey = `${this.currentProblem?.slug ?? 'unknown'}-${result.status}-${codeHash}`;
     const now = Date.now();
     if (
       customWindow.__fa_lastSentKey === dedupKey &&
-      now - (customWindow.__fa_lastSentTime || 0) < 5000
+      now - (customWindow.__fa_lastSentTime || 0) < 30000  // 30s window
     ) {
-      console.log(`[TRACE ${traceId}]\nFailure Reason: Duplicate submission within 5 seconds`);
+      console.log(`[TRACE ${traceId}]\nDuplicate submission blocked (same code+status within 30s)`);
       return;
     }
     customWindow.__fa_lastSentKey = dedupKey;
     customWindow.__fa_lastSentTime = now;
+
+    // Only increment attempt count when we are ACTUALLY sending
+    this.attemptCount++;
+
+    const event = this.buildSubmissionEvent(result, code, traceId);
+
+    console.log(`[TRACE ${traceId}]\nPayload Created`);
 
     console.log(`[TRACE ${traceId}]\nSending To Background`);
     this.sendToBackground(event, traceId);

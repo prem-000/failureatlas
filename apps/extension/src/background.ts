@@ -271,10 +271,25 @@ export class FailureAtlasAPI {
 
       console.log(`[TRACE ${traceId}] Stored Successfully`);
       return { success: true, submissionId: body.submissionId };
-    } catch (e: any) {
-      const reason = e.message || 'Network connection failed';
-      console.error(`[TRACE ${traceId}] Failure Reason: ${reason}`);
-      return { success: false, error: reason };
+    } catch (error: any) {
+      const errorMsg = error?.message || "Network connection failed";
+      
+      console.error(`[TRACE ${traceId}] Network Error:`, {
+        message: errorMsg,
+        type: error?.constructor?.name,
+        stack: error?.stack
+      });
+      
+      // Log more details for debugging
+      if (errorMsg.includes("fetch")) {
+        console.error(`[TRACE ${traceId}] CORS or Network Issue - API might be down`);
+        console.error(`[TRACE ${traceId}] Tried to reach: ${await this.storage.getApiUrl()}/submissions`);
+      }
+      
+      return {
+        success: false,
+        error: errorMsg
+      };
     }
   }
 
@@ -496,6 +511,25 @@ export class MessageHandler {
         return { success: false, error: `Unsupported message type: ${(message as any).type}` };
     }
   }
+
+  async checkApiHealth(): Promise<boolean> {
+    try {
+      const apiUrl = await this.storage.getApiUrl();
+      const response = await fetch(`${apiUrl}/health`);
+      
+      if (!response.ok) {
+        console.error('[FailureAtlas BG] API returned:', response.status);
+        return false;
+      }
+      
+      const data = await response.json();
+      console.log('[FailureAtlas BG] API Health Check:', data);
+      return data.status === 'ok';
+    } catch (error: any) {
+      console.error('[FailureAtlas BG] Health check failed:', error.message);
+      return false;
+    }
+  }
 }
 
 // ─── Bootstrap ───────────────────────────────────────────────────────────────
@@ -532,10 +566,12 @@ try {
   if (typeof chrome !== 'undefined' && chrome?.runtime?.onInstalled) {
     chrome.runtime.onInstalled.addListener(async () => {
       try {
-        const currentUrl = await storage.getApiUrl();
-        console.log('[FailureAtlas BG] Extension installed. API endpoint:', currentUrl);
-      } catch (err) {
-        console.error('[FailureAtlas BG] onInstalled error:', err);
+        const isHealthy = await handler.checkApiHealth();
+        if (!isHealthy) {
+          console.warn('[FailureAtlas BG] API is not healthy. Extension will queue submissions.');
+        }
+      } catch (error) {
+        console.error('[FailureAtlas BG] onInstalled error:', error);
       }
     });
   }

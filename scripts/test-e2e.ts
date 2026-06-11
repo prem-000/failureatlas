@@ -4,7 +4,7 @@ import { prisma } from '../src/lib/db/prisma';
 async function runE2ETests() {
   console.log('🚀 Starting E2E Integration Flow Tests...');
 
-  const baseUrl = 'http://127.0.0.1:3000/api';
+  const baseUrl = 'http://localhost:3000/api';
 
   try {
     // 1. Try to authenticate (Login)
