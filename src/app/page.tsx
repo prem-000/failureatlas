@@ -5,12 +5,12 @@ import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 
 const ATLAS_WORD = 'Atlas';
-const TYPE_SPEED_MIN = 250;
-const TYPE_SPEED_MAX = 300;
-const DELETE_SPEED_MIN = 150;
-const DELETE_SPEED_MAX = 200;
-const PAUSE_FULL = 2000;
-const PAUSE_EMPTY = 400;
+const TYPE_SPEED_MIN = 500;
+const TYPE_SPEED_MAX = 700;
+const DELETE_SPEED_MIN = 300;
+const DELETE_SPEED_MAX = 450;
+const PAUSE_FULL = 2500;
+const PAUSE_EMPTY = 600;
 
 type Phase = 'typing' | 'pausing-full' | 'deleting' | 'pausing-empty';
 
