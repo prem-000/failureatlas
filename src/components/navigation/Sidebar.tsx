@@ -15,8 +15,9 @@ import { useState } from 'react';
 const NAV_ITEMS = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/problems',  icon: ListChecks,      label: 'Problems'   },
-  { href: '/graph',     icon: GitFork,          label: 'Graph Explorer' },
-  { href: '/diagnosis', icon: Stethoscope,      label: 'AI Diagnosis'   },
+  { href: '/graph',     icon: GitFork,          label: 'Graph'      },
+  { href: '/diagnosis', icon: Stethoscope,      label: 'Diagnosis'  },
+  { href: '/settings',  icon: Settings,         label: 'Settings'   },
 ];
 
 interface SidebarProps {
@@ -31,8 +32,8 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
 
   return (
     <>
-      {/* Global styles for the rail */}
       <style>{`
+        /* ─── Desktop floating pill rail ─────────────────────── */
         .nav-rail {
           position: fixed;
           left: 16px;
@@ -51,6 +52,15 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
           transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1);
         }
+
+        /* Hide rail on mobile — show bottom nav instead */
+        @media (max-width: 767px) {
+          .nav-rail {
+            display: none;
+          }
+        }
+
+        /* ─── Shared nav item styles ─────────────────────────── */
         .nav-rail-item {
           position: relative;
           display: flex;
@@ -106,8 +116,81 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           color: #f87171;
           background: rgba(239, 68, 68, 0.1);
         }
+
+        /* ─── Mobile bottom tab bar ──────────────────────────── */
+        .mobile-tab-bar {
+          display: none;
+        }
+
+        @media (max-width: 767px) {
+          .mobile-tab-bar {
+            display: flex;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: rgba(15, 15, 18, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 8px 4px;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+            align-items: flex-start;
+            justify-content: space-around;
+            animation: slide-up-nav 0.3s ease;
+          }
+        }
+
+        .mobile-tab-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          flex: 1;
+          padding: 6px 4px;
+          border-radius: 12px;
+          text-decoration: none;
+          color: #52525b;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          transition: color 150ms ease, background 150ms ease;
+          min-height: 52px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-tab-item.active {
+          color: #ff5f52;
+        }
+        .mobile-tab-item:active {
+          background: rgba(255, 255, 255, 0.04);
+        }
+
+        .mobile-tab-active-dot {
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: #ff5f52;
+          box-shadow: 0 0 6px #ff5f52;
+          margin-top: 2px;
+          opacity: 0;
+          transition: opacity 150ms ease;
+        }
+        .mobile-tab-item.active .mobile-tab-active-dot {
+          opacity: 1;
+        }
+
+        @keyframes slide-up-nav {
+          from { transform: translateY(100%); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
       `}</style>
 
+      {/* ─── Desktop floating pill rail ─────────────────────────────── */}
       <aside
         className="nav-rail"
         style={{ width: expanded ? 88 : 72 }}
@@ -130,6 +213,8 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
             marginBottom: 40,
             textDecoration: 'none',
             flexShrink: 0,
+            minHeight: 'unset',
+            minWidth: 'unset',
           }}
         >
           <span style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>F</span>
@@ -137,7 +222,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
 
         {/* Main nav items */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 14, flex: 1, width: '100%', alignItems: 'center' }}>
-          {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+          {NAV_ITEMS.filter(i => i.href !== '/settings').map(({ href, icon: Icon, label }) => {
             const active = pathname === href || (href !== '/' && pathname.startsWith(href));
             return (
               <Link
@@ -145,6 +230,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
                 href={href}
                 title={label}
                 className={`nav-rail-item${active ? ' active' : ''}`}
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
               >
                 <span className="active-pip" />
                 <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
@@ -155,21 +241,21 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
 
         {/* Bottom section */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
-          {/* Settings */}
           <Link
             href="/settings"
             title="Settings"
             className={`nav-rail-item${pathname === '/settings' ? ' active' : ''}`}
+            style={{ minHeight: 'unset', minWidth: 'unset' }}
           >
             <span className="active-pip" />
             <Settings size={20} strokeWidth={pathname === '/settings' ? 2.2 : 1.8} />
           </Link>
 
-          {/* Sign Out */}
           <button
             onClick={onSignOut}
             title="Sign Out"
             className="nav-rail-btn danger"
+            style={{ minHeight: 'unset', minWidth: 'unset' }}
           >
             <LogOut size={18} strokeWidth={1.8} />
           </button>
@@ -198,6 +284,36 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           </div>
         </div>
       </aside>
+
+      {/* ─── Mobile bottom tab bar ──────────────────────────────────── */}
+      <nav className="mobile-tab-bar" aria-label="Main navigation">
+        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+          const active = pathname === href || (href !== '/' && pathname.startsWith(href));
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`mobile-tab-item${active ? ' active' : ''}`}
+              aria-label={label}
+              style={{ minHeight: 'unset', minWidth: 'unset' }}
+            >
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.7} />
+              <span>{label}</span>
+              <span className="mobile-tab-active-dot" aria-hidden="true" />
+            </Link>
+          );
+        })}
+        <button
+          onClick={onSignOut}
+          className="mobile-tab-item"
+          aria-label="Sign out"
+          style={{ minHeight: 'unset', minWidth: 'unset' }}
+        >
+          <LogOut size={22} strokeWidth={1.7} />
+          <span>Sign out</span>
+          <span className="mobile-tab-active-dot" style={{ opacity: 0 }} aria-hidden="true" />
+        </button>
+      </nav>
     </>
   );
 }

@@ -73,19 +73,22 @@ export default function RegisterPage() {
         @keyframes glow { 0%,100% { opacity: 0.4; } 50% { opacity: 0.8; } }
         .form-card { animation: fadeUp 0.5s ease forwards; }
         .input-field {
-          width: 100%; padding: 11px 14px; border-radius: 10px;
+          width: 100%; padding: 13px 14px; border-radius: 10px;
           background: rgba(255,255,255,0.04);
           border: 1px solid rgba(255,255,255,0.08);
-          color: #e5e7eb; font-size: 14px; font-family: 'Inter', sans-serif;
+          color: #e5e7eb;
+          font-size: 16px; font-family: 'Inter', sans-serif;
           outline: none; transition: border-color 0.2s ease, background 0.2s ease;
+          min-height: 48px;
         }
         .input-field:focus { border-color: #ff5f52; background: rgba(255,95,82,0.04); }
         .input-field::placeholder { color: #4b5563; }
         .submit-btn {
-          width: 100%; padding: 12px; border-radius: 10px; border: none; cursor: pointer;
+          width: 100%; padding: 14px; border-radius: 10px; border: none; cursor: pointer;
           background: linear-gradient(135deg, #ff5f52, #ff8a80);
-          color: #fff; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif;
+          color: #fff; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif;
           transition: opacity 0.2s ease, transform 0.15s ease;
+          min-height: 48px;
         }
         .submit-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
         .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -98,7 +101,7 @@ export default function RegisterPage() {
       <div style={{
         minHeight: '100vh', background: '#131313',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'Inter, sans-serif', padding: '24px',
+        fontFamily: 'Inter, sans-serif', padding: 'clamp(16px, 4vw, 24px)',
         position: 'relative', overflow: 'hidden',
       }}>
         {/* Background orbs */}

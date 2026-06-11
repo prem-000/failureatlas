@@ -32,15 +32,31 @@ export function AppShell({ children, fullscreen = false, hideSidebar = false }: 
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#131313', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      {/* Sidebar */}
+    <div
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        background: '#131313',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        overflowX: 'hidden',
+      }}
+    >
+      {/* Sidebar — pill rail on desktop, bottom tab bar on mobile */}
       {!hideSidebar && <Sidebar user={user || undefined} onSignOut={handleLogout} />}
 
-      {/* Main content */}
+      {/* Main content
+          Desktop: offset right of the 72px sidebar rail + 16px gap = pl-[100px]
+          Mobile:  no left padding, but add bottom padding for the tab bar (72px + safe area)
+      */}
       <main
-        className={hideSidebar ? "" : "pl-[100px]"}
+        className={
+          hideSidebar
+            ? ''
+            : 'md:pl-[100px] pb-[80px] md:pb-0'
+        }
         style={{
           flex: 1,
+          minWidth: 0, /* prevent flex children from overflowing */
           ...(fullscreen ? { display: 'flex', flexDirection: 'column' } : {}),
         }}
       >
@@ -49,4 +65,3 @@ export function AppShell({ children, fullscreen = false, hideSidebar = false }: 
     </div>
   );
 }
-

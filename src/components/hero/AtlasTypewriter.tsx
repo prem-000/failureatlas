@@ -69,7 +69,6 @@ export function AtlasTypewriter() {
         color: '#ff5f52',
         textShadow: '0 0 32px rgba(255, 95, 82, 0.35), 0 0 8px rgba(255, 95, 82, 0.15)',
         display: 'inline',
-        whiteSpace: 'pre',
       }}
     >
       {/* Leading space keeps "Failure Atlas" spaced correctly */}

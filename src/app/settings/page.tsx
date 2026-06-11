@@ -121,7 +121,7 @@ function ApiKeyField({ apiKey, onRegenerate }: { apiKey: string | null; onRegene
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Key display row */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{
           flex: 1, background: '#111111', border: '1px solid #2a2a2a', borderRadius: 8,
           padding: '10px 14px', fontFamily: 'monospace', fontSize: 12, color: '#a1a1aa',
@@ -317,7 +317,7 @@ export default function SettingsPage() {
       <div style={{ width: '100%', minHeight: '100vh', background: '#131313' }}>
 
         {/* Header */}
-        <div style={{ padding: '20px 32px', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>
+        <div style={{ padding: 'clamp(14px, 3vw, 20px) clamp(16px, 4vw, 32px)', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f52', boxShadow: '0 0 8px #ff5f52' }} />
             <span style={{ fontSize: '17px', fontWeight: 700, color: '#f4f4f5', letterSpacing: '-0.02em' }}>Settings</span>
@@ -363,7 +363,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div style={{ padding: '28px 32px', maxWidth: 900 }}>
+        <div style={{ padding: 'clamp(16px, 3vw, 28px) clamp(16px, 4vw, 32px)', maxWidth: 900 }}>
 
           {/* ── Profile Tab ── */}
           {activeTab === 'profile' && (

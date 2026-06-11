@@ -435,6 +435,29 @@ export default function GraphPage() {
             background: rgba(15, 15, 18, 0.85);
             backdrop-filter: blur(16px);
           }
+          /* Hide graph's own nav rail on mobile — bottom tab bar takes over */
+          @media (max-width: 767px) {
+            aside.glassmorphism-panel {
+              display: none !important;
+            }
+          }
+          /* Graph filter chips scroll on mobile */
+          .filter-chips-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 2px;
+          }
+          .filter-chips-row::-webkit-scrollbar { display: none; }
+          /* On mobile: toolbar spans full width (no nav rail offset) */
+          @media (max-width: 767px) {
+            .graph-toolbar {
+              left: 16px !important;
+            }
+          }
         `}</style>
 
         {/* ─── 1. REACT FLOW CANVAS (Occupies 100% full background) ──────────────── */}
@@ -488,7 +511,7 @@ export default function GraphPage() {
           )}
         </div>
 
-        {/* ─── 2. FLOATING LEFT NAVIGATION RAIL ──────────────────────────────────── */}
+        {/* ─── 2. FLOATING LEFT NAVIGATION RAIL (desktop only) ────────────────────── */}
         <aside
           className="glassmorphism-panel"
           onMouseEnter={() => setIsNavExpanded(true)}
@@ -506,7 +529,9 @@ export default function GraphPage() {
             flexDirection: 'column',
             alignItems: 'center',
             padding: '24px 0',
+            /* Hidden on mobile — bottom tab bar handles nav */
           }}
+          // Inline style can't do media queries; handled via CSS class below
         >
           {/* Brand Logo */}
           <Link
@@ -596,10 +621,11 @@ export default function GraphPage() {
 
         {/* ─── 3. TOP TOOLBAR ────────────────────────────────────────────────────── */}
         <header
-          className="glassmorphism-panel"
+          className="glassmorphism-panel graph-toolbar"
           style={{
             position: 'absolute',
             top: '16px',
+            /* On desktop: offset right of the nav rail. On mobile: start from edge */
             left: isNavExpanded ? '120px' : '104px',
             right: '16px',
             height: '64px',
@@ -609,7 +635,9 @@ export default function GraphPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 24px',
+            padding: '0 clamp(12px, 2vw, 24px)',
+            gap: 8,
+            overflowX: 'hidden',
           }}
         >
           {/* Left: Title & Live Stats */}

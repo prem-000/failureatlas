@@ -190,7 +190,7 @@ export default function DashboardPage() {
 
           {/* Top Header */}
           <header style={{
-            padding: '20px 32px',
+          padding: 'clamp(12px, 3vw, 20px) clamp(16px, 4vw, 32px)',
             borderBottom: '1px solid rgba(255,255,255,0.06)',
             background: 'rgba(25,25,25,0.8)',
             backdropFilter: 'blur(12px)',
@@ -234,13 +234,13 @@ export default function DashboardPage() {
             )}
           </header>
 
-          <div style={{ padding: '32px', flex: 1 }}>
+          <div style={{ padding: 'clamp(16px, 3vw, 32px)', flex: 1 }}>
 
             {/* ── STAT CARDS ── */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: 16, marginBottom: 32,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: 12, marginBottom: 24,
             }}>
               {statCards.map((card, i) => (
                 <div
@@ -291,7 +291,7 @@ export default function DashboardPage() {
             <div style={{
               background: '#191919',
               border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 14, overflow: 'hidden',
+              borderRadius: 14, overflowX: 'auto',
             }}>
               <div style={{
                 padding: '20px 24px',
@@ -324,7 +324,8 @@ export default function DashboardPage() {
                   </p>
                 </div>
               ) : (
-                <div>
+                <div className="table-scroll-wrapper">
+                <div style={{ minWidth: 560 }}>
                   {/* Table Header */}
                   <div style={{
                     display: 'grid',
@@ -386,13 +387,14 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+                </div>
               )}
             </div>
 
             {/* ── QUICK ACTIONS ── */}
             <div style={{
               marginTop: 24,
-              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
               gap: 12,
             }}>
               {[
