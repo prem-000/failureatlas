@@ -42,21 +42,8 @@ sudo apt install postgresql-14 postgresql-client-14
 # Download installer from https://www.postgresql.org/download/windows/
 ```
 
-#### Neo4j (v5.0 or higher)
-```bash
-# macOS with Homebrew
-brew install neo4j
-brew services start neo4j
-
-# Ubuntu/Debian
-wget -O - https://debian.neo4j.com/neotechnology.gpg.key | sudo apt-key add -
-echo 'deb https://debian.neo4j.com stable latest' | sudo tee /etc/apt/sources.list.d/neo4j.list
-sudo apt update
-sudo apt install neo4j
-
-# Windows
-# Download installer from https://neo4j.com/download/
-```
+#### Groq API Key
+Get a free API key from [console.groq.com](https://console.groq.com) — no local installation required.
 
 ### Optional but Recommended
 
@@ -117,26 +104,19 @@ nano .env.local  # or code .env.local
 ```bash
 # Database Configuration
 DATABASE_URL="postgresql://username:password@localhost:5432/failureatlas_dev"
-NEO4J_URI="bolt://localhost:7687"
-NEO4J_USERNAME="neo4j"
-NEO4J_PASSWORD="your_neo4j_password"
 
-# AI/ML API Keys
-OPENAI_API_KEY="sk-your_openai_api_key_here"
-ANTHROPIC_API_KEY="sk-ant-your_anthropic_key_here"
+# AI/ML API Keys (Groq — get yours at https://console.groq.com)
+GROQ_API_KEY="gsk_your_groq_api_key_here"
 
 # Application Configuration
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="your_nextauth_secret_at_least_32_chars"
 JWT_SECRET="your_jwt_signing_secret_at_least_32_chars"
 
-# Optional: Redis for caching
-REDIS_URL="redis://localhost:6379"
-
 # Optional: Development features
 DEBUG="true"
 LOG_LEVEL="debug"
-ANALYTICS_ENABLED="false"
+USE_MOCK_EMBEDDINGS="true"
 ```
 
 #### Environment Variable Descriptions
@@ -144,14 +124,11 @@ ANALYTICS_ENABLED="false"
 | Variable | Description | Example Value |
 |----------|-------------|---------------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
-| `NEO4J_URI` | Neo4j database URI | `bolt://localhost:7687` |
-| `NEO4J_USERNAME` | Neo4j authentication username | `neo4j` |
-| `NEO4J_PASSWORD` | Neo4j authentication password | `securepassword` |
-| `OPENAI_API_KEY` | OpenAI API key for embeddings/LLM | `sk-...` |
-| `ANTHROPIC_API_KEY` | Anthropic API key for Claude | `sk-ant-...` |
+| `GROQ_API_KEY` | Groq API key for LLM inference | `gsk_...` |
 | `NEXTAUTH_URL` | Base URL for authentication | `http://localhost:3000` |
 | `NEXTAUTH_SECRET` | Secret for session encryption | Random 32+ character string |
 | `JWT_SECRET` | JWT token signing secret | Random 32+ character string |
+| `USE_MOCK_EMBEDDINGS` | Use mock embeddings (no API cost) | `true` / `false` |
 
 ### 3. Database Setup
 
@@ -188,51 +165,7 @@ pnpm prisma db push
 pnpm prisma db seed
 ```
 
-#### Neo4j Database Setup
-```bash
-# Start Neo4j (if not using systemd)
-neo4j start
 
-# Access Neo4j browser at http://localhost:7474
-# Initial login: neo4j/neo4j (change password on first login)
-
-# Create constraints and indexes
-cypher-shell -u neo4j -p your_password < scripts/neo4j-setup.cypher
-```
-
-#### Neo4j Schema Initialization Script
-Create `scripts/neo4j-setup.cypher`:
-```cypher
-// Create unique constraints
-CREATE CONSTRAINT problem_id_unique FOR (p:Problem) REQUIRE p.problemId IS UNIQUE;
-CREATE CONSTRAINT failure_event_id_unique FOR (f:FailureEvent) REQUIRE f.eventId IS UNIQUE;
-CREATE CONSTRAINT evidence_id_unique FOR (e:Evidence) REQUIRE e.evidenceId IS UNIQUE;
-CREATE CONSTRAINT root_cause_id_unique FOR (r:RootCause) REQUIRE r.causeId IS UNIQUE;
-CREATE CONSTRAINT weakness_id_unique FOR (w:Weakness) REQUIRE w.weaknessId IS UNIQUE;
-CREATE CONSTRAINT strategy_id_unique FOR (l:LearningStrategy) REQUIRE l.strategyId IS UNIQUE;
-
-// Create performance indexes
-CREATE INDEX failure_user_idx FOR (f:FailureEvent) ON (f.userId);
-CREATE INDEX failure_timestamp_idx FOR (f:FailureEvent) ON (f.timestamp);
-CREATE INDEX weakness_pagerank_idx FOR (w:Weakness) ON (w.pageRankScore);
-
-// Insert initial ontology data
-CREATE (r1:RootCause {
-  causeId: "boundary-condition-error",
-  name: "Boundary Condition Error", 
-  category: "Logic Error",
-  description: "Incorrect handling of edge cases and boundary conditions"
-});
-
-CREATE (w1:Weakness {
-  weaknessId: "edge-case-reasoning",
-  name: "Edge Case Reasoning",
-  domain: "Algorithmic Thinking",
-  description: "Difficulty with boundary conditions and edge cases"
-});
-
-CREATE (r1)-[:INDICATES {strength: 0.9}]->(w1);
-```
 
 ### 4. Development Server Startup
 
@@ -303,9 +236,6 @@ curl http://localhost:3000/api/health
 ```bash
 # Test PostgreSQL connection
 pnpm prisma db push --preview-feature
-
-# Test Neo4j connection
-echo "RETURN 'Neo4j connected' AS message" | cypher-shell -u neo4j -p your_password
 ```
 
 #### Sample API Requests
@@ -402,22 +332,21 @@ rm -rf /usr/local/var/postgres
 initdb /usr/local/var/postgres -E utf8
 ```
 
-### 2. Neo4j Authentication Errors
+### 2. Groq API Issues
 
-**Problem:** Authentication failed connecting to Neo4j
+**Problem:** Groq API calls failing
 
 **Solutions:**
 ```bash
-# Reset Neo4j password
-neo4j-admin set-initial-password new_password
+# Verify GROQ_API_KEY is set in .env.local
+echo $GROQ_API_KEY | head -c 10
 
-# Check Neo4j status
-neo4j status
+# Test Groq API key validity
+curl https://api.groq.com/openai/v1/models \
+  -H "Authorization: Bearer $GROQ_API_KEY"
 
-# Clear Neo4j data and restart
-neo4j stop
-rm -rf data/
-neo4j start
+# Check environment file loading
+node -e "require('dotenv').config({path:'.env.local'}); console.log(process.env.GROQ_API_KEY?.substring(0,10))"
 ```
 
 ### 3. pnpm Install Failures
@@ -459,21 +388,21 @@ cat dist/manifest.json | jq '.'
 # Ensure API allows localhost:3000 origin
 ```
 
-### 5. API Key Configuration Issues
+### 5. Groq API Key Issues
 
-**Problem:** OpenAI/Anthropic API calls failing
+**Problem:** Groq LLM API calls failing or returning errors
 
 **Solutions:**
 ```bash
-# Verify API keys are set
-echo $OPENAI_API_KEY | head -c 20
+# Verify GROQ_API_KEY is set
+echo $GROQ_API_KEY | head -c 10
 
-# Test API key validity
-curl https://api.openai.com/v1/models \
-  -H "Authorization: Bearer $OPENAI_API_KEY" | head
+# Test Groq API key validity
+curl https://api.groq.com/openai/v1/models \
+  -H "Authorization: Bearer $GROQ_API_KEY"
 
 # Check environment file loading
-node -e "require('dotenv').config(); console.log(process.env.OPENAI_API_KEY?.substring(0,10))"
+node -e "require('dotenv').config({path:'.env.local'}); console.log(process.env.GROQ_API_KEY?.substring(0,10))"
 ```
 
 ## Development Workflow

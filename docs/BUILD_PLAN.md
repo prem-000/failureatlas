@@ -12,10 +12,10 @@ FailureAtlas is an AI-powered competitive programming failure intelligence platf
 |------|-----------|------|
 | **Web App** | Next.js 15 dashboard + diagnosis UI | Next.js 15, React 19, TypeScript, Tailwind |
 | **API** | REST backend with auth, analysis, graph queries | Next.js API Routes, Prisma, JWT |
-| **Databases** | Relational + graph + vector storage | PostgreSQL + pgvector, Neo4j |
+| **Databases** | Relational + vector storage | PostgreSQL + pgvector |
 | **Chrome Extension** | LeetCode submission capture | Manifest V3, Content Scripts |
 
-**Full pipeline**: Chrome Extension captures LeetCode submissions → API ingests them → Myers Diff + Behavioral analysis runs → Bayesian + LLM inference classifies root cause → Neo4j knowledge graph stores relationships → RAG retrieval finds similar failures → GPT-4o/Claude generates personalized diagnosis.
+**Full pipeline**: Chrome Extension captures LeetCode submissions → API ingests them → Myers Diff + Behavioral analysis runs → Bayesian inference classifies root cause → Graph stored in PostgreSQL → RAG retrieval finds similar failures → Groq LLM generates personalized diagnosis.
 
 ## Design System (Apply to Every UI File)
 
@@ -65,8 +65,8 @@ Build the complete Next.js 15 project configuration for FailureAtlas.
 Create these files:
 
 1. package.json with dependencies: next@15, react@19, react-dom@19, typescript, 
-   tailwindcss, @prisma/client, prisma, neo4j-driver, @auth/prisma-adapter, jose, 
-   bcryptjs, @tanstack/react-query, reactflow, zod, uuid, openai, @anthropic-ai/sdk, 
+   tailwindcss, @prisma/client, prisma, @auth/prisma-adapter, jose, 
+   bcryptjs, groq-sdk, @tanstack/react-query, reactflow, zod, uuid,
    lucide-react. 
    DevDeps: @types/node, @types/react, @types/bcryptjs, @types/uuid, ts-node.
 
@@ -89,9 +89,8 @@ Create these files:
    .text-body (14px/20px), .text-caption (12px/16px), .text-micro (11px/14px).
    Import Geist font from Google Fonts or next/font.
 
-4. .env.example with: DATABASE_URL, NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD, 
-   OPENAI_API_KEY, ANTHROPIC_API_KEY, NEXTAUTH_URL, NEXTAUTH_SECRET, JWT_SECRET, 
-   REDIS_URL, DEBUG, LOG_LEVEL.
+4. .env.example with: DATABASE_URL, GROQ_API_KEY, NEXTAUTH_URL, NEXTAUTH_SECRET, JWT_SECRET,
+   DEBUG, LOG_LEVEL, USE_MOCK_EMBEDDINGS.
 
 5. next.config.mjs — minimal config with serverActions allowed origins.
 
@@ -232,21 +231,16 @@ pnpm prisma db seed
 
 ---
 
-### 1D — Neo4j Schema & Setup Script
+### 1D — Graph Operations (PostgreSQL)
 
 **Reference**: See `docs/GRAPH_SCHEMA.md` for complete schema
 **Reference**: See `docs/FAILURE_ONTOLOGY.md` for ontology details
 
-**What to build**: Neo4j initialization script that creates constraints, indexes, and seeds the full ontology.
+**What to build**: Graph operations implemented in PostgreSQL using adjacency tables (Neo4j removed).
 
 **Files created**:
-- `scripts/neo4j-setup.ts`
-- `src/lib/db/neo4j.ts`
-
-**Run after creation**:
-```bash
-ts-node scripts/neo4j-setup.ts
-```
+- `src/lib/graph/operations.ts`
+- `src/lib/db/graph-queries.ts`
 
 ---
 
@@ -305,11 +299,11 @@ Before moving to Phase 2, verify ALL of these work:
 2. **Structural Code Pattern Analysis** (`src/lib/analysis/ast-diff.ts`)
 3. **Behavioral Signal Parser** (`src/lib/analysis/behavioral.ts`)
 4. **Bayesian Root Cause Classifier** (`src/lib/inference/bayesian.ts`)
-5. **Neo4j Graph Operations** (`src/lib/graph/operations.ts`)
+5. **Graph Operations** (`src/lib/graph/operations.ts`)
 6. **PageRank Weakness Scoring** (`src/lib/graph/pagerank.ts`)
-7. **OpenAI Embeddings Pipeline** (`src/lib/embeddings/pipeline.ts`)
+7. **Embeddings Pipeline** (`src/lib/embeddings/pipeline.ts`)
 8. **RAG Retrieval Engine** (`src/lib/rag/retrieval.ts`)
-9. **LLM Diagnosis Generator** (`src/lib/diagnosis/generator.ts`)
+9. **Groq LLM Diagnosis Generator** (`src/lib/diagnosis/generator.ts`)
 
 ---
 
