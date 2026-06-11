@@ -495,7 +495,7 @@ export default function SettingsPage() {
                     { method: 'POST', path: '/api/auth/verify-key',    desc: 'Verify an Extension API Key (used by the extension)' },
                     { method: 'POST', path: '/api/auth/regenerate-key',desc: 'Issue a new API key (invalidates the old one)' },
                   ].map(ep => (
-                    <div key={ep.path} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1a1a1a' }}>
+                    <div key={`${ep.method}-${ep.path}`} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1a1a1a' }}>
                       <span style={{
                         fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, minWidth: 46, textAlign: 'center',
                         color: ep.method === 'POST' ? '#f59e0b' : '#3b82f6',
