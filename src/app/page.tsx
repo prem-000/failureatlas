@@ -1,10 +1,83 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
-import { TypewriterTitle } from '@/components/ui/TypewriterTitle';
+
+const ATLAS_WORD = 'Atlas';
+const TYPE_SPEED_MIN = 250;
+const TYPE_SPEED_MAX = 300;
+const DELETE_SPEED_MIN = 150;
+const DELETE_SPEED_MAX = 200;
+const PAUSE_FULL = 2000;
+const PAUSE_EMPTY = 400;
+
+type Phase = 'typing' | 'pausing-full' | 'deleting' | 'pausing-empty';
+
+function useTypewriter() {
+  const [displayed, setDisplayed] = useState('');
+  const [showCursor, setShowCursor] = useState(true);
+  const phaseRef = useRef<Phase>('typing');
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cursor blink
+  useEffect(() => {
+    const id = setInterval(() => setShowCursor(v => !v), 530);
+    return () => clearInterval(id);
+  }, []);
+
+  // Typewriter loop
+  useEffect(() => {
+    function rand(min: number, max: number) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function tick() {
+      const phase = phaseRef.current;
+
+      if (phase === 'typing') {
+        setDisplayed(prev => {
+          const next = ATLAS_WORD.slice(0, prev.length + 1);
+          if (next.length === ATLAS_WORD.length) {
+            phaseRef.current = 'pausing-full';
+            timeoutRef.current = setTimeout(tick, PAUSE_FULL);
+          } else {
+            timeoutRef.current = setTimeout(tick, rand(TYPE_SPEED_MIN, TYPE_SPEED_MAX));
+          }
+          return next;
+        });
+      } else if (phase === 'pausing-full') {
+        phaseRef.current = 'deleting';
+        timeoutRef.current = setTimeout(tick, rand(DELETE_SPEED_MIN, DELETE_SPEED_MAX));
+      } else if (phase === 'deleting') {
+        setDisplayed(prev => {
+          const next = prev.slice(0, -1);
+          if (next.length === 0) {
+            phaseRef.current = 'pausing-empty';
+            timeoutRef.current = setTimeout(tick, PAUSE_EMPTY);
+          } else {
+            timeoutRef.current = setTimeout(tick, rand(DELETE_SPEED_MIN, DELETE_SPEED_MAX));
+          }
+          return next;
+        });
+      } else if (phase === 'pausing-empty') {
+        phaseRef.current = 'typing';
+        timeoutRef.current = setTimeout(tick, rand(TYPE_SPEED_MIN, TYPE_SPEED_MAX));
+      }
+    }
+
+    timeoutRef.current = setTimeout(tick, 600);
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return { displayed, showCursor };
+}
 
 export default function Home() {
+  const { displayed, showCursor } = useTypewriter();
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <nav className="border-b border-border">
@@ -23,9 +96,52 @@ export default function Home() {
 
       <main className="max-w-6xl mx-auto px-4 py-16">
         <section className="text-center mb-16">
-          <h1 className="text-5xl font-bold mb-6">
-            <TypewriterTitle />
+          {/*
+            The h1 renders as one unbroken inline flow:
+              "Failure" (static span) + animated "Atlas" chars + cursor
+            All three share the exact same font properties via inheritance.
+            No layout shifts: the full word "Atlas" is rendered invisibly
+            at all times to hold the width, with the visible portion
+            overlaid absolutely.
+          */}
+          <h1
+            className="text-5xl font-bold mb-6"
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {/* Static "Failure" */}
+            <span>Failure</span>
+
+            {/* Animated "Atlas" + cursor as one inline unit */}
+            <span
+              style={{
+                display: 'inline-block',
+                position: 'relative',
+                /* Reserve full width of "Atlas" + cursor so nothing shifts */
+                minWidth: '0',
+              }}
+            >
+              {/* Invisible full word keeps nothing reserved — we let text flow naturally */}
+              {displayed}
+              {/* Cursor — inline, same font, subtle blink only */}
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block',
+                  width: '2px',
+                  height: '0.85em',
+                  background: 'currentColor',
+                  marginLeft: '2px',
+                  verticalAlign: 'middle',
+                  borderRadius: '1px',
+                  opacity: showCursor ? 1 : 0,
+                  transition: 'opacity 80ms ease',
+                  position: 'relative',
+                  top: '-0.05em',
+                }}
+              />
+            </span>
           </h1>
+
           <p className="text-xl text-muted-foreground mb-8">
             AI-powered failure intelligence for competitive programming
           </p>
