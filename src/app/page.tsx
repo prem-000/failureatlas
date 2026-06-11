@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
+import { TypewriterTitle } from '@/components/ui/TypewriterTitle';
 
 export default function Home() {
   return (
@@ -22,7 +23,9 @@ export default function Home() {
 
       <main className="max-w-6xl mx-auto px-4 py-16">
         <section className="text-center mb-16">
-          <h1 className="text-5xl font-bold mb-6">FailureAtlas</h1>
+          <h1 className="text-5xl font-bold mb-6">
+            <TypewriterTitle />
+          </h1>
           <p className="text-xl text-muted-foreground mb-8">
             AI-powered failure intelligence for competitive programming
           </p>
