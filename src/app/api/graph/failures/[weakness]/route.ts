@@ -37,7 +37,7 @@ export async function GET(
       );
     }
 
-    // Query weakness context from Neo4j
+    // Query weakness context
     const weaknessContext = await queryWeaknessContext(weaknessId);
 
     if (!weaknessContext) {

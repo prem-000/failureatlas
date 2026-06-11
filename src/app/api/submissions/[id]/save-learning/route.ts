@@ -17,7 +17,7 @@ interface SaveLearningRequest {
  *
  * Updates:
  * - AuditLog with user feedback
- * - Neo4j relationship weights for useful root causes
+ * - Database graph relationship weights for useful root causes
  */
 export async function POST(
   request: NextRequest,
@@ -70,7 +70,7 @@ export async function POST(
       },
     });
 
-    // TODO: Update Neo4j relationship weights if helpful is true
+    // TODO: Update database graph relationship weights if helpful is true
     // This would increase the confidence weight of the diagnosed root cause
     // for future Bayesian calculations
 

@@ -365,7 +365,7 @@ export default function GraphPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 12 }}>
             <span style={{ fontSize: 32 }}>⚠️</span>
             <span style={{ color: '#ef4444', fontSize: 14 }}>{error}</span>
-            <span style={{ color: '#52525b', fontSize: 12 }}>Make sure Neo4j is running and you have submitted problems first.</span>
+            <span style={{ color: '#52525b', fontSize: 12 }}>Make sure the database is running and you have submitted problems first.</span>
           </div>
         ) : nodes.length === 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 12 }}>

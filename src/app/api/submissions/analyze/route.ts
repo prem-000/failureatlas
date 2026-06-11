@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 7. Update Neo4j knowledge graph ontology
+    // 7. Update database graph
     await recordFailureEventInGraph(userId, mappedSubmission, hypotheses, createdEvidences);
 
     // 8. Recompute user PageRank weaknesses

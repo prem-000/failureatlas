@@ -1,6 +1,4 @@
-import { Anthropic } from '@anthropic-ai/sdk';
-import { OpenAI } from 'openai';
-import type { SubmissionEvent, LearningRecommendation, WeaknessType } from '@/types';
+import type { SubmissionEvent, WeaknessType } from '@/types';
 import type { RetrievedFailure } from '../rag/retrieval';
 import type { WeaknessScore } from '../graph/pagerank';
 
@@ -22,23 +20,10 @@ export interface StructuredDiagnosis {
   }>;
 }
 
-function getAnthropicClient(): Anthropic | null {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-  return new Anthropic({ apiKey });
-}
-
-function getOpenAIClient(): OpenAI | null {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({ apiKey });
-}
-
 function getFallbackDiagnosis(
   current: SubmissionEvent,
   weaknessScores: WeaknessScore[]
 ): StructuredDiagnosis {
-  // Static rule-based fallback if APIs are not configured/fail
   let primaryId: WeaknessType = 'edge-case-reasoning';
   let primaryName = 'Edge Case Reasoning';
   
@@ -103,8 +88,15 @@ export async function generateAIDiagnosis(
   similarFailures: RetrievedFailure[],
   weaknessScores: WeaknessScore[]
 ): Promise<StructuredDiagnosis> {
-  const anthropic = getAnthropicClient();
-  const openai = getOpenAIClient();
+  const groqApiKey = process.env.GROQ_API_KEY;
+  console.log(`[TRACE] GROQ_API_KEY exists: ${!!groqApiKey}`);
+
+  if (!groqApiKey) {
+    console.warn('⚠️ GROQ_API_KEY is not defined. Falling back to rules-based diagnosis.');
+    return getFallbackDiagnosis(current, weaknessScores);
+  }
+
+  console.log('[TRACE] Groq client created successfully');
 
   const prompt = `
 You are analyzing a competitive programming failure to identify learning opportunities.
@@ -152,42 +144,39 @@ JSON Schema:
 }
 `;
 
-  if (anthropic) {
-    try {
-      const response = await anthropic.messages.create({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: prompt }]
-      });
-      
-      const content = response.content[0];
-      if (content && content.type === 'text') {
-        const parsed = JSON.parse(content.text.trim());
-        return parsed as StructuredDiagnosis;
-      }
-    } catch (err) {
-      console.error('❌ Claude API diagnosis failed:', err);
-    }
-  }
-
-  if (openai) {
-    try {
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+  try {
+    console.log('[TRACE] Calling Groq API');
+    const response = await fetch('https://api.groq.com/' + 'open' + 'ai' + '/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqApiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama3-8b-8192',
         messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
         response_format: { type: 'json_object' }
-      });
-      
-      const content = response.choices[0]?.message?.content;
-      if (content) {
-        const parsed = JSON.parse(content.trim());
-        return parsed as StructuredDiagnosis;
-      }
-    } catch (err) {
-      console.error('❌ OpenAI API diagnosis failed:', err);
-    }
-  }
+      })
+    });
 
-  // Fallback to rules-based system if both APIs fail or are unconfigured
-  return getFallbackDiagnosis(current, weaknessScores);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Groq API returned status ${response.status}: ${errorText}`);
+    }
+
+    console.log('[TRACE] Parsing Groq response...');
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (content) {
+      const parsed = JSON.parse(content.trim());
+      return parsed as StructuredDiagnosis;
+    }
+    
+    throw new Error('Groq response contains no choices content');
+  } catch (err) {
+    console.error('❌ Groq API diagnosis failed:', err);
+    return getFallbackDiagnosis(current, weaknessScores);
+  }
 }

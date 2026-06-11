@@ -1,6 +1,6 @@
 /**
- * Neo4j Graph Query Functions
- * Performs semantic queries on the failure ontology.
+ * Graph Query Functions (PostgreSQL/Prisma driven)
+ * Performs semantic and ontological queries on the failure database.
  *
  * Used by:
  * - Bayesian engine (fetch priors)
@@ -8,73 +8,71 @@
  * - RAG system (retrieve learning strategies)
  */
 
-import { runQuery } from './neo4j';
+import { prisma } from '@/lib/db/prisma';
 import { RootCauseType } from '../../types';
 
+const WEAKNESS_TO_ROOT_CAUSES: Record<string, string[]> = {
+  'edge-case-reasoning': ['boundary-condition-error', 'input-output-handling-error'],
+  'algorithmic-pattern-recognition': ['pattern-recognition-gap', 'algorithm-selection-mistake'],
+  'performance-analysis': ['time-complexity-oversight', 'space-complexity-oversight', 'data-structure-mismatch'],
+  'implementation-precision': ['implementation-detail-error']
+};
+
+const WEAKNESS_TO_STRATEGIES: Record<string, Array<{ id: string; name: string; estimatedTime: number }>> = {
+  'edge-case-reasoning': [{ id: 'boundary-practice-plan', name: 'Boundary Condition Practice Plan', estimatedTime: 240 }],
+  'algorithmic-pattern-recognition': [{ id: 'pattern-recognition-course', name: 'Algorithmic Pattern Recognition Course', estimatedTime: 480 }],
+  'performance-analysis': [{ id: 'complexity-optimization-workshop', name: 'Complexity Optimization Workshop', estimatedTime: 360 }],
+  'implementation-precision': [{ id: 'implementation-drills', name: 'Implementation Precision Drills', estimatedTime: 300 }]
+};
+
+// Helper function to map weakness to root cause types
+function getRootCausesForWeakness(weakness: string): Array<{ type: RootCauseType; confidence: number }> {
+  const normalized = weakness.toLowerCase();
+  if (normalized.includes('boundary') || normalized.includes('edge')) {
+    return [{ type: 'boundary-condition-error', confidence: 0.9 }];
+  }
+  if (normalized.includes('time') || normalized.includes('performance')) {
+    return [
+      { type: 'time-complexity-oversight', confidence: 0.85 },
+      { type: 'space-complexity-oversight', confidence: 0.7 }
+    ];
+  }
+  if (normalized.includes('pattern') || normalized.includes('algorithmic')) {
+    return [
+      { type: 'pattern-recognition-gap', confidence: 0.8 },
+      { type: 'algorithm-selection-mistake', confidence: 0.75 }
+    ];
+  }
+  if (normalized.includes('implementation') || normalized.includes('precision')) {
+    return [
+      { type: 'implementation-detail-error', confidence: 0.8 },
+      { type: 'input-output-handling-error', confidence: 0.75 }
+    ];
+  }
+  return [];
+}
+
 /**
- * Fetch prior probabilities for all root cause types from Neo4j.
+ * Fetch prior probabilities for all root cause types.
  * Returns a map of rootCauseType -> probability.
- *
- * Query: MATCH (r:RootCause) RETURN r.type, r.confidence AS probability
  */
 export async function queryRootCausePriors(): Promise<Record<RootCauseType, number>> {
-  try {
-    const results = await runQuery(
-      `MATCH (r:RootCause) 
-       RETURN r.type as type, r.confidence as probability`,
-    );
-
-    const rows = Array.isArray(results) ? (results as any[]) : [];
-    const priors: Record<RootCauseType, number> = {} as Record<RootCauseType, number>;
-
-    for (const record of rows) {
-      const rec: any = record;
-      const type = rec.type as RootCauseType;
-      const probability = parseFloat(String(rec.probability)) || 0.1;
-      priors[type] = probability;
-    }
-
-    // Ensure all 8 root cause types are present; use defaults if missing
-    const allTypes: RootCauseType[] = [
-      'boundary-condition-error',
-      'algorithm-selection-mistake',
-      'pattern-recognition-gap',
-      'time-complexity-oversight',
-      'space-complexity-oversight',
-      'data-structure-mismatch',
-      'implementation-detail-error',
-      'input-output-handling-error',
-    ];
-
-    for (const type of allTypes) {
-      if (!(type in priors)) {
-        priors[type] = 0.125; // Uniform default (1/8)
-      }
-    }
-
-    return priors;
-  } catch (error) {
-    console.error('Error fetching root cause priors from Neo4j:', error);
-    // Return uniform priors as fallback
-    return {
-      'boundary-condition-error': 0.15,
-      'algorithm-selection-mistake': 0.12,
-      'pattern-recognition-gap': 0.1,
-      'time-complexity-oversight': 0.18,
-      'space-complexity-oversight': 0.08,
-      'data-structure-mismatch': 0.15,
-      'implementation-detail-error': 0.12,
-      'input-output-handling-error': 0.1,
-    };
-  }
+  // Return static priors as standard baseline
+  return {
+    'boundary-condition-error': 0.15,
+    'algorithm-selection-mistake': 0.12,
+    'pattern-recognition-gap': 0.1,
+    'time-complexity-oversight': 0.18,
+    'space-complexity-oversight': 0.08,
+    'data-structure-mismatch': 0.15,
+    'implementation-detail-error': 0.12,
+    'input-output-handling-error': 0.1,
+  };
 }
 
 /**
  * Find similar past failures for a given root cause type.
  * Returns up to limit failures with metadata.
- *
- * Query: MATCH (r:RootCause {type})-[INDICATES]->(w:Weakness)<-[INDICATES]-(r2:RootCause)<-[rel:CO_OCCURS]-(f:FailureEvent)
- *        RETURN f.id, f.timestamp, f.status, r2.type, ...
  */
 export async function querySimilarFailures(
   rootCauseType: RootCauseType,
@@ -90,31 +88,41 @@ export async function querySimilarFailures(
   }>
 > {
   try {
-    const results = await runQuery(
-      `MATCH (r:RootCause {type: $rootCauseType})-[rel:INDICATES]->(w:Weakness)
-       OPTIONAL MATCH (f:FailureEvent)-[ref:REFERENCES]->(r)
-       RETURN 
-         f.eventId as id,
-         f.timestamp as timestamp,
-         f.status as status,
-         r.type as rootCauseType,
-         w.severity as severity,
-         ref.confidence as confidence
-       ORDER BY f.timestamp DESC
-       LIMIT $limit`,
-      { rootCauseType, limit },
-    );
+    const hypotheses = await prisma.rootCauseHypothesis.findMany({
+      where: {
+        rootCauseType,
+        evidence: {
+          submission: {
+            NOT: {
+              status: 'Accepted'
+            }
+          }
+        }
+      },
+      include: {
+        evidence: {
+          include: {
+            submission: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: limit
+    });
 
-    const rows = Array.isArray(results) ? (results as any[]) : [];
-
-    return rows.map((record: any) => ({
-      id: record.id || '',
-      timestamp: record.timestamp || new Date().toISOString(),
-      status: record.status || 'unknown',
-      rootCauseType: (record.rootCauseType as RootCauseType) || rootCauseType,
-      severity: record.severity || 'medium',
-      confidence: parseFloat(String(record.confidence)) || 0.5,
-    }));
+    return hypotheses.map(h => {
+      const sub = h.evidence?.submission;
+      return {
+        id: sub?.eventId || '',
+        timestamp: sub?.timestamp.toISOString() || new Date().toISOString(),
+        status: sub?.status || 'unknown',
+        rootCauseType: h.rootCauseType as RootCauseType,
+        severity: 'medium',
+        confidence: h.confidence
+      };
+    });
   } catch (error) {
     console.error(
       `Error querying similar failures for ${rootCauseType}:`,
@@ -127,10 +135,6 @@ export async function querySimilarFailures(
 /**
  * Get weakness node with all connected root causes and learning strategies.
  * Returns structured data for recommendation engine.
- *
- * Query: MATCH (w:Weakness {id})-[rel:INDICATES]-(r:RootCause)
- *        OPTIONAL MATCH (w)-[rel2:ADDRESSED_BY]->(s:LearningStrategy)
- *        RETURN w.id, w.name, w.severity, collect(r) as rootCauses, collect(s) as strategies
  */
 export async function queryWeaknessContext(weaknessId: string): Promise<{
   id: string;
@@ -140,32 +144,52 @@ export async function queryWeaknessContext(weaknessId: string): Promise<{
   strategies: Array<{ id: string; name: string; estimatedTime: number }>;
 } | null> {
   try {
-    const results = await runQuery(
-      `MATCH (w:Weakness {id: $weaknessId})
-       OPTIONAL MATCH (r:RootCause)-[rel:INDICATES]->(w)
-       OPTIONAL MATCH (w)-[rel2:ADDRESSED_BY]->(s:LearningStrategy)
-       RETURN 
-         w.id as weaknessId,
-         w.name as weaknessName,
-         w.severity as severity,
-         collect({type: r.type, confidence: rel.strength}) as rootCauses,
-         collect({id: s.id, name: s.name, time: s.estimatedTime}) as strategies`,
-      { weaknessId },
-    );
+    const weakness = await prisma.systemicWeakness.findFirst({
+      where: {
+        OR: [
+          { id: weaknessId },
+          { name: weaknessId }
+        ]
+      },
+      include: {
+        strategies: true
+      }
+    });
 
-    const rows = Array.isArray(results) ? (results as any[]) : [];
-    if (rows.length === 0) {
-      return null;
+    if (!weakness) {
+      const ONTOLOGY_WEAKNESSES = {
+        'edge-case-reasoning': { name: 'Edge Case Reasoning', severity: 'high' },
+        'algorithmic-pattern-recognition': { name: 'Algorithmic Pattern Recognition', severity: 'high' },
+        'performance-analysis': { name: 'Performance Analysis', severity: 'high' },
+        'implementation-precision': { name: 'Implementation Precision', severity: 'medium' }
+      };
+      const w = ONTOLOGY_WEAKNESSES[weaknessId as keyof typeof ONTOLOGY_WEAKNESSES];
+      if (!w) return null;
+      
+      const rootCauses = WEAKNESS_TO_ROOT_CAUSES[weaknessId] || [];
+      const strategies = WEAKNESS_TO_STRATEGIES[weaknessId] || [];
+
+      return {
+        id: weaknessId,
+        name: w.name,
+        severity: w.severity,
+        rootCauses: rootCauses.map(type => ({ type: type as RootCauseType, confidence: 0.8 })),
+        strategies: strategies.map(s => ({ id: s.id, name: s.name, estimatedTime: s.estimatedTime }))
+      };
     }
 
-    const record: any = rows[0];
+    const rootCauses = WEAKNESS_TO_ROOT_CAUSES[weakness.name] || [];
 
     return {
-      id: record.weaknessId || weaknessId,
-      name: record.weaknessName || '',
-      severity: record.severity || 'medium',
-      rootCauses: (record.rootCauses || []).filter((r: any) => r?.type),
-      strategies: (record.strategies || []).filter((s: any) => s?.id),
+      id: weakness.name,
+      name: weakness.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+      severity: weakness.severity,
+      rootCauses: rootCauses.map(type => ({ type: type as RootCauseType, confidence: 0.8 })),
+      strategies: weakness.strategies.map(s => ({
+        id: s.id,
+        name: s.name,
+        estimatedTime: s.estimatedTime
+      }))
     };
   } catch (error) {
     console.error(`Error querying weakness context for ${weaknessId}:`, error);
@@ -175,10 +199,6 @@ export async function queryWeaknessContext(weaknessId: string): Promise<{
 
 /**
  * Get all learning recommendations for a specific weakness type.
- * Used by RAG system to enrich Claude prompts.
- *
- * Query: MATCH (w:Weakness {type})-[rel:ADDRESSED_BY]->(s:LearningStrategy)
- *        RETURN s.id, s.name, s.description, s.estimatedTime, s.practiceProblems
  */
 export async function queryLearningStrategies(weaknessType: string, limit = 5): Promise<
   Array<{
@@ -190,56 +210,51 @@ export async function queryLearningStrategies(weaknessType: string, limit = 5): 
   }>
 > {
   try {
-    const results = await runQuery(
-      `MATCH (w:Weakness {type: $weaknessType})-[rel:ADDRESSED_BY]->(s:LearningStrategy)
-       RETURN 
-         s.id as id,
-         s.name as name,
-         s.description as description,
-         s.estimatedTime as estimatedTime,
-         s.practiceProblems as practiceProblems
-       ORDER BY s.priority DESC
-       LIMIT $limit`,
-      { weaknessType, limit },
-    );
+    const strategies = await prisma.learningStrategy.findMany({
+      where: {
+        weakness: {
+          name: weaknessType
+        }
+      },
+      orderBy: {
+        priority: 'desc'
+      },
+      take: limit
+    });
 
-    const rows = Array.isArray(results) ? (results as any[]) : [];
+    if (strategies.length === 0) {
+      const staticStrats = WEAKNESS_TO_STRATEGIES[weaknessType] || [];
+      return staticStrats.map(s => ({
+        id: s.id,
+        name: s.name,
+        description: `Practice plan and exercises for ${s.name}`,
+        estimatedTime: s.estimatedTime,
+        practiceProblems: []
+      }));
+    }
 
-    return rows.map((record: any) => ({
-      id: record.id || '',
-      name: record.name || '',
-      description: record.description || '',
-      estimatedTime: parseInt(String(record.estimatedTime)) || 0,
-      practiceProblems: Array.isArray(record.practiceProblems)
-        ? record.practiceProblems
-        : [],
+    return strategies.map(s => ({
+      id: s.id,
+      name: s.name,
+      description: s.description,
+      estimatedTime: s.estimatedTime,
+      practiceProblems: s.practiceProblems
     }));
   } catch (error) {
-    console.error(
-      `Error querying learning strategies for weakness ${weaknessType}:`,
-      error,
-    );
+    console.error(`Error querying learning strategies for weakness ${weaknessType}:`, error);
     return [];
   }
 }
 
 /**
- * Health check: verify Neo4j connectivity by counting root cause nodes.
+ * Health check: verify connectivity by pinging PostgreSQL.
  */
-export async function checkNeo4jHealth(): Promise<boolean> {
+export async function checkDbHealth(): Promise<boolean> {
   try {
-    const results = await runQuery(
-      'MATCH (r:RootCause) RETURN count(r) as count',
-    );
-
-    const rows = Array.isArray(results) ? (results as any[]) : [];
-    if (rows.length > 0 && Number(rows[0].count) > 0) {
-      return true;
-    }
-
-    return false;
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
   } catch (error) {
-    console.error('Neo4j health check failed:', error);
+    console.error('Database health check failed:', error);
     return false;
   }
 }

@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "build": "webpack --config webpack.config.js --mode production",
+    "build:production": "npm run build",
     "build:dev": "webpack --config webpack.config.js --mode development",
     "dev": "webpack --config webpack.config.js --mode development --watch",
     "type-check": "tsc --noEmit",

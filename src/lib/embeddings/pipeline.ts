@@ -1,20 +1,4 @@
-import { OpenAI } from 'openai';
 import { prisma } from '@/lib/db/prisma';
-
-let openaiClient: OpenAI | null = null;
-
-function getOpenAIClient(): OpenAI | null {
-  if (openaiClient) return openaiClient;
-  
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    console.warn('⚠️ OPENAI_API_KEY is not defined. Using mock embeddings fallback.');
-    return null;
-  }
-  
-  openaiClient = new OpenAI({ apiKey });
-  return openaiClient;
-}
 
 /**
  * Generate a mock embedding vector (useful when API keys are not provided in dev env)
@@ -37,50 +21,13 @@ function generateMockEmbedding(text: string, dimensions: number = 1536): number[
 }
 
 /**
- * Generate semantic embedding using OpenAI text-embedding-3-small/large
- */
-/**
- * Generate semantic embedding using OpenAI text-embedding-3-small/large
+ * Generate semantic embedding using in-memory mock generator
  */
 export async function generateEmbedding(
   text: string,
   model: string = 'text-embedding-3-small'
 ): Promise<number[] | null> {
-  const client = getOpenAIClient();
-  if (!client) {
-    console.warn('⚠️ OpenAI client not initialized. Using mock embeddings.');
-    return generateMockEmbedding(text, model === 'text-embedding-3-large' ? 3072 : 1536);
-  }
-
-  try {
-    const response = await client.embeddings.create({
-      model,
-      input: text.trim(),
-      encoding_format: 'float'
-    });
-    return response.data[0].embedding;
-  } catch (error: any) {
-    // ✅ Handle OpenAI quota errors (429)
-    if (error.status === 429 || error.code === 'insufficient_quota') {
-      console.warn('⚠️ OpenAI quota exceeded. Using mock embeddings as fallback.');
-      return generateMockEmbedding(text, model === 'text-embedding-3-large' ? 3072 : 1536);
-    }
-    
-    // ✅ Handle invalid API key
-    if (error.code === 'invalid_api_key' || error.error?.code === 'invalid_api_key') {
-      console.warn('⚠️ OpenAI API key invalid. Using mock embeddings as fallback.');
-      return generateMockEmbedding(text, model === 'text-embedding-3-large' ? 3072 : 1536);
-    }
-
-    console.error('❌ Embedding generation failed:', {
-      status: error.status,
-      code: error.code,
-      message: error.message?.substring(0, 100)
-    });
-    
-    // ✅ Always fallback to mock embedding instead of crashing
-    return generateMockEmbedding(text, model === 'text-embedding-3-large' ? 3072 : 1536);
-  }
+  return generateMockEmbedding(text, model === 'text-embedding-3-large' ? 3072 : 1536);
 }
 
 /**
@@ -104,7 +51,6 @@ export function buildFailureEmbeddingContent(
     parts.push(`Error Context: ${error}`);
   }
   
-  // Extract first 10 and last 10 lines of the code to represent structure
   const codeLines = code.split('\n');
   const codeSnippet = codeLines.length > 20
     ? [...codeLines.slice(0, 10), '... [omitted lines] ...', ...codeLines.slice(-10)].join('\n')
@@ -115,7 +61,7 @@ export function buildFailureEmbeddingContent(
 }
 
 /**
- * Save an embedding to the PostgreSQL DB
+ * Save an embedding to the database
  */
 export async function saveTextEmbedding(
   content: string,
@@ -128,7 +74,7 @@ export async function saveTextEmbedding(
   await prisma.textEmbedding.create({
     data: {
       content,
-      embedding: embedding as any, // Cast to any to fit Prisma Json type
+      embedding: embedding as any,
       embeddingModel: model,
       sourceType,
       sourceId

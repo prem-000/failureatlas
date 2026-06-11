@@ -4,14 +4,25 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Clear existing data
+  // Clear existing data in correct order to respect foreign key constraints
   await prisma.auditLog.deleteMany();
   await prisma.apiKey.deleteMany();
   await prisma.textEmbedding.deleteMany();
   await prisma.learningRecommendation.deleteMany();
   await prisma.learningStrategy.deleteMany();
-  await prisma.systemicWeakness.deleteMany();
+  
+  // Delete diagnosis relation models
+  // Check if diagnosisWeakness exists, delete if so
+  try {
+    // @ts-ignore
+    if (prisma.diagnosisWeakness) {
+      // @ts-ignore
+      await prisma.diagnosisWeakness.deleteMany();
+    }
+  } catch (e) {}
+  
   await prisma.diagnosisResult.deleteMany();
+  await prisma.systemicWeakness.deleteMany();
   await prisma.rootCauseHypothesis.deleteMany();
   await prisma.evidence.deleteMany();
   await prisma.submissionEvent.deleteMany();

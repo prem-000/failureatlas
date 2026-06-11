@@ -43,7 +43,7 @@ export default function Home() {
           <div className="card">
             <h3 className="text-lg font-semibold mb-3">Knowledge Graph</h3>
             <p className="text-muted-foreground">
-              Neo4j-powered failure relationships map systemic weaknesses across problem domains.
+              Graph-powered failure relationships map systemic weaknesses across problem domains.
             </p>
           </div>
 

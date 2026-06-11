@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db/prisma';
-import { runQuery } from '@/lib/db/neo4j';
 import { generateEmbedding, buildFailureEmbeddingContent } from '@/lib/embeddings/pipeline';
 
 export interface RetrievedFailure {
@@ -135,28 +134,49 @@ async function hybridRetrieval(
   const normSemantic = normalizeScores(semanticScores);
 
   // -------------------------------------------------------------
-  // Branch B: Structural Graph Similarity (Neo4j)
+  // Branch B: Structural Graph Similarity (PostgreSQL)
   // -------------------------------------------------------------
-  const graphResults = await runQuery<{
-    targetEventId: string;
-    graphScore: number;
-  }>(
-    `
-    MATCH (f1:FailureEvent {eventId: $eventId})
-    MATCH (f2:FailureEvent {userId: $userId}) WHERE f1.eventId <> f2.eventId
-    OPTIONAL MATCH (p:Problem)-[:TRIGGERED]->(f1), (p)-[:TRIGGERED]->(f2)
-    OPTIONAL MATCH (f1)-[:SUGGESTS]->(rc:RootCause)<-[:SUGGESTS]-(f2)
-    RETURN f2.eventId AS targetEventId,
-           (case when p is not null then 2.5 else 0.0 end) +
-           (count(rc) * 3.5) AS graphScore
-    `,
-    { eventId, userId }
-  );
+  const currentSub = await prisma.submissionEvent.findUnique({
+    where: { eventId },
+    select: { problemId: true }
+  });
+  const currentProblemId = currentSub?.problemId;
 
-  const graphScores: { id: string; score: number }[] = graphResults.map(r => ({
-    id: r.targetEventId,
-    score: Number(r.graphScore)
-  }));
+  const currentHypotheses = await prisma.rootCauseHypothesis.findMany({
+    where: {
+      evidence: {
+        submission: { eventId }
+      }
+    },
+    select: { rootCauseType: true }
+  });
+  const currentRcTypes = currentHypotheses.map(h => h.rootCauseType);
+
+  const otherSubmissions = await prisma.submissionEvent.findMany({
+    where: {
+      userId,
+      NOT: { eventId }
+    },
+    include: {
+      evidence: {
+        include: {
+          rootCauseHypotheses: true
+        }
+      }
+    }
+  });
+
+  const graphScores = otherSubmissions.map(sub => {
+    const sameProblem = sub.problemId === currentProblemId;
+    const otherRcTypes = sub.evidence.flatMap(e => e.rootCauseHypotheses.map(h => h.rootCauseType));
+    const sharedCount = otherRcTypes.filter(rc => currentRcTypes.includes(rc)).length;
+    const score = (sameProblem ? 2.5 : 0.0) + sharedCount * 3.5;
+    return {
+      id: sub.eventId,
+      score
+    };
+  });
+
   const normGraph = normalizeScores(graphScores);
 
   // -------------------------------------------------------------
@@ -219,42 +239,74 @@ async function graphOnlyRetrieval(
   eventId: string,
   limit: number
 ): Promise<RetrievedFailure[]> {
-  const graphResults = await runQuery<{
-    targetEventId: string;
-    graphScore: number;
-  }>(
-    `
-    MATCH (f1:FailureEvent {eventId: $eventId})
-    MATCH (f2:FailureEvent {userId: $userId}) WHERE f1.eventId <> f2.eventId
-    OPTIONAL MATCH (p:Problem)-[:TRIGGERED]->(f1), (p)-[:TRIGGERED]->(f2)
-    OPTIONAL MATCH (f1)-[:SUGGESTS]->(rc:RootCause)<-[:SUGGESTS]-(f2)
-    RETURN f2.eventId AS targetEventId,
-           (case when p is not null then 2.5 else 0.0 end) +
-           (count(rc) * 3.5) AS graphScore
-    ORDER BY graphScore DESC
-    LIMIT $limit
-    `,
-    { eventId, userId, limit }
-  );
+  try {
+    const currentSub = await prisma.submissionEvent.findUnique({
+      where: { eventId },
+      select: { problemId: true }
+    });
+    const currentProblemId = currentSub?.problemId;
 
-  const retrievedFailures: RetrievedFailure[] = [];
-  for (const result of graphResults) {
-    const sub = await prisma.submissionEvent.findUnique({
-      where: { eventId: result.targetEventId },
-      include: { problem: true }
+    const currentHypotheses = await prisma.rootCauseHypothesis.findMany({
+      where: {
+        evidence: {
+          submission: { eventId }
+        }
+      },
+      select: { rootCauseType: true }
+    });
+    const currentRcTypes = currentHypotheses.map(h => h.rootCauseType);
+
+    const otherSubmissions = await prisma.submissionEvent.findMany({
+      where: {
+        userId,
+        NOT: { eventId }
+      },
+      include: {
+        evidence: {
+          include: {
+            rootCauseHypotheses: true
+          }
+        }
+      }
     });
 
-    if (sub) {
-      retrievedFailures.push({
-        submissionId: sub.eventId,
-        problemSlug: sub.problem.slug,
-        problemTitle: sub.problem.title,
-        submissionStatus: sub.status,
-        code: sub.code,
-        similarityScore: Number(result.graphScore)
-      });
-    }
-  }
+    const graphScores = otherSubmissions.map(sub => {
+      const sameProblem = sub.problemId === currentProblemId;
+      const otherRcTypes = sub.evidence.flatMap(e => e.rootCauseHypotheses.map(h => h.rootCauseType));
+      const sharedCount = otherRcTypes.filter(rc => currentRcTypes.includes(rc)).length;
+      const score = (sameProblem ? 2.5 : 0.0) + sharedCount * 3.5;
+      return {
+        id: sub.eventId,
+        score
+      };
+    });
 
-  return retrievedFailures;
+    const topResults = graphScores
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+
+    const retrievedFailures: RetrievedFailure[] = [];
+    for (const result of topResults) {
+      const sub = await prisma.submissionEvent.findUnique({
+        where: { eventId: result.id },
+        include: { problem: true }
+      });
+
+      if (sub) {
+        retrievedFailures.push({
+          submissionId: sub.eventId,
+          problemSlug: sub.problem.slug,
+          problemTitle: sub.problem.title,
+          submissionStatus: sub.status,
+          code: sub.code,
+          similarityScore: result.score
+        });
+      }
+    }
+
+    return retrievedFailures;
+  } catch (error) {
+    console.error('Error in graphOnlyRetrieval:', error);
+    return [];
+  }
 }

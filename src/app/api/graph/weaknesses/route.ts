@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
-import { runQuery } from '@/lib/db/neo4j';
+
+const WEAKNESS_TO_ROOT_CAUSES: Record<string, string[]> = {
+  'edge-case-reasoning': ['boundary-condition-error', 'input-output-handling-error'],
+  'algorithmic-pattern-recognition': ['pattern-recognition-gap', 'algorithm-selection-mistake'],
+  'performance-analysis': ['time-complexity-oversight', 'space-complexity-oversight', 'data-structure-mismatch'],
+  'implementation-precision': ['implementation-detail-error']
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,21 +44,13 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // 3. For each weakness, query Neo4j to find related root causes
+    // 3. Map weaknesses
     const mappedWeaknesses = [];
     let totalScore = 0;
 
     for (const w of weaknesses) {
       totalScore += w.pageRankScore;
-
-      // Find related root causes in Neo4j
-      const relatedRcs = await runQuery<{ rcType: string }>(
-        `
-        MATCH (r:RootCause)-[:INDICATES]->(w:Weakness {id: $weaknessId})
-        RETURN r.type AS rcType
-        `,
-        { weaknessId: w.name }
-      );
+      const relatedRcs = WEAKNESS_TO_ROOT_CAUSES[w.name] || [];
 
       mappedWeaknesses.push({
         weaknessId: w.name,
@@ -61,7 +59,7 @@ export async function GET(request: NextRequest) {
         pageRankScore: w.pageRankScore,
         frequency: w.frequency,
         lastOccurrence: w.lastOccurrence.toISOString(),
-        relatedRootCauses: relatedRcs.map(r => r.rcType),
+        relatedRootCauses: relatedRcs,
         suggestedStrategies: w.strategies.map(s => s.id)
       });
     }

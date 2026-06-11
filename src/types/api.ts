@@ -175,7 +175,7 @@ export interface HealthCheckResponse {
   timestamp: string;
   services: {
     database: 'connected' | 'disconnected';
-    neo4j: 'connected' | 'disconnected';
+    graphDb?: 'connected' | 'disconnected';
     cache?: 'connected' | 'disconnected';
   };
 }

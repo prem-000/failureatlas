@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const health = await getGraphHealth();
     
     if (!health.isConnected) {
-      logger.warn('⚠️ Neo4j not connected. Returning empty graph.');
+      logger.warn('⚠️ Database not connected. Returning empty graph.');
       return NextResponse.json({
         success: true,
         data: {

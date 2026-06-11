@@ -1,4 +1,3 @@
-import { runQuery } from '@/lib/db/neo4j';
 import { prisma } from '@/lib/db/prisma';
 
 export interface WeaknessScore {
@@ -8,6 +7,17 @@ export interface WeaknessScore {
   frequency: number;
   lastOccurrence: Date;
 }
+
+const ROOT_CAUSE_TO_WEAKNESS: Record<string, { id: string; name: string }> = {
+  'boundary-condition-error': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
+  'input-output-handling-error': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
+  'pattern-recognition-gap': { id: 'algorithmic-pattern-recognition', name: 'Algorithmic Pattern Recognition' },
+  'algorithm-selection-mistake': { id: 'algorithmic-pattern-recognition', name: 'Algorithmic Pattern Recognition' },
+  'time-complexity-oversight': { id: 'performance-analysis', name: 'Performance Analysis' },
+  'space-complexity-oversight': { id: 'performance-analysis', name: 'Performance Analysis' },
+  'data-structure-mismatch': { id: 'performance-analysis', name: 'Performance Analysis' },
+  'implementation-detail-error': { id: 'implementation-precision', name: 'Implementation Precision' }
+};
 
 function calculateRecencyWeight(lastFailureDate: string): number {
   const lastDate = new Date(lastFailureDate);
@@ -27,28 +37,52 @@ export async function computeWeaknessPageRank(
   damping: number = 0.85,
   iterations: number = 100
 ): Promise<WeaknessScore[]> {
-  // 1. Fetch user's failure occurrences and the root cause to weakness mappings
-  // We need to trace: FailureEvent -> RootCause -> Weakness
-  const failuresData = await runQuery<{
-    failureId: string;
-    timestamp: string;
-    confidence: number;
-    rcType: string;
-    weaknessId: string;
-    weaknessName: string;
-  }>(
-    `
-    MATCH (f:FailureEvent {userId: $userId})-[rel_fr:SUGGESTS]->(r:RootCause)-[rel_rw:INDICATES]->(w:Weakness)
-    RETURN f.eventId AS failureId, f.timestamp AS timestamp, rel_fr.confidence AS confidence, r.type AS rcType, w.id AS weaknessId, w.name AS weaknessName
-    `,
-    { userId }
-  );
+  // 1. Fetch user's failure occurrences and the root cause to weakness mappings from PostgreSQL
+  const hypotheses = await prisma.rootCauseHypothesis.findMany({
+    where: {
+      evidence: {
+        submission: {
+          userId: userId
+        }
+      }
+    },
+    select: {
+      confidence: true,
+      rootCauseType: true,
+      name: true,
+      evidence: {
+        select: {
+          submission: {
+            select: {
+              eventId: true,
+              timestamp: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const failuresData = hypotheses
+    .map(h => {
+      const mapping = ROOT_CAUSE_TO_WEAKNESS[h.rootCauseType];
+      if (!mapping || !h.evidence?.submission) return null;
+      return {
+        failureId: h.evidence.submission.eventId,
+        timestamp: h.evidence.submission.timestamp.toISOString(),
+        confidence: h.confidence,
+        rcType: h.rootCauseType,
+        weaknessId: mapping.id,
+        weaknessName: mapping.name
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
 
   if (failuresData.length === 0) {
     return [];
   }
 
-  // 2. Group data to build the subgraph nodes and edges
+  // Group data to build the subgraph nodes and edges
   const weaknessNodes = new Set<string>();
   const weaknessNames = new Map<string, string>();
   
@@ -101,7 +135,7 @@ export async function computeWeaknessPageRank(
     failureScores.set(f, 1.0 / uniqueFailures.length);
   }
 
-  // 3. Power iteration
+  // Power iteration
   for (let iter = 0; iter < iterations; iter++) {
     const newWeaknessScores = new Map<string, number>();
     let maxDiff = 0;
@@ -128,7 +162,7 @@ export async function computeWeaknessPageRank(
       weaknessScores.set(w, score);
     }
 
-    // Distribute rank from weaknesses back to failures (bipartite style)
+    // Distribute rank from weaknesses back to failures
     const newFailureScores = new Map<string, number>();
     for (const f of uniqueFailures) {
       let rankSum = 0.0;
@@ -140,7 +174,7 @@ export async function computeWeaknessPageRank(
         
         if (hasLink) {
           const wScore = weaknessScores.get(w) ?? 0;
-          rankSum += wScore; // simplified feedback loop
+          rankSum += wScore;
         }
       }
 
@@ -157,7 +191,6 @@ export async function computeWeaknessPageRank(
     }
   }
 
-  // 4. Update the PostgreSQL relational database and return mapped list
   const results: WeaknessScore[] = [];
   
   for (const w of weaknessArray) {

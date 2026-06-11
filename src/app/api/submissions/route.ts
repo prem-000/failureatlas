@@ -4,7 +4,7 @@
 //   - Chrome extension → X-API-Key: fa_...
 //
 // FIX: The original route ran the entire analysis pipeline synchronously before
-// responding. If Neo4j, embeddings, RAG, or AI diagnosis threw for ANY reason,
+// responding. If the database graph, embeddings, RAG, or AI diagnosis threw for ANY reason,
 // the whole route returned 500 — even though the submission was already saved.
 // The extension then treated it as a failure and queued the event locally,
 // causing duplicates on retry.
@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
 
 // ─── POST /api/submissions ────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
+  console.log("[TRACE] Submission received");
   const auth = await resolveUserId(request);
   if (!auth.userId) return unauthorizedResponse(auth.error || 'Authentication required.');
   const userId = auth.userId;
@@ -214,6 +215,7 @@ async function runAnalysisPipeline(
     rapidSubmission?: boolean;
   }
 ) {
+  console.log("[TRACE] Generating diagnosis");
   const toSubmissionEvent = (s: any): SubmissionEvent => ({
     eventId: s.eventId,
     sessionId: s.sessionId,
@@ -378,12 +380,12 @@ async function runAnalysisPipeline(
     });
   }
 
-  // ── Neo4j graph + PageRank ────────────────────────────────────────────────
-  // Wrapped individually so a Neo4j outage doesn't kill embeddings/diagnosis
+  // ── Database graph + PageRank ────────────────────────────────────────────────
+  // Wrapped individually so an outage doesn't kill embeddings/diagnosis
   try {
     await recordFailureEventInGraph(userId, mappedCurrent, hypotheses, createdEvidences);
   } catch (e: any) {
-    console.warn('⚠️ Neo4j graph write failed (non-fatal):', e?.message);
+    console.warn('⚠️ Graph write failed (non-fatal):', e?.message);
   }
 
   let pageRankScores: WeaknessScore[] = [];

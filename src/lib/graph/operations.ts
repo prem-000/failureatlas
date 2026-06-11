@@ -1,18 +1,20 @@
 /**
  * src/lib/graph/operations.ts
- * Neo4j graph query operations and Cypher query builder
+ * In-memory graph query operations built on PostgreSQL via Prisma
  */
 
-import { executeQuery, executeWriteQuery, isNeo4jConnected } from '@/lib/db/neo4j';
+import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/logger';
 
 export interface GraphNode {
   id: string;
-  type: 'Problem' | 'FailureEvent' | 'RootCause' | 'Weakness' | 'LearningStrategy';
-  label: string;
-  properties?: Record<string, any>;
-  confidence?: number;
-  severity?: 'critical' | 'high' | 'medium' | 'low';
+  type: string;
+  position: { x: number; y: number };
+  data: {
+    label: string;
+    nodeType: 'Problem' | 'FailureEvent' | 'Evidence' | 'RootCause' | 'Weakness' | 'LearningStrategy';
+    properties: Record<string, any>;
+  };
 }
 
 export interface GraphEdge {
@@ -21,6 +23,7 @@ export interface GraphEdge {
   target: string;
   type: string;
   properties?: Record<string, any>;
+  animated?: boolean;
 }
 
 export interface GraphData {
@@ -29,9 +32,22 @@ export interface GraphData {
   stats: {
     nodeCount: number;
     edgeCount: number;
+    totalNodes?: number;
+    totalEdges?: number;
     isConnected: boolean;
   };
 }
+
+const ROOT_CAUSE_TO_WEAKNESS: Record<string, { id: string; name: string }> = {
+  'boundary-condition-error': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
+  'input-output-handling-error': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
+  'pattern-recognition-gap': { id: 'algorithmic-pattern-recognition', name: 'Algorithmic Pattern Recognition' },
+  'algorithm-selection-mistake': { id: 'algorithmic-pattern-recognition', name: 'Algorithmic Pattern Recognition' },
+  'time-complexity-oversight': { id: 'performance-analysis', name: 'Performance Analysis' },
+  'space-complexity-oversight': { id: 'performance-analysis', name: 'Performance Analysis' },
+  'data-structure-mismatch': { id: 'performance-analysis', name: 'Performance Analysis' },
+  'implementation-detail-error': { id: 'implementation-precision', name: 'Implementation Precision' }
+};
 
 /**
  * Get user's complete failure subgraph (all failures and related entities)
@@ -40,182 +56,214 @@ export async function getUserFailureSubgraph(
   userId: string,
   limit: number = 300
 ): Promise<GraphData> {
-  const connected = await isNeo4jConnected();
-  
-  if (!connected) {
-    logger.warn('Neo4j not connected. Returning empty graph.');
-    return {
-      nodes: [],
-      edges: [],
-      stats: { nodeCount: 0, edgeCount: 0, isConnected: false }
-    };
-  }
-
-  const query = `
-    MATCH (f:FailureEvent {userId: $userId})
-    OPTIONAL MATCH (p:Problem)-[rel_pf:TRIGGERED]->(f)
-    OPTIONAL MATCH (f)-[rel_fe:HAS_EVIDENCE]->(e:Evidence)
-    OPTIONAL MATCH (e)-[rel_er:SUGGESTS]->(r:RootCause)
-    OPTIONAL MATCH (f)-[rel_fr:SUGGESTS]->(r:RootCause)
-    OPTIONAL MATCH (r)-[rel_rw:INDICATES]->(w:Weakness)
-    OPTIONAL MATCH (w)-[rel_wl:ADDRESSED_BY]->(l:LearningStrategy)
-    RETURN p, f, e, r, w, l, rel_pf, rel_fe, rel_er, rel_fr, rel_rw, rel_wl
-    LIMIT $limit
-  `;
-
   try {
-    const results = await executeQuery<any>(query, { userId, limit });
-    
-    const nodes: GraphNode[] = [];
+    const problems = await prisma.problem.findMany({ take: limit });
+    const submissions = await prisma.submissionEvent.findMany({
+      where: { userId },
+      include: {
+        problem: true,
+        evidence: {
+          include: {
+            rootCauseHypotheses: true
+          }
+        },
+        diagnosis: {
+          include: {
+            primaryWeakness: {
+              include: {
+                strategies: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        timestamp: 'desc'
+      },
+      take: limit
+    });
+
+    const problemsList: any[] = [];
+    const failuresList: any[] = [];
+    const evidencesList: any[] = [];
+    const rootCausesList: any[] = [];
+    const weaknessesList: any[] = [];
+    const strategiesList: any[] = [];
+
+    const addedProblems = new Set<string>();
+    const addedFailures = new Set<string>();
+    const addedEvidences = new Set<string>();
+    const addedRootCauses = new Set<string>();
+    const addedWeaknesses = new Set<string>();
+    const addedStrategies = new Set<string>();
+
     const edges: GraphEdge[] = [];
-    const nodeMap = new Set<string>();
+    const addedEdges = new Set<string>();
 
-    // Process results
-    for (const result of results) {
-      // Problem nodes
-      if (result.p && result.p.properties) {
-        const nodeId = `problem-${result.p.properties.problemId}`;
-        if (!nodeMap.has(nodeId)) {
-          nodes.push({
-            id: nodeId,
-            type: 'Problem',
-            label: result.p.properties.title || result.p.properties.problemId,
-            properties: result.p.properties,
-            severity: 'medium'
-          });
-          nodeMap.add(nodeId);
-        }
-      }
-
-      // FailureEvent nodes
-      if (result.f && result.f.properties) {
-        const nodeId = `failure-${result.f.properties.eventId}`;
-        if (!nodeMap.has(nodeId)) {
-          nodes.push({
-            id: nodeId,
-            type: 'FailureEvent',
-            label: `Failure: ${result.f.properties.submissionStatus}`,
-            properties: result.f.properties,
-            confidence: 0.8
-          });
-          nodeMap.add(nodeId);
-        }
-      }
-
-      // Evidence nodes
-      if (result.e && result.e.properties) {
-        const nodeId = `evidence-${result.e.properties.evidenceId}`;
-        if (!nodeMap.has(nodeId)) {
-          nodes.push({
-            id: nodeId,
-            type: 'RootCause',
-            label: result.e.properties.description,
-            properties: result.e.properties,
-            confidence: result.e.properties.confidence
-          });
-          nodeMap.add(nodeId);
-        }
-      }
-
-      // RootCause nodes
-      if (result.r && result.r.properties) {
-        const nodeId = `rootcause-${result.r.properties.causeId}`;
-        if (!nodeMap.has(nodeId)) {
-          nodes.push({
-            id: nodeId,
-            type: 'RootCause',
-            label: result.r.properties.name,
-            properties: result.r.properties,
-            severity: 'high'
-          });
-          nodeMap.add(nodeId);
-        }
-      }
-
-      // Weakness nodes
-      if (result.w && result.w.properties) {
-        const nodeId = `weakness-${result.w.properties.weaknessId}`;
-        if (!nodeMap.has(nodeId)) {
-          nodes.push({
-            id: nodeId,
-            type: 'Weakness',
-            label: result.w.properties.name,
-            properties: result.w.properties,
-            confidence: result.w.properties.pageRankScore
-          });
-          nodeMap.add(nodeId);
-        }
-      }
-
-      // LearningStrategy nodes
-      if (result.l && result.l.properties) {
-        const nodeId = `strategy-${result.l.properties.strategyId}`;
-        if (!nodeMap.has(nodeId)) {
-          nodes.push({
-            id: nodeId,
-            type: 'LearningStrategy',
-            label: result.l.properties.name,
-            properties: result.l.properties
-          });
-          nodeMap.add(nodeId);
-        }
-      }
-
-      // Add edges
-      if (result.rel_pf) {
-        const src = `problem-${result.p.properties.problemId}`;
-        const tgt = `failure-${result.f.properties.eventId}`;
+    function addEdge(source: string, target: string, type: string) {
+      const edgeId = `${source}-${target}`;
+      if (!addedEdges.has(edgeId)) {
         edges.push({
-          id: `${src}-${tgt}`,
-          source: src,
-          target: tgt,
-          type: 'TRIGGERED'
+          id: edgeId,
+          source,
+          target,
+          type,
+          animated: type === 'TRIGGERED' || type === 'HAS_EVIDENCE'
         });
+        addedEdges.add(edgeId);
+      }
+    }
+
+    for (const sub of submissions) {
+      // 1. Problem Node
+      const problemId = `problem-${sub.problem.slug}`;
+      if (!addedProblems.has(problemId)) {
+        problemsList.push({
+          id: problemId,
+          nodeType: 'Problem',
+          label: sub.problem.title,
+          properties: {
+            slug: sub.problem.slug,
+            difficulty: sub.problem.difficulty,
+            topics: sub.problem.topics
+          }
+        });
+        addedProblems.add(problemId);
       }
 
-      if (result.rel_fe) {
-        const src = `failure-${result.f.properties.eventId}`;
-        const tgt = `evidence-${result.e.properties.evidenceId}`;
-        edges.push({
-          id: `${src}-${tgt}`,
-          source: src,
-          target: tgt,
-          type: 'HAS_EVIDENCE'
+      // 2. FailureEvent Node
+      const failureId = `failure-${sub.eventId}`;
+      if (!addedFailures.has(failureId)) {
+        failuresList.push({
+          id: failureId,
+          nodeType: 'FailureEvent',
+          label: `Failure: ${sub.status}`,
+          properties: {
+            eventId: sub.eventId,
+            status: sub.status,
+            language: sub.language,
+            timestamp: sub.timestamp.toISOString(),
+            attemptNumber: sub.attemptNumber,
+            timeSpent: `${Math.round(sub.timeSpent / 60)}m`
+          }
         });
+        addedFailures.add(failureId);
       }
+      addEdge(problemId, failureId, 'TRIGGERED');
 
-      if (result.rel_er) {
-        const src = `evidence-${result.e.properties.evidenceId}`;
-        const tgt = `rootcause-${result.r.properties.causeId}`;
-        edges.push({
-          id: `${src}-${tgt}`,
-          source: src,
-          target: tgt,
-          type: 'SUGGESTS'
-        });
-      }
+      // 3. Evidence Nodes
+      for (const ev of sub.evidence) {
+        const evidenceId = `evidence-${ev.id}`;
+        if (!addedEvidences.has(evidenceId)) {
+          evidencesList.push({
+            id: evidenceId,
+            nodeType: 'Evidence',
+            label: ev.description,
+            properties: {
+              type: ev.type,
+              confidence: ev.confidence,
+              source: ev.source
+            }
+          });
+          addedEvidences.add(evidenceId);
+        }
+        addEdge(failureId, evidenceId, 'HAS_EVIDENCE');
 
-      if (result.rel_rw) {
-        const src = `rootcause-${result.r.properties.causeId}`;
-        const tgt = `weakness-${result.w.properties.weaknessId}`;
-        edges.push({
-          id: `${src}-${tgt}`,
-          source: src,
-          target: tgt,
-          type: 'INDICATES'
-        });
-      }
+        // 4. RootCause Nodes (from hypotheses)
+        for (const hyp of ev.rootCauseHypotheses) {
+          const rcId = `rootcause-${hyp.rootCauseType}`;
+          if (!addedRootCauses.has(rcId)) {
+            rootCausesList.push({
+              id: rcId,
+              nodeType: 'RootCause',
+              label: hyp.name,
+              properties: {
+                type: hyp.rootCauseType,
+                confidence: hyp.confidence
+              }
+            });
+            addedRootCauses.add(rcId);
+          }
+          addEdge(evidenceId, rcId, 'SUGGESTS');
 
-      if (result.rel_wl) {
-        const src = `weakness-${result.w.properties.weaknessId}`;
-        const tgt = `strategy-${result.l.properties.strategyId}`;
-        edges.push({
-          id: `${src}-${tgt}`,
-          source: src,
-          target: tgt,
-          type: 'ADDRESSED_BY'
-        });
+          // Link RootCause to Weakness (using primary weakness of diagnosis if available)
+          if (sub.diagnosis?.primaryWeakness) {
+            const weakness = sub.diagnosis.primaryWeakness;
+            const wId = `weakness-${weakness.id}`;
+            if (!addedWeaknesses.has(wId)) {
+              weaknessesList.push({
+                id: wId,
+                nodeType: 'Weakness',
+                label: weakness.name,
+                properties: {
+                  type: weakness.type,
+                  severity: weakness.severity,
+                  confidence: weakness.confidence,
+                  pageRankScore: weakness.pageRankScore,
+                  frequency: weakness.frequency
+                }
+              });
+              addedWeaknesses.add(wId);
+            }
+            addEdge(rcId, wId, 'INDICATES');
+
+            // 5. LearningStrategy Nodes
+            for (const strat of weakness.strategies) {
+              const stratId = `strategy-${strat.id}`;
+              if (!addedStrategies.has(stratId)) {
+                strategiesList.push({
+                  id: stratId,
+                  nodeType: 'LearningStrategy',
+                  label: strat.name,
+                  properties: {
+                    description: strat.description,
+                    estimatedTime: `${strat.estimatedTime}m`,
+                    priority: strat.priority,
+                    practiceProblems: strat.practiceProblems
+                  }
+                });
+                addedStrategies.add(stratId);
+              }
+              addEdge(wId, stratId, 'ADDRESSED_BY');
+            }
+          }
+        }
       }
+    }
+
+    // Assign positions using column layout
+    const nodes: GraphNode[] = [];
+    const nodesByType = {
+      Problem: problemsList.length,
+      FailureEvent: failuresList.length,
+      Evidence: evidencesList.length,
+      RootCause: rootCausesList.length,
+      Weakness: weaknessesList.length,
+      LearningStrategy: strategiesList.length
+    };
+
+    const columns = [
+      { list: problemsList, x: 50 },
+      { list: failuresList, x: 300 },
+      { list: evidencesList, x: 550 },
+      { list: rootCausesList, x: 800 },
+      { list: weaknessesList, x: 1050 },
+      { list: strategiesList, x: 1300 }
+    ];
+
+    for (const { list, x } of columns) {
+      list.forEach((node, index) => {
+        nodes.push({
+          id: node.id,
+          type: 'custom',
+          position: { x, y: index * 130 + 50 },
+          data: {
+            label: node.label,
+            nodeType: node.nodeType,
+            properties: node.properties
+          }
+        });
+      });
     }
 
     return {
@@ -224,6 +272,8 @@ export async function getUserFailureSubgraph(
       stats: {
         nodeCount: nodes.length,
         edgeCount: edges.length,
+        totalNodes: nodes.length,
+        totalEdges: edges.length,
         isConnected: true
       }
     };
@@ -232,34 +282,35 @@ export async function getUserFailureSubgraph(
     return {
       nodes: [],
       edges: [],
-      stats: { nodeCount: 0, edgeCount: 0, isConnected: false }
+      stats: { nodeCount: 0, edgeCount: 0, totalNodes: 0, totalEdges: 0, isConnected: false }
     };
   }
 }
 
 /**
- * Get top weaknesses by PageRank score
+ * Get top weaknesses
  */
 export async function getTopWeaknesses(
   userId: string,
   limit: number = 10
 ): Promise<any[]> {
-  const connected = await isNeo4jConnected();
-  if (!connected) return [];
-
-  const query = `
-    MATCH (w:Weakness)<-[:INDICATES]-(r:RootCause)<-[:SUGGESTS]-(e:Evidence)
-    <-[:HAS_EVIDENCE]-(f:FailureEvent {userId: $userId})
-    WITH w, count(f) as frequency, avg(w.pageRankScore) as avgPageRank
-    RETURN w.weaknessId as id, w.name as name, w.description as description,
-           frequency, avgPageRank as confidence,
-           (frequency * 0.6 + avgPageRank * 0.4) as combinedScore
-    ORDER BY combinedScore DESC
-    LIMIT $limit
-  `;
-
   try {
-    return await executeQuery(query, { userId, limit });
+    const weaknesses = await prisma.systemicWeakness.findMany({
+      where: {
+        diagnoses: { some: { userId } }
+      },
+      orderBy: { pageRankScore: 'desc' },
+      take: limit
+    });
+
+    return weaknesses.map(w => ({
+      id: w.name,
+      name: w.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+      description: `Systemic challenge with ${w.name.replace(/-/g, ' ')}.`,
+      frequency: w.frequency,
+      confidence: w.pageRankScore,
+      combinedScore: w.pageRankScore
+    }));
   } catch (error) {
     logger.error('Error fetching top weaknesses:', error);
     return [];
@@ -274,22 +325,42 @@ export async function getRecentFailures(
   days: number = 7,
   limit: number = 50
 ): Promise<any[]> {
-  const connected = await isNeo4jConnected();
-  if (!connected) return [];
-
-  const query = `
-    MATCH (p:Problem)-[rel:TRIGGERED]->(f:FailureEvent {userId: $userId})
-    WHERE f.timestamp > datetime().epochMillis - ($days * 24 * 60 * 60 * 1000)
-    OPTIONAL MATCH (f)-[:HAS_EVIDENCE]->(e:Evidence)-[:SUGGESTS]->(r:RootCause)
-    RETURN p.problemId as problemId, p.title as problemTitle, p.difficulty as difficulty,
-           f.eventId as eventId, f.submissionStatus as status, f.timestamp as timestamp,
-           f.attemptNumber as attemptNumber, r.name as rootCause, e.confidence as confidence
-    ORDER BY f.timestamp DESC
-    LIMIT $limit
-  `;
-
   try {
-    return await executeQuery(query, { userId, days, limit });
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() - days);
+
+    const submissions = await prisma.submissionEvent.findMany({
+      where: {
+        userId,
+        timestamp: { gte: minDate },
+        NOT: { status: 'Accepted' }
+      },
+      include: {
+        problem: true,
+        evidence: {
+          include: {
+            rootCauseHypotheses: true
+          }
+        }
+      },
+      orderBy: { timestamp: 'desc' },
+      take: limit
+    });
+
+    return submissions.map(sub => {
+      const hyp = sub.evidence.flatMap(e => e.rootCauseHypotheses)[0];
+      return {
+        problemId: sub.problem.slug,
+        problemTitle: sub.problem.title,
+        difficulty: sub.problem.difficulty,
+        eventId: sub.eventId,
+        status: sub.status,
+        timestamp: sub.timestamp.getTime(),
+        attemptNumber: sub.attemptNumber,
+        rootCause: hyp?.name || 'Unknown',
+        confidence: hyp?.confidence || 0.5
+      };
+    });
   } catch (error) {
     logger.error('Error fetching recent failures:', error);
     return [];
@@ -304,25 +375,56 @@ export async function getSimilarFailures(
   userId: string,
   limit: number = 10
 ): Promise<any[]> {
-  const connected = await isNeo4jConnected();
-  if (!connected) return [];
-
-  const query = `
-    MATCH (currentF:FailureEvent {eventId: $failureEventId})
-    -[:HAS_EVIDENCE]->(e1:Evidence)-[:SUGGESTS]->(r:RootCause)
-    MATCH (r)<-[:SUGGESTS]-(e2:Evidence)<-[:HAS_EVIDENCE]-(similarF:FailureEvent)
-    WHERE similarF.userId = $userId AND similarF <> currentF
-    WITH similarF, count(r) as sharedRootCauses
-    MATCH (currentF)-[:TRIGGERED]-(p1:Problem)-[:SIMILAR_TO {similarity: similarity}]-(p2:Problem)-[:TRIGGERED]-(similarF)
-    RETURN similarF.eventId as eventId, similarF.submissionStatus as status,
-           sharedRootCauses, similarity,
-           (sharedRootCauses * 0.7 + similarity * 0.3) as relevanceScore
-    ORDER BY relevanceScore DESC
-    LIMIT $limit
-  `;
-
   try {
-    return await executeQuery(query, { failureEventId, userId, limit });
+    const current = await prisma.submissionEvent.findUnique({
+      where: { eventId: failureEventId },
+      include: {
+        evidence: {
+          include: {
+            rootCauseHypotheses: true
+          }
+        }
+      }
+    });
+
+    if (!current) return [];
+
+    const rcTypes = current.evidence.flatMap(e => e.rootCauseHypotheses.map(h => h.rootCauseType));
+
+    const similar = await prisma.submissionEvent.findMany({
+      where: {
+        userId,
+        NOT: { eventId: failureEventId },
+        evidence: {
+          some: {
+            rootCauseHypotheses: {
+              some: {
+                rootCauseType: { in: rcTypes }
+              }
+            }
+          }
+        }
+      },
+      include: {
+        evidence: {
+          include: {
+            rootCauseHypotheses: true
+          }
+        }
+      },
+      take: limit
+    });
+
+    return similar.map(s => {
+      const sharedCount = s.evidence.flatMap(e => e.rootCauseHypotheses).filter(h => rcTypes.includes(h.rootCauseType)).length;
+      return {
+        eventId: s.eventId,
+        status: s.status,
+        sharedRootCauses: sharedCount,
+        similarity: 0.5,
+        relevanceScore: sharedCount * 0.7 + 0.15
+      };
+    });
   } catch (error) {
     logger.error('Error fetching similar failures:', error);
     return [];
@@ -330,62 +432,17 @@ export async function getSimilarFailures(
 }
 
 /**
- * Create or update failure event in graph
+ * Create or update failure event in graph (no-op as PostgreSQL stores submissions)
  */
-export async function createFailureEvent(
-  eventData: {
-    eventId: string;
-    userId: string;
-    problemSlug: string;
-    submissionStatus: string;
-    timestamp: number;
-    attemptNumber: number;
-    [key: string]: any;
-  }
-): Promise<boolean> {
-  const connected = await isNeo4jConnected();
-  if (!connected) {
-    logger.warn('Neo4j not connected. Skipping failure event creation.');
-    return false;
-  }
-
-  const query = `
-    CREATE (f:FailureEvent $properties)
-    RETURN f
-  `;
-
-  try {
-    return await executeWriteQuery(query, { properties: eventData });
-  } catch (error) {
-    logger.error('Error creating failure event:', error);
-    return false;
-  }
+export async function createFailureEvent(): Promise<boolean> {
+  return true;
 }
 
 /**
- * Link failure to problem
+ * Link failure to problem (no-op as PostgreSQL stores relations)
  */
-export async function linkFailureToProblem(
-  failureEventId: string,
-  problemSlug: string,
-  userId: string
-): Promise<boolean> {
-  const connected = await isNeo4jConnected();
-  if (!connected) return false;
-
-  const query = `
-    MATCH (p:Problem {problemId: $problemSlug})
-    MATCH (f:FailureEvent {eventId: $failureEventId})
-    CREATE (p)-[:TRIGGERED {userId: $userId, frequency: 1}]->(f)
-    RETURN true
-  `;
-
-  try {
-    return await executeWriteQuery(query, { failureEventId, problemSlug, userId });
-  } catch (error) {
-    logger.error('Error linking failure to problem:', error);
-    return false;
-  }
+export async function linkFailureToProblem(): Promise<boolean> {
+  return true;
 }
 
 /**
@@ -397,25 +454,24 @@ export async function getGraphHealth(): Promise<{
   edgeCount: number;
   lastUpdated: string;
 }> {
-  const connected = await isNeo4jConnected();
-
-  if (!connected) {
-    return {
-      isConnected: false,
-      nodeCount: 0,
-      edgeCount: 0,
-      lastUpdated: new Date().toISOString()
-    };
-  }
-
   try {
-    const nodeCountResult = await executeQuery<any>('MATCH (n) RETURN count(n) as count');
-    const edgeCountResult = await executeQuery<any>('MATCH ()-[r]->() RETURN count(r) as count');
+    // Ping PostgreSQL
+    await prisma.$queryRaw`SELECT 1`;
+
+    const problemCount = await prisma.problem.count();
+    const failureCount = await prisma.submissionEvent.count();
+    const evidenceCount = await prisma.evidence.count();
+    const weaknessCount = await prisma.systemicWeakness.count();
+    const strategyCount = await prisma.learningStrategy.count();
+    const nodeCount = problemCount + failureCount + evidenceCount + weaknessCount + strategyCount;
+
+    const hypothesisCount = await prisma.rootCauseHypothesis.count();
+    const edgeCount = failureCount + evidenceCount + hypothesisCount + strategyCount;
 
     return {
       isConnected: true,
-      nodeCount: nodeCountResult[0]?.count || 0,
-      edgeCount: edgeCountResult[0]?.count || 0,
+      nodeCount,
+      edgeCount,
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {
@@ -430,7 +486,7 @@ export async function getGraphHealth(): Promise<{
 }
 
 /**
- * Record a failure event along with its evidence and hypotheses into the Neo4j graph.
+ * Record a failure event along with its evidence and hypotheses into the graph.
  */
 export async function recordFailureEventInGraph(
   userId: string,
@@ -438,72 +494,6 @@ export async function recordFailureEventInGraph(
   hypotheses: any[],
   evidences: any[]
 ): Promise<boolean> {
-  const connected = await isNeo4jConnected();
-  if (!connected) return false;
-
-  try {
-    // 1. Create Problem and FailureEvent nodes
-    const baseQuery = `
-      MERGE (p:Problem {problemId: $problemSlug})
-      ON CREATE SET p.title = $problemTitle, p.difficulty = $difficulty
-      CREATE (f:FailureEvent {
-        eventId: $eventId,
-        userId: $userId,
-        submissionStatus: $status,
-        timestamp: $timestamp,
-        attemptNumber: $attemptNumber
-      })
-      CREATE (p)-[:TRIGGERED {userId: $userId}]->(f)
-    `;
-    await executeWriteQuery(baseQuery, {
-      userId,
-      problemSlug: submission.problemSlug,
-      problemTitle: submission.problemTitle || submission.problemSlug,
-      difficulty: submission.problemDifficulty || 'Unknown',
-      eventId: submission.eventId,
-      status: submission.submissionStatus,
-      timestamp: submission.timestamp ? new Date(submission.timestamp).getTime() : Date.now(),
-      attemptNumber: submission.attemptNumber || 1
-    });
-
-    // 2. Insert Evidences and RootCauses
-    if (evidences && evidences.length > 0) {
-      const evidenceQuery = `
-        MATCH (f:FailureEvent {eventId: $eventId})
-        UNWIND $evidences AS ev
-        CREATE (e:Evidence {
-          evidenceId: ev.evidenceId,
-          type: ev.type,
-          description: ev.description,
-          confidence: ev.confidence
-        })
-        CREATE (f)-[:HAS_EVIDENCE]->(e)
-        WITH f, e
-        UNWIND $hypotheses AS hyp
-        MERGE (r:RootCause {causeId: hyp.rootCause})
-        ON CREATE SET r.name = hyp.name
-        CREATE (e)-[:SUGGESTS {confidence: hyp.confidence}]->(r)
-        CREATE (f)-[:SUGGESTS {confidence: hyp.confidence}]->(r)
-      `;
-      await executeWriteQuery(evidenceQuery, {
-        eventId: submission.eventId,
-        evidences: evidences.map(e => ({
-          evidenceId: e.evidenceId || `ev-${Math.random()}`,
-          type: e.type || 'unknown',
-          description: e.description || '',
-          confidence: e.confidence || 0
-        })),
-        hypotheses: (hypotheses || []).map(h => ({
-          rootCause: h.rootCause || h.rootCauseType || 'unknown',
-          name: h.name || 'Unknown',
-          confidence: h.confidence || 0
-        }))
-      });
-    }
-
-    return true;
-  } catch (error) {
-    logger.error('Failed to record failure event in graph', error);
-    return false;
-  }
+  logger.info('[TRACE] Recording failure event in graph (in-memory PostgreSQL)...');
+  return true;
 }

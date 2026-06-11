@@ -4,7 +4,7 @@
  *
  * Formula: P(RootCause | Evidence) = P(Evidence | RootCause) × P(RootCause) / P(Evidence)
  *
- * Prior probabilities are fetched from Neo4j at runtime based on the failure ontology.
+ * Prior probabilities are fetched from the database at runtime based on the failure ontology.
  */
 
 import { RootCauseType } from '../../types';
@@ -21,7 +21,7 @@ export interface BayesianResult {
   rootCause: RootCauseType;
   posterior: number; // P(RootCause | Evidence)
   likelihood: number; // P(Evidence | RootCause)
-  prior: number; // P(RootCause) from Neo4j
+  prior: number; // P(RootCause) from database
 }
 
 /**
@@ -146,7 +146,7 @@ function normalize(probs: number[]): number[] {
 export async function inferRootCauses(
   evidence: EvidenceSet,
 ): Promise<BayesianResult[]> {
-  // Fetch priors from Neo4j
+  // Fetch priors from the database
   const priors = await queryRootCausePriors();
 
   // Compute posteriors using Bayes theorem

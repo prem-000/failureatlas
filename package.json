@@ -12,11 +12,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "neo4j:setup": "ts-node scripts/neo4j-setup.ts",
     "test:phase3": "tsx scripts/test-phase3-api.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.20.9",
     "@auth/prisma-adapter": "^2.11.2",
     "@prisma/client": "^5.7.1",
     "@tanstack/react-query": "^5.28.0",
@@ -24,9 +22,7 @@
     "framer-motion": "link:framer-motion",
     "jose": "^5.2.3",
     "lucide-react": "^0.344.0",
-    "neo4j-driver": "^5.17.0",
     "next": "15.0.0",
-    "openai": "^4.52.7",
     "prisma": "^5.7.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",

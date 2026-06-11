@@ -1,35 +1,33 @@
-/**
- * app/api/graph/health/route.ts
- * Graph database health check endpoint
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { getGraphHealth } from '@/lib/graph/operations';
+import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    logger.info('🏥 Checking graph health...');
+    logger.info('🏥 Checking production health...');
     
-    const health = await getGraphHealth();
+    // Check PostgreSQL connection
+    let dbStatus = 'disconnected';
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      dbStatus = 'connected';
+    } catch (dbErr) {
+      logger.error('Database health check failed:', dbErr);
+    }
 
-    const statusCode = health.isConnected ? 200 : 503;
-    const status = health.isConnected ? 'healthy' : 'unavailable';
+    // Check Redis config status (redis is optional)
+    const redisStatus = process.env.REDIS_URL ? 'connected' : 'not_configured';
 
-    logger.info(`📊 Graph health: ${status}`, {
-      nodeCount: health.nodeCount,
-      edgeCount: health.edgeCount,
-      lastUpdated: health.lastUpdated
-    });
+    const isHealthy = dbStatus === 'connected';
+    const statusCode = isHealthy ? 200 : 503;
 
     return NextResponse.json(
       {
-        status,
-        isConnected: health.isConnected,
-        stats: {
-          nodeCount: health.nodeCount,
-          edgeCount: health.edgeCount,
-          lastUpdated: health.lastUpdated
+        status: isHealthy ? 'ok' : 'error',
+        timestamp: new Date().toISOString(),
+        services: {
+          database: dbStatus,
+          redis: redisStatus
         }
       },
       { status: statusCode }
@@ -40,7 +38,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         status: 'error',
-        isConnected: false,
+        timestamp: new Date().toISOString(),
+        services: {
+          database: 'disconnected',
+          redis: 'disconnected'
+        },
         error: error instanceof Error ? error.message : 'Health check failed'
       },
       { status: 500 }
