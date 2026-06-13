@@ -1,92 +1,71 @@
+/**
+ * GET /api/graph/weaknesses?limit=10
+ *
+ * Returns top systemic weaknesses ranked by PageRank score.
+ *
+ * Response: { success, data: [{ id, name, pageRankScore, frequency, description }] }
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
-import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
+import { logger } from '@/lib/logger';
 
-const WEAKNESS_TO_ROOT_CAUSES: Record<string, string[]> = {
-  'edge-case-reasoning': ['boundary-condition-error', 'input-output-handling-error'],
-  'algorithmic-pattern-recognition': ['pattern-recognition-gap', 'algorithm-selection-mistake'],
-  'performance-analysis': ['time-complexity-oversight', 'space-complexity-oversight', 'data-structure-mismatch'],
-  'implementation-precision': ['implementation-detail-error']
-};
-
-
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
-      'Access-Control-Max-Age': '86400'
-    }
+      'Access-Control-Max-Age': '86400',
+    },
   });
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Authenticate user
-    const authHeader = request.headers.get('authorization');
-    const token = getTokenFromHeader(authHeader || undefined);
-    if (!token) {
+    // Authenticate
+    const session = await auth(request);
+    if (!session?.id) {
       return NextResponse.json(
-        { success: false, error: { code: 'AUTHENTICATION_REQUIRED', message: 'Missing Authorization token' } },
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
         { status: 401 }
       );
     }
-
-    const payload = await verifyToken(token);
-    if (!payload || !payload.userId) {
-      return NextResponse.json(
-        { success: false, error: { code: 'AUTHORIZATION_FAILED', message: 'Invalid or expired token' } },
-        { status: 401 }
-      );
-    }
-    const userId = payload.userId;
 
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 50);
 
-    // 2. Fetch weaknesses from PostgreSQL (Prisma)
+    logger.info('🎯 Fetching top weaknesses', { userId: session.id, limit });
+
+    // Query SystemicWeakness, ordered by pageRankScore DESC
     const weaknesses = await prisma.systemicWeakness.findMany({
       take: limit,
-      orderBy: {
-        pageRankScore: 'desc'
-      },
-      include: {
-        strategies: true
-      }
+      orderBy: { pageRankScore: 'desc' },
     });
 
-    // 3. Map weaknesses
-    const mappedWeaknesses = [];
-    let totalScore = 0;
+    const data = weaknesses.map((w) => ({
+      id: w.id,
+      name: w.name
+        .split('-')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' '),
+      pageRankScore: w.pageRankScore,
+      frequency: w.frequency,
+      description: `Systemic weakness in ${w.name.replace(/-/g, ' ')} — severity: ${w.severity}, confidence: ${Math.round(w.confidence * 100)}%.`,
+    }));
 
-    for (const w of weaknesses) {
-      totalScore += w.pageRankScore;
-      const relatedRcs = WEAKNESS_TO_ROOT_CAUSES[w.name] || [];
+    logger.info('✅ Weaknesses fetched', { count: data.length });
 
-      mappedWeaknesses.push({
-        weaknessId: w.name,
-        name: w.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-        description: `Systemic challenge with ${w.name.replace(/-/g, ' ')}.`,
-        pageRankScore: w.pageRankScore,
-        frequency: w.frequency,
-        lastOccurrence: w.lastOccurrence.toISOString(),
-        relatedRootCauses: relatedRcs,
-        suggestedStrategies: w.strategies.map(s => s.id)
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      weaknesses: mappedWeaknesses,
-      totalScore
-    });
-
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('❌ GET weaknesses error:', error);
+    logger.error('❌ Error fetching weaknesses:', error);
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to retrieve weaknesses' } },
+      {
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to retrieve weaknesses',
+      },
       { status: 500 }
     );
   }

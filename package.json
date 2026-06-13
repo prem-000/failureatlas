@@ -19,6 +19,7 @@
     "@prisma/client": "^5.7.1",
     "@tanstack/react-query": "^5.28.0",
     "bcryptjs": "^2.4.3",
+    "dagre": "^0.8.5",
     "jose": "^5.2.3",
     "lucide-react": "^0.344.0",
     "next": "15.0.0",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/chrome": "^0.1.42",
+    "@types/dagre": "^0.7.54",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.19.42",
     "@types/react": "^18.3.31",

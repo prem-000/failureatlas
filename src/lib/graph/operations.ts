@@ -35,17 +35,33 @@ export interface GraphData {
     totalNodes?: number;
     totalEdges?: number;
     isConnected: boolean;
+    problems: number;
+    failures: number;
+    weaknesses: number;
+    strategies: number;
   };
 }
 
 const ROOT_CAUSE_TO_WEAKNESS: Record<string, { id: string; name: string }> = {
+  // Edge Case Reasoning
   'boundary-condition-error': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
-  'input-output-handling-error': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
-  'pattern-recognition-gap': { id: 'algorithmic-pattern-recognition', name: 'Algorithmic Pattern Recognition' },
-  'algorithm-selection-mistake': { id: 'algorithmic-pattern-recognition', name: 'Algorithmic Pattern Recognition' },
+  'off-by-one-error': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
+  'empty-array-handling': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
+  'binary-search-edge-cases': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
+  
+  // Pattern Recognition
+  'sliding-window': { id: 'pattern-recognition', name: 'Pattern Recognition' },
+  'two-pointers': { id: 'pattern-recognition', name: 'Pattern Recognition' },
+  'hash-map': { id: 'pattern-recognition', name: 'Pattern Recognition' },
+  'greedy-selection': { id: 'pattern-recognition', name: 'Pattern Recognition' },
+  'pattern-recognition-gap': { id: 'pattern-recognition', name: 'Pattern Recognition' },
+  
+  // Performance Analysis
   'time-complexity-oversight': { id: 'performance-analysis', name: 'Performance Analysis' },
   'space-complexity-oversight': { id: 'performance-analysis', name: 'Performance Analysis' },
+  'algorithm-selection-mistake': { id: 'performance-analysis', name: 'Performance Analysis' },
   'data-structure-mismatch': { id: 'performance-analysis', name: 'Performance Analysis' },
+  
   'implementation-detail-error': { id: 'implementation-precision', name: 'Implementation Precision' }
 };
 
@@ -186,21 +202,27 @@ export async function getUserFailureSubgraph(
           }
           addEdge(evidenceId, rcId, 'SUGGESTS');
 
-          // Link RootCause to Weakness (using primary weakness of diagnosis if available)
-          if (sub.diagnosis?.primaryWeakness) {
-            const weakness = sub.diagnosis.primaryWeakness;
-            const wId = `weakness-${weakness.id}`;
+          // Link RootCause to Weakness (using primary weakness of diagnosis if available, fallback to mapping)
+          const mapping = ROOT_CAUSE_TO_WEAKNESS[hyp.rootCauseType];
+          const weaknessName = sub.diagnosis?.primaryWeakness?.name || mapping?.name || 'Unknown Weakness';
+          const weaknessIdVal = sub.diagnosis?.primaryWeakness?.id || mapping?.id || 'unknown';
+          const weaknessTypeVal = sub.diagnosis?.primaryWeakness?.type || mapping?.id || 'unknown';
+
+          if (weaknessIdVal !== 'unknown') {
+            const wId = `weakness-${weaknessIdVal}`;
             if (!addedWeaknesses.has(wId)) {
               weaknessesList.push({
                 id: wId,
                 nodeType: 'Weakness',
-                label: weakness.name,
+                label: weaknessName,
                 properties: {
-                  type: weakness.type,
-                  severity: weakness.severity,
-                  confidence: weakness.confidence,
-                  pageRankScore: weakness.pageRankScore,
-                  frequency: weakness.frequency
+                  id: weaknessIdVal,
+                  name: weaknessName,
+                  type: weaknessTypeVal,
+                  severity: sub.diagnosis?.primaryWeakness?.severity || 'high',
+                  confidence: sub.diagnosis?.primaryWeakness?.confidence || hyp.confidence,
+                  pageRankScore: sub.diagnosis?.primaryWeakness?.pageRankScore || 0.1,
+                  frequency: sub.diagnosis?.primaryWeakness?.frequency || 1
                 }
               });
               addedWeaknesses.add(wId);
@@ -208,7 +230,8 @@ export async function getUserFailureSubgraph(
             addEdge(rcId, wId, 'INDICATES');
 
             // 5. LearningStrategy Nodes
-            for (const strat of weakness.strategies) {
+            const strategies = sub.diagnosis?.primaryWeakness?.strategies || [];
+            for (const strat of strategies) {
               const stratId = `strategy-${strat.id}`;
               if (!addedStrategies.has(stratId)) {
                 strategiesList.push({
@@ -216,6 +239,8 @@ export async function getUserFailureSubgraph(
                   nodeType: 'LearningStrategy',
                   label: strat.name,
                   properties: {
+                    id: strat.id,
+                    name: strat.name,
                     description: strat.description,
                     estimatedTime: `${strat.estimatedTime}m`,
                     priority: strat.priority,
@@ -233,22 +258,13 @@ export async function getUserFailureSubgraph(
 
     // Assign positions using column layout
     const nodes: GraphNode[] = [];
-    const nodesByType = {
-      Problem: problemsList.length,
-      FailureEvent: failuresList.length,
-      Evidence: evidencesList.length,
-      RootCause: rootCausesList.length,
-      Weakness: weaknessesList.length,
-      LearningStrategy: strategiesList.length
-    };
-
     const columns = [
-      { list: problemsList, x: 50 },
-      { list: failuresList, x: 300 },
-      { list: evidencesList, x: 550 },
-      { list: rootCausesList, x: 800 },
-      { list: weaknessesList, x: 1050 },
-      { list: strategiesList, x: 1300 }
+      { list: strategiesList, x: -200 }, // Side-connected to Weakness
+      { list: weaknessesList, x: 100 },   // Column 1 (Primary focus)
+      { list: rootCausesList, x: 400 },   // Column 2
+      { list: evidencesList, x: 700 },    // Column 3
+      { list: failuresList, x: 1000 },   // Column 4
+      { list: problemsList, x: 1300 }     // Column 5
     ];
 
     for (const { list, x } of columns) {
@@ -259,7 +275,7 @@ export async function getUserFailureSubgraph(
           position: { x, y: index * 130 + 50 },
           data: {
             label: node.label,
-            nodeType: node.nodeType,
+            nodeType: node.nodeType as any,
             properties: node.properties
           }
         });
@@ -274,7 +290,11 @@ export async function getUserFailureSubgraph(
         edgeCount: edges.length,
         totalNodes: nodes.length,
         totalEdges: edges.length,
-        isConnected: true
+        isConnected: true,
+        problems: problemsList.length,
+        failures: failuresList.length,
+        weaknesses: weaknessesList.length,
+        strategies: strategiesList.length
       }
     };
   } catch (error) {
@@ -282,7 +302,7 @@ export async function getUserFailureSubgraph(
     return {
       nodes: [],
       edges: [],
-      stats: { nodeCount: 0, edgeCount: 0, totalNodes: 0, totalEdges: 0, isConnected: false }
+      stats: { nodeCount: 0, edgeCount: 0, totalNodes: 0, totalEdges: 0, isConnected: false, problems: 0, failures: 0, weaknesses: 0, strategies: 0 }
     };
   }
 }

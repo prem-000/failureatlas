@@ -68,9 +68,10 @@ export interface SubgraphData {
     style?: Record<string, unknown>;
   }>;
   stats: {
-    totalNodes: number;
-    totalEdges: number;
-    nodesByType: Record<string, number>;
+    problems: number;
+    failures: number;
+    weaknesses: number;
+    strategies: number;
   };
 }
 
@@ -78,8 +79,53 @@ export function useGraphSubgraph(limit = 300) {
   return useQuery({
     queryKey: ['graph', 'subgraph', limit],
     queryFn: () =>
-      apiFetch<{ success: boolean; data: SubgraphData }>(`/api/graph/subgraph?limit=${limit}`).then(
-        (r) => r.data
+      apiFetch<SubgraphData>(`/api/graph/subgraph?limit=${limit}`),
+  });
+}
+
+// ─── Weaknesses ────────────────────────────────────────────────────────────────
+export interface WeaknessData {
+  id: string;
+  name: string;
+  pageRankScore: number;
+  frequency: number;
+  description: string;
+}
+
+export function useGraphWeaknesses(limit = 10) {
+  return useQuery({
+    queryKey: ['graph', 'weaknesses', limit],
+    queryFn: () =>
+      apiFetch<WeaknessData[]>(`/api/graph/weaknesses?limit=${limit}`),
+  });
+}
+
+// ─── Failures ──────────────────────────────────────────────────────────────────
+export interface FailureData {
+  id: string;
+  problemTitle: string;
+  status: string;
+  rootCause: string;
+  confidence: number;
+  timestamp: string;
+  // Optional but returned UI fields
+  problemSlug: string;
+  difficulty: string;
+  attemptNumber: number;
+  timeSpent: number;
+  failedTestCase?: string;
+  code?: string;
+  language?: string;
+  rootCauses?: Array<{ type: string; name: string; confidence: number }>;
+  evidence?: Array<{ type: string; description: string; confidence: number; rawData?: any }>;
+}
+
+export function useGraphFailures(limit = 50, days = 30) {
+  return useQuery({
+    queryKey: ['graph', 'failures', limit, days],
+    queryFn: () =>
+      apiFetch<FailureData[]>(
+        `/api/graph/failures?limit=${limit}&days=${days}`
       ),
   });
 }
@@ -145,5 +191,132 @@ export function useDiagnosisGenerate() {
         method: 'POST',
         body: JSON.stringify({ query }),
       }).then((r) => r.data),
+  });
+}
+
+// ─── Roadmap ───────────────────────────────────────────────────────────────────
+
+export interface RoadmapProblem {
+  leetcodeId: number;
+  slug: string;
+  title: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  topics: string[];
+  patterns: string[];
+  reason: string;
+  nodeState: 'locked' | 'available' | 'solved' | 'failed' | 'previously_solved' | 'solving';
+  userAttempts?: number;
+  userStatus?: string;
+}
+
+export interface RoadmapLevel {
+  level: number;
+  nodes: RoadmapNodeData[];
+  edges: RoadmapEdge[];
+  clusters: string[];
+  learningGoal: string;
+  weaknessTarget: string;
+  generatedAt: string;
+}
+
+export interface RoadmapNodeData extends RoadmapProblem {
+  cluster?: string;
+}
+
+export interface RoadmapEdge {
+  source: string;
+  target: string;
+  type?: string;
+  confidence?: number;
+  reason?: string;
+}
+
+export interface RoadmapStateData {
+  id: string;
+  userId: string;
+  topic: string;
+  currentLevel: number;
+  levels: RoadmapLevel[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function useRoadmapState(topic: string) {
+  return useQuery({
+    queryKey: ['roadmap', 'state', topic],
+    queryFn: () =>
+      apiFetch<{ success: boolean; state: RoadmapStateData | null }>(
+        `/api/roadmap/state?topic=${encodeURIComponent(topic)}`
+      ).then((r) => r.state),
+    staleTime: 30000,
+  });
+}
+
+export function useRoadmapGenerate() {
+  return useMutation({
+    mutationFn: (params: { topic: string; level: number; excludeSlugs?: string[] }) =>
+      apiFetch<{
+        success: boolean;
+        topic: string;
+        level: number;
+        nodes: RoadmapNodeData[];
+        edges: RoadmapEdge[];
+        clusters: string[];
+        learningGoal: string;
+        weaknessTarget: string;
+        generatedAt: string;
+      }>('/api/roadmap/generate', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+  });
+}
+
+export function useSaveRoadmapState() {
+  return useMutation({
+    mutationFn: (params: { topic: string; currentLevel: number; levels: RoadmapLevel[] }) =>
+      apiFetch<{ success: boolean; state: RoadmapStateData }>('/api/roadmap/state', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
+  });
+}
+
+// ─── Phase 3.1 AI Generation ───────────────────────────────────────────────────
+
+export function useDynamicTopics() {
+  return useQuery({
+    queryKey: ['topics', 'dynamic'],
+    queryFn: () =>
+      apiFetch<{ success: boolean; topics: Array<{ id: string; label: string; reason: string }> }>('/api/topics/generate', {
+        method: 'POST',
+      }).then((r) => r.topics),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useDynamicKnowledgeGraph(query: string) {
+  return useQuery({
+    queryKey: ['knowledge', 'dynamic', query],
+    enabled: !!query,
+    queryFn: () =>
+      apiFetch<{ success: boolean; data: { nodes: any[]; edges: any[] } }>('/api/knowledge/generate', {
+        method: 'POST',
+        body: JSON.stringify({ query }),
+      }).then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useDynamicCheatSheet(topic: string) {
+  return useQuery({
+    queryKey: ['cheatsheet', 'dynamic', topic],
+    enabled: !!topic,
+    queryFn: () =>
+      apiFetch<{ success: boolean; data: { template: string; mistakes: string[]; complexity: any; keyInsights: string[] } }>('/api/cheatsheet/generate', {
+        method: 'POST',
+        body: JSON.stringify({ topic }),
+      }).then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
   });
 }

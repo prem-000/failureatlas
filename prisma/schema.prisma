@@ -18,6 +18,7 @@ model User {
   diagnoses     DiagnosisResult[]
   learningPlans LearningPlan[]
   submissions   SubmissionEvent[]
+  roadmapStates RoadmapState[]
 
   @@map("users")
 }
@@ -244,4 +245,33 @@ model AuditLog {
   @@index([userId])
   @@index([timestamp])
   @@map("audit_logs")
+}
+
+model LeetcodeProblem {
+  id            String   @id @default(cuid())
+  leetcodeId    Int      @unique
+  slug          String   @unique
+  title         String
+  difficulty    String
+  topics        String[]
+  patterns      String[]
+  prerequisites String[]
+  createdAt     DateTime @default(now())
+
+  @@map("leetcode_problems")
+}
+
+model RoadmapState {
+  id           String   @id @default(cuid())
+  userId       String
+  topic        String
+  currentLevel Int      @default(1)
+  levels       Json     @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topic])
+  @@index([userId])
+  @@map("roadmap_states")
 }
