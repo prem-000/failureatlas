@@ -91,8 +91,11 @@ export function AnalyticsPanel({ isOpen, onToggle, weaknesses, failures }: Analy
           background: rgba(255,255,255,0.02);
           border: 1px solid rgba(255,255,255,0.04);
           transition: background 150ms;
-        }
         .stat-row:hover { background: rgba(255,255,255,0.04); }
+        @media (max-width: 768px) {
+          .analytics-panel { width: 100% !important; border-left: none !important; z-index: 100 !important; }
+          .analytics-toggle { z-index: 101 !important; right: 0 !important; }
+        }
       `}</style>
 
       {/* Toggle button */}

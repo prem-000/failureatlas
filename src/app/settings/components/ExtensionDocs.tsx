@@ -216,9 +216,16 @@ export function ExtensionDocs() {
   };
 
   return (
-    <div style={{ display: 'flex', gap: 40, alignItems: 'flex-start' }}>
-      {/* ─── Left Sidebar ─── */}
-      <div style={{ width: 280, flexShrink: 0, position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 24, height: 'calc(100vh - 120px)', overflowY: 'auto', paddingBottom: 40 }}>
+    <>
+      <style>{`
+        @media (max-width: 768px) {
+          .ext-docs-container { flex-direction: column !important; gap: 20px !important; }
+          .ext-docs-sidebar { width: 100% !important; position: static !important; height: auto !important; max-height: 400px; padding-bottom: 10px !important; border-bottom: 1px solid #1f1f1f; }
+        }
+      `}</style>
+      <div className="ext-docs-container" style={{ display: 'flex', gap: 40, alignItems: 'flex-start' }}>
+        {/* ─── Left Sidebar ─── */}
+        <div className="ext-docs-sidebar" style={{ width: 280, flexShrink: 0, position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 24, height: 'calc(100vh - 120px)', overflowY: 'auto', paddingBottom: 40 }}>
         
         {/* Search */}
         <div style={{ position: 'relative' }}>
@@ -593,5 +600,6 @@ export function ExtensionDocs() {
 
       </div>
     </div>
+    </>
   );
 }

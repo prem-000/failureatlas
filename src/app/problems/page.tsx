@@ -219,6 +219,12 @@ export default function ProblemsPage() {
 
   return (
     <AppShell>
+      <style>{`
+        @media (max-width: 768px) {
+          .problems-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
+          .problems-table-inner { min-width: 700px; }
+        }
+      `}</style>
     <div style={{ width: '100%', minHeight: '100vh', background: '#131313', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{ padding: '20px 28px', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>
@@ -284,6 +290,8 @@ export default function ProblemsPage() {
           </div>
         ) : (
           <>
+            <div className="problems-table-wrapper">
+              <div className="problems-table-inner">
             {/* Column Headers */}
             <div style={{
               display: 'grid', gridTemplateColumns: '1fr 100px 90px 100px 120px 48px',
@@ -334,6 +342,8 @@ export default function ProblemsPage() {
                   )}
                 </div>
               ))}
+            </div>
+            </div>
             </div>
 
             {/* Pagination */}

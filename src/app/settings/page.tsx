@@ -345,12 +345,13 @@ export default function SettingsPage() {
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {TABS.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 style={{
+                  flexShrink: 0,
                   background: activeTab === tab.key ? '#ff5f52' : 'transparent',
                   border: `1px solid ${activeTab === tab.key ? '#ff5f52' : '#2a2a2a'}`,
                   borderRadius: 8, padding: '7px 18px', fontSize: 13, fontWeight: 600,

@@ -38,6 +38,9 @@ export default function GraphPage() {
           overflow: hidden;
           transition: padding-right 320ms cubic-bezier(0.16,1,0.3,1);
         }
+        @media (max-width: 768px) {
+          .graph-workspace { padding-right: 0 !important; }
+        }
         /* Custom scrollbar */
         .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

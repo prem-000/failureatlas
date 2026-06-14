@@ -242,6 +242,13 @@ export default function DiagnosisPage() {
 
   return (
     <AppShell>
+      <style>{`
+        @media (max-width: 768px) {
+          .diagnosis-split { flex-direction: column !important; }
+          .diagnosis-chat { flex: 1 1 50% !important; border-right: none !important; }
+          .diagnosis-evidence { flex: 1 1 50% !important; border-top: 1px solid #1f1f1f !important; }
+        }
+      `}</style>
     <div style={{ width: '100%', height: '100vh', background: '#131313', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{
@@ -257,10 +264,10 @@ export default function DiagnosisPage() {
       </div>
 
       {/* Split pane */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="diagnosis-split" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Left: Chat (60%) */}
-        <div style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1f1f1f' }}>
+        <div className="diagnosis-chat" style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1f1f1f' }}>
           {/* Messages */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {messages.map(m => <ChatBubble key={m.id} msg={m} />)}
@@ -334,7 +341,7 @@ export default function DiagnosisPage() {
         </div>
 
         {/* Right: Evidence Panel (40%) */}
-        <div style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', background: '#141414' }}>
+        <div className="diagnosis-evidence" style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', background: '#141414' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid #1f1f1f' }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: '#71717a', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               RAG Evidence & Context
