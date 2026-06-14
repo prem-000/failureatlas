@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
     let body: { topic?: string; currentLevel?: number; levels?: unknown[] } = {};
     try { body = await request.json(); } catch { /* empty body */ }
 
-    const { topic, currentLevel, levels } = body;
+    const topic = body.topic || 'binary-search';
+    const { currentLevel, levels } = body;
 
     if (!topic) {
       return NextResponse.json(

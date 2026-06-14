@@ -175,10 +175,11 @@ function RoadmapTabInner() {
   }, [searchQuery, nodes, reactFlow]);
 
   const handleGenerate = useCallback(async () => {
+    const finalTopic = selectedTopic || 'binary-search';
     const existingSlugs = currentLevels.flatMap(l => l.nodes.map(p => p.slug));
     try {
       const result = await generateMutation.mutateAsync({
-        topic: selectedTopic,
+        topic: finalTopic,
         level: currentLevels.length + 1,
         excludeSlugs: existingSlugs,
       });
@@ -199,13 +200,15 @@ function RoadmapTabInner() {
 
       // Persist to DB
       await saveMutation.mutateAsync({
-        topic: selectedTopic,
+        topic: finalTopic,
         currentLevel: result.level,
         levels: updatedLevels,
       });
 
+      if (!selectedTopic) setSelectedTopic(finalTopic);
+
       // Invalidate state query
-      queryClient.invalidateQueries({ queryKey: ['roadmap', 'state', selectedTopic] });
+      queryClient.invalidateQueries({ queryKey: ['roadmap', 'state', finalTopic] });
     } catch (err) {
       console.error('Generation error:', err);
     }
