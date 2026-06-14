@@ -3,6 +3,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useUpdateProfile, useUserProfile, type ProfileData } from '@/hooks/usePhase3Queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { ExtensionDocs } from './components/ExtensionDocs';
 
 type UserProfile = ProfileData['user'];
 type Stats = ProfileData['stats'];
@@ -261,7 +262,7 @@ export default function SettingsPage() {
   const user  = data?.user  ?? null;
   const stats = data?.stats ?? null;
   const error = queryError ? (queryError as Error).message : null;
-  const [activeTab, setActiveTab]           = useState<'profile' | 'stats' | 'api'>('profile');
+  const [activeTab, setActiveTab]           = useState<'profile' | 'stats' | 'api' | 'extension'>('profile');
   const [regenError,   setRegenError]       = useState<string | null>(null);
   const [regenSuccess, setRegenSuccess]     = useState(false);
 
@@ -307,6 +308,7 @@ export default function SettingsPage() {
     { key: 'profile', label: 'Profile' },
     { key: 'stats',   label: 'Statistics' },
     { key: 'api',     label: 'API Access' },
+    { key: 'extension', label: 'Extension Setup' },
   ] as const;
 
   const maxLang = Math.max(...(stats?.languageDistribution.map(l => l.count) ?? [1]), 1);
@@ -363,7 +365,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div style={{ padding: 'clamp(16px, 3vw, 28px) clamp(16px, 4vw, 32px)', maxWidth: 900 }}>
+        <div style={{ padding: 'clamp(16px, 3vw, 28px) clamp(16px, 4vw, 32px)', maxWidth: activeTab === 'extension' ? 1200 : 900, margin: '0 auto' }}>
 
           {/* ── Profile Tab ── */}
           {activeTab === 'profile' && (
@@ -464,23 +466,6 @@ export default function SettingsPage() {
                 </div>
               </SectionCard>
 
-              <SectionCard title="Extension Setup" accent="#3b82f6">
-                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div style={{ fontSize: 13, color: '#a1a1aa', lineHeight: 1.7 }}>
-                    After installing the Chrome Extension:
-                  </div>
-                  <ol style={{ paddingLeft: 20, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {[
-                      'Click the FailureAtlas icon in your browser toolbar.',
-                      'Paste your Extension API Key (from the field above) into the key field.',
-                      'Click Connect — the extension will verify the key and connect.',
-                      'Open any LeetCode problem and submit code — it will be captured automatically.',
-                    ].map((step, i) => (
-                      <li key={i} style={{ fontSize: 12, color: '#71717a', lineHeight: 1.6 }}>{step}</li>
-                    ))}
-                  </ol>
-                </div>
-              </SectionCard>
 
               <SectionCard title="API Reference" accent="#52525b">
                 <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -512,6 +497,9 @@ export default function SettingsPage() {
 
             </div>
           )}
+
+          {/* ── Extension Docs Tab ── */}
+          {activeTab === 'extension' && <ExtensionDocs />}
         </div>
       </div>
     </AppShell>

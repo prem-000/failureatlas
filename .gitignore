@@ -20,6 +20,7 @@ dist
 # Misc
 .DS_Store
 *.pem
+*.crx
 .vscode
 .idea
 *.swp
