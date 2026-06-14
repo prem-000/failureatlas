@@ -68,6 +68,12 @@ export async function GET(request: NextRequest) {
       prisma.submissionEvent.count({ where: whereQuery }),
     ]);
 
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+    };
+
     return NextResponse.json({
       success: true,
       submissions: submissions.map(sub => ({
@@ -80,12 +86,16 @@ export async function GET(request: NextRequest) {
         hasAnalysis: true,
       })),
       pagination: { total, limit, offset, hasMore: offset + limit < total },
-    });
+    }, { headers: corsHeaders });
   } catch (error) {
     console.error('❌ GET submissions error:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to retrieve submissions' } },
-      { status: 500 }
+      { status: 500, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+      } }
     );
   }
 }
@@ -97,13 +107,19 @@ export async function POST(request: NextRequest) {
   if (!auth.userId) return unauthorizedResponse(auth.error || 'Authentication required.');
   const userId = auth.userId;
 
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+  };
+
   let body: any;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json(
       { success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid JSON body' } },
-      { status: 400 }
+      { status: 400, headers: corsHeaders }
     );
   }
 
@@ -122,7 +138,7 @@ export async function POST(request: NextRequest) {
   if (missing.length > 0) {
     return NextResponse.json(
       { success: false, error: { code: 'VALIDATION_ERROR', message: `Missing required fields: ${missing.join(', ')}` } },
-      { status: 400 }
+      { status: 400, headers: corsHeaders }
     );
   }
 
@@ -132,7 +148,7 @@ export async function POST(request: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { success: true, submissionId: existing.id, analysisQueued: false, message: 'Already recorded.' },
-        { status: 200 }
+        { status: 200, headers: corsHeaders }
       );
     }
 
@@ -171,7 +187,7 @@ export async function POST(request: NextRequest) {
       console.log(`⚠️ Content-level duplicate blocked for user=${userId} problem=${problemSlug} (existing id=${recentDupe.id})`);
       return NextResponse.json(
         { success: true, submissionId: recentDupe.id, analysisQueued: false, message: 'Duplicate submission detected within 60s.' },
-        { status: 200 }
+        { status: 200, headers: corsHeaders }
       );
     }
 
@@ -218,13 +234,13 @@ export async function POST(request: NextRequest) {
       submissionId: subRecord.id,
       analysisQueued: true,
       message: 'Submission recorded. Analysis running in background.',
-    });
+    }, { headers: corsHeaders });
 
   } catch (error: any) {
     console.error('❌ POST submission error:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: error?.message || 'Failed to record submission' } },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

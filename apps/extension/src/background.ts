@@ -7,7 +7,7 @@ import {
 
 // ─── API URL Normalization Utility ───────────────────────────────────────────
 export function normalizeApiBaseUrl(url: string): string {
-  if (!url) return 'http://localhost:3000/api';
+  if (!url) return 'http://127.0.0.1:3000/api';
   let clean = url.trim();
   // Strip trailing slashes
   clean = clean.replace(/\/+$/, '');
@@ -84,13 +84,13 @@ export class StorageManager {
 
   async getApiUrl(): Promise<string> {
     try {
-      if (typeof chrome === 'undefined' || !chrome?.storage?.local) return 'http://localhost:3000/api';
+      if (typeof chrome === 'undefined' || !chrome?.storage?.local) return 'http://127.0.0.1:3000/api';
       const stored = await chrome.storage.local.get(['apiUrl', 'apiBaseUrl']);
-      const url = (stored.apiBaseUrl as string) || (stored.apiUrl as string) || 'http://localhost:3000/api';
+      const url = (stored.apiBaseUrl as string) || (stored.apiUrl as string) || 'http://127.0.0.1:3000/api';
       return normalizeApiBaseUrl(url);
     } catch (e) {
       console.error('[FailureAtlas BG] Failed to read API URL from storage:', e);
-      return 'http://localhost:3000/api';
+      return 'http://127.0.0.1:3000/api';
     }
   }
 

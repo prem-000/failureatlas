@@ -23,10 +23,16 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-api-key') ||
       (await request.json().catch(() => ({}))).apiKey;
 
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+    };
+
     if (!apiKey || !apiKey.startsWith('fa_')) {
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_API_KEY', message: 'Invalid API key format' } },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -39,26 +45,33 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { success: false, error: { code: 'INVALID_API_KEY', message: 'API key not found or revoked' } },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          createdAt: user.createdAt,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            createdAt: user.createdAt,
+          },
         },
       },
-    });
+      { headers: corsHeaders }
+    );
   } catch (error) {
     console.error('verify-key error:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Key verification failed' } },
-      { status: 500 }
+      { status: 500, headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+      } }
     );
   }
 }

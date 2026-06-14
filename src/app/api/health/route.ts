@@ -34,6 +34,12 @@ export async function GET(request: NextRequest) {
     const isHealthy = dbStatus === 'connected';
     const statusCode = isHealthy ? 200 : 503;
 
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+    };
+
     return NextResponse.json(
       {
         status: isHealthy ? 'ok' : 'error',
@@ -43,7 +49,10 @@ export async function GET(request: NextRequest) {
           redis: redisStatus
         }
       },
-      { status: statusCode }
+      { 
+        status: statusCode,
+        headers: corsHeaders
+      }
     );
   } catch (error) {
     logger.error('Health check failed:', error);
@@ -58,7 +67,14 @@ export async function GET(request: NextRequest) {
         },
         error: error instanceof Error ? error.message : 'Health check failed'
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
+        }
+      }
     );
   }
 }
