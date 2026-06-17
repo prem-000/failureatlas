@@ -148,7 +148,7 @@ export function SidebarNavigation({ isCollapsed = false }: SidebarNavigationProp
               F
             </div>
             <span style={{ fontSize: 15, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
-              FailureAtlas
+              Praxis
             </span>
           </div>
         ) : (

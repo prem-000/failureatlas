@@ -1,8 +1,8 @@
-# FailureAtlas Neo4j Graph Schema
+# Praxis Neo4j Graph Schema
 
 ## Overview
 
-FailureAtlas models failure intelligence as a knowledge graph where failures, root causes, and weaknesses are interconnected entities. This graph structure enables powerful traversal queries, pattern recognition, and PageRank-based importance scoring.
+Praxis models Learning Intelligence as a knowledge graph where learning challenges, root causes, and weaknesses are interconnected entities. This graph structure enables powerful traversal queries, pattern recognition, and PageRank-based importance scoring.
 
 ## Node Types
 
@@ -37,13 +37,13 @@ CREATE (:Problem {
 - `testCaseCount` (Integer): Total number of test cases
 - `acceptanceRate` (Float): Global acceptance rate (0.0-1.0)
 
-### 2. FailureEvent Nodes
+### 2. ChallengeEvent Nodes
 
-Represent individual submission failures with contextual metadata.
+Represent individual submission challenges with contextual metadata.
 
 ```cypher
-CREATE (:FailureEvent {
-  eventId: String,            // UUID for this specific failure
+CREATE (:ChallengeEvent {
+  eventId: String,            // UUID for this specific challenge
   userId: String,             // User identifier
   submissionStatus: String,   // "Wrong Answer", "Time Limit Exceeded"
   code: String,              // Submitted code
@@ -60,8 +60,8 @@ CREATE (:FailureEvent {
 ```
 
 **Properties:**
-- `eventId` (String, Unique): UUID for this specific failure
-- `userId` (String): User identifier for grouping failures
+- `eventId` (String, Unique): UUID for this specific challenge
+- `userId` (String): User identifier for grouping challenges
 - `submissionStatus` (String): Wrong Answer/TLE/MLE/Runtime Error
 - `code` (String): Full submitted code
 - `language` (String): Programming language used
@@ -100,7 +100,7 @@ CREATE (:Evidence {
 
 ### 4. RootCause Nodes
 
-Represent classified root causes of failures from the ontology taxonomy.
+Represent classified root causes of challenges from the ontology taxonomy.
 
 ```cypher
 CREATE (:RootCause {
@@ -135,7 +135,7 @@ CREATE (:Weakness {
   learningObjectives: [String], // What should be learned
   pageRankScore: Float,     // Computed importance score
   userFrequency: Integer,   // How often user hits this weakness
-  lastOccurrence: DateTime, // Most recent failure
+  lastOccurrence: DateTime, // Most recent challenge
   createdAt: DateTime,
   updatedAt: DateTime
 })
@@ -149,7 +149,7 @@ CREATE (:Weakness {
 - `learningObjectives` (Array[String]): What needs to be learned
 - `pageRankScore` (Float): Computed importance for this user
 - `userFrequency` (Integer): How many times user has hit this
-- `lastOccurrence` (DateTime): Most recent failure with this weakness
+- `lastOccurrence` (DateTime): Most recent challenge with this weakness
 
 ### 6. LearningStrategy Nodes
 
@@ -163,7 +163,7 @@ CREATE (:LearningStrategy {
   description: String,      // Strategy explanation
   practiceProblems: [String], // Recommended problem IDs
   concepts: [String],       // Key concepts to review
-  techniques: [String],     // Specific techniques to practice
+  techniques: [String],       // Specific techniques to practice
   estimatedTime: Integer,   // Time investment in hours
   difficultyProgression: [String], // Easy -> Medium -> Hard
   createdAt: DateTime
@@ -185,35 +185,35 @@ CREATE (:LearningStrategy {
 
 ### 1. TRIGGERED
 
-Connects Problems to FailureEvents, representing when a specific problem caused a failure.
+Connects Problems to ChallengeEvents, representing when a specific problem caused a challenge.
 
 ```cypher
 CREATE (p:Problem)-[:TRIGGERED {
   userId: String,           // Which user experienced this
-  frequency: Integer,       // How many times this problem triggered failure
-  firstFailure: DateTime,   // When user first failed this problem
-  lastFailure: DateTime,    // Most recent failure
+  frequency: Integer,       // How many times this problem triggered challenge
+  firstChallenge: DateTime,   // When user first challenged this problem
+  lastChallenge: DateTime,    // Most recent challenge
   averageAttempts: Float,   // Average attempts before success/giving up
   pattern: String          // "consistent", "occasional", "one-off"
-}]->(f:FailureEvent)
+}]->(f:ChallengeEvent)
 ```
 
 **Properties:**
-- `userId` (String): User experiencing the failure
-- `frequency` (Integer): Total failure count for this user+problem
-- `firstFailure` (DateTime): First time user failed this problem
-- `lastFailure` (DateTime): Most recent failure
+- `userId` (String): User experiencing the challenge
+- `frequency` (Integer): Total challenge count for this user+problem
+- `firstChallenge` (DateTime): First time user challenged this problem
+- `lastChallenge` (DateTime): Most recent challenge
 - `averageAttempts` (Float): Average attempts across sessions
-- `pattern` (String): Failure pattern classification
+- `pattern` (String): Challenge pattern classification
 
-**Cardinality:** One-to-Many (Problem → FailureEvents)
+**Cardinality:** One-to-Many (Problem → ChallengeEvents)
 
 ### 2. HAS_EVIDENCE
 
-Connects FailureEvents to Evidence, linking failures to their supporting evidence.
+Connects ChallengeEvents to Evidence, linking challenges to their supporting evidence.
 
 ```cypher
-CREATE (f:FailureEvent)-[:HAS_EVIDENCE {
+CREATE (f:ChallengeEvent)-[:HAS_EVIDENCE {
   extractionMethod: String, // "myers_diff", "structural_pattern_analysis"
   confidence: Float,        // Confidence in this evidence
   primary: Boolean,        // Whether this is primary evidence
@@ -227,7 +227,7 @@ CREATE (f:FailureEvent)-[:HAS_EVIDENCE {
 - `primary` (Boolean): Whether this is the primary evidence for inference
 - `extractedAt` (DateTime): When evidence was extracted
 
-**Cardinality:** One-to-Many (FailureEvent → Evidence)
+**Cardinality:** One-to-Many (ChallengeEvent → Evidence)
 
 ### 3. SUGGESTS
 
@@ -273,7 +273,7 @@ CREATE (r:RootCause)-[:INDICATES {
 
 ### 5. ADDRESSED_BY
 
-Connects Weaknesses to LearningStrategies, linking gaps to solutions.
+Growth Opportunities to LearningStrategies, linking gaps to solutions.
 
 ```cypher
 CREATE (w:Weakness)-[:ADDRESSED_BY {
@@ -332,7 +332,7 @@ CREATE (r1:RootCause)-[:CO_OCCURS {
 
 ## Example Cypher Queries
 
-### Insert New Failure Event
+### Insert New Practice Session
 
 ```cypher
 // Create failure event with problem connection

@@ -110,11 +110,11 @@ export function AnalyticsPanel({ isOpen, onToggle, weaknesses, failures }: Analy
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <BrainCircuit size={15} style={{ color: '#ff5f52' }} />
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#f4f4f5', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-              Failure Intelligence
+              Learning Intelligence
             </span>
           </div>
           <p style={{ fontSize: '10px', color: '#52525b', marginTop: 4, lineHeight: 1.4 }}>
-            Predictive analytics from your failure graph
+            Predictive analytics from your learning map
           </p>
         </div>
 
@@ -138,7 +138,7 @@ export function AnalyticsPanel({ isOpen, onToggle, weaknesses, failures }: Analy
           <div className="stat-row">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <TrendingDown size={11} style={{ color: '#a855f7' }} />
-              <span style={{ fontSize: '10px', color: '#71717a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Predicted Weakness</span>
+              <span style={{ fontSize: '10px', color: '#71717a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Predicted Growth Area</span>
             </div>
             <span style={{ fontSize: '12px', fontWeight: 700, color: topWeakness ? '#d8b4fe' : '#52525b' }}>
               {topWeakness ? topWeakness.name : 'No data yet'}
@@ -154,7 +154,7 @@ export function AnalyticsPanel({ isOpen, onToggle, weaknesses, failures }: Analy
           <div className="stat-row">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <Zap size={11} style={{ color: '#fcd34d' }} />
-              <span style={{ fontSize: '10px', color: '#71717a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Predicted Root Cause</span>
+              <span style={{ fontSize: '10px', color: '#71717a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Predicted Learning Insight</span>
             </div>
             <span style={{ fontSize: '12px', fontWeight: 700, color: topRc ? '#fcd34d' : '#52525b' }}>
               {topRc ? topRc[0] : 'Insufficient data'}
@@ -205,7 +205,7 @@ export function AnalyticsPanel({ isOpen, onToggle, weaknesses, failures }: Analy
           {weaknesses.length > 1 && (
             <div>
               <div style={{ fontSize: '10px', color: '#52525b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, padding: '0 2px' }}>
-                Weakness Ranking
+                Growth Area Ranking
               </div>
               {weaknesses.slice(0, 5).map((w, i) => (
                 <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < Math.min(weaknesses.length, 5) - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>

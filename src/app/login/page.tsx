@@ -111,10 +111,10 @@ export default function LoginPage() {
               margin: '0 auto 16px', boxShadow: '0 8px 32px rgba(255,95,82,0.3)',
             }}>F</div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
-              Welcome back
+              Welcome back to Praxis
             </h1>
             <p style={{ fontSize: 13, color: '#6b7280', marginTop: 6 }}>
-              Sign in to your FailureAtlas account
+              Sign in to continue your learning journey
             </p>
           </div>
 

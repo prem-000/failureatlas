@@ -1,8 +1,8 @@
-# FailureAtlas System Architecture
+# Praxis System Architecture
 
 ## Overview
 
-FailureAtlas transforms competitive programming failures from isolated events into structured, actionable learning intelligence through a multi-layered pipeline centered around a structured failure ontology (the backbone of the system). Data flows from the capture extension through evidence extraction, root cause inference, and weakness attribution, to feed graph-based diagnostic retrieval and explanation generator engines.
+Praxis transforms competitive programming failures from isolated events into structured, actionable Learning Intelligence through a multi-layered pipeline centered around a structured failure ontology (the backbone of the system). Data flows from the capture extension through evidence extraction, root cause inference, and weakness attribution, to feed graph-based diagnostic retrieval and explanation generator engines.
 
 ## Full Pipeline Architecture
 
@@ -29,7 +29,7 @@ Analyzer               Parser
                     │
                     ▼
               Storage Layer
-     Failure Knowledge Graph — Neo4j
+     Practice Tracking Knowledge Graph — Neo4j
      (PageRank weakness scoring ·
       Cypher queries)
                     │
@@ -93,7 +93,7 @@ Analyzer               Parser
 
 ### 2. Analysis Layer → Inference Layer
 
-**Dual Fork Pattern**: Two parallel analysis branches process different aspects:
+**Dual Fork Pattern**: Two parallel practice analysis branches process different aspects:
 
 #### Branch A: Code Evolution Analysis
 - **Myers Diff**: Compares current submission against previous attempts.
@@ -186,7 +186,7 @@ $$\text{FailureEvent} \xrightarrow{\text{HAS\_EVIDENCE}} \text{Evidence} \xright
 - **Next.js 15**: React-based framework with App Router and API routes for unified development.
 - **TypeScript**: Type safety for complex data structures and API contracts.
 - **Tailwind CSS**: Dark-first visual styling with CSS variables.
-- **React Flow**: Interactive visualizer mapping systemic weaknesses and root causes.
+- **React Flow**: Interactive visualizer mapping systemGrowth Opportunities and root causes.
 
 ### Data Processing Layer
 - **Node.js**: JavaScript runtime for unified language across frontend/backend.
@@ -211,7 +211,7 @@ $$\text{FailureEvent} \xrightarrow{\text{HAS\_EVIDENCE}} \text{Evidence} \xright
 
 ## DAG Structure
 
-The FailureAtlas pipeline forms a Directed Acyclic Graph with these key characteristics:
+The Praxis pipeline forms a Directed Acyclic Graph with these key characteristics:
 
 1. **Entry Points**: Chrome Extension capture node.
 2. **Parallel Processing**: Dual forks at Analysis and Retrieval layers.

@@ -1,12 +1,12 @@
-# FailureAtlas REST API Reference
+# Praxis REST API Reference
 
 ## Overview
 
-The FailureAtlas API provides endpoints for submission ingestion, failure analysis, graph queries, and diagnosis generation. All endpoints use JSON for request/response bodies and JWT authentication for user authorization.
+The Praxis API provides endpoints for submission ingestion, Practice Analysis, graph queries, and diagnosis generation. All endpoints use JSON for request/response bodies and JWT authentication for user authorization.
 
 ## Base URL
 ```
-Production: https://api.failureatlas.dev/api
+Production: https://api.praxis.dev/api
 Development: http://localhost:3000/api
 ```
 
@@ -357,7 +357,7 @@ Aggregated statistics for the user's intelligence dashboard.
     totalSubmissions: number;
     totalFailures: number;
     acceptanceRate: number;         // 0–1
-    activeWeaknesses: number;
+    activeGrowthOpportunities: number;
     recentSubmissions: {
       id: string;
       problemSlug: string;
@@ -387,7 +387,7 @@ Returns ReactFlow-compatible node and edge arrays for the full user failure subg
   success: boolean;
   nodes: {
     id: string;
-    type: "Problem" | "FailureEvent" | "Evidence" | "RootCause" | "Weakness" | "LearningStrategy";
+    type: "Problem" | "Practice Session" | "Evidence" | "RootCause" | "Weakness" | "LearningStrategy";
     data: { label: string; [key: string]: any };
     position: { x: number; y: number };
   }[];
@@ -532,8 +532,6 @@ Full user profile with detailed analytics: language distribution, difficulty bre
 }
 ```
 
----
-
 #### PATCH /api/user/profile
 Update user display name or username.
 
@@ -605,4 +603,4 @@ The following endpoints are planned but not yet implemented:
 
 ---
 
-The FailureAtlas API provides structured access to failure intelligence with consistent REST conventions and JWT authentication. All protected endpoints require `Authorization: Bearer <token>` obtained from `/api/auth/login`.
+The Praxis API provides structured access to Learning Intelligence with consistent REST conventions and JWT authentication. All protected endpoints require `Authorization: Bearer <token>` obtained from `/api/auth/login`.

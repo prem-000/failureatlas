@@ -1,8 +1,8 @@
-# FailureAtlas Local Development Setup
+# Praxis Local Development Setup
 
 ## Prerequisites
 
-Before setting up FailureAtlas locally, ensure you have the following installed:
+Before setting up Praxis locally, ensure you have the following installed:
 
 ### Required Software
 
@@ -177,7 +177,7 @@ pnpm dev
 # This starts:
 # - Next.js web app on http://localhost:3000
 # - API server on http://localhost:3000/api
-# - File watching and auto-reload
+# - Practice Tracking and auto-reload
 ```
 
 #### Start Individual Services
@@ -209,7 +209,7 @@ pnpm build:dev
 5. Extension should appear in toolbar
 
 #### Extension Configuration
-1. Click the FailureAtlas extension icon
+1. Click the Praxis extension icon
 2. Enter your local development API URL: `http://localhost:3000/api`
 3. Create a test account or use existing credentials
 4. Extension will now send data to your local instance
@@ -264,8 +264,8 @@ services:
   postgres:
     image: postgres:14-alpine
     environment:
-      POSTGRES_DB: failureatlas_dev
-      POSTGRES_USER: failureatlas
+      POSTGRES_DB: praxis_dev
+      POSTGRES_USER: praxis
       POSTGRES_PASSWORD: dev_password
     ports:
       - "5432:5432"
@@ -412,7 +412,7 @@ node -e "require('dotenv').config({path:'.env.local'}); console.log(process.env.
 2. Run database migrations (`pnpm prisma migrate dev`)
 3. Start development server (`pnpm dev`)
 4. Load Chrome extension in developer mode
-5. Test with LeetCode submissions
+5. Test with submissions
 6. Monitor logs and debug as needed
 
 ### Useful Development Commands
@@ -449,4 +449,4 @@ pnpm run monitor:db
 node --inspect apps/web/server.js
 ```
 
-This setup provides a complete local development environment for FailureAtlas with all necessary services, proper configuration, and debugging capabilities.
+This setup provides a complete local development environment for Praxis with all necessary Growth Opportunities, proper configuration, and debugging capabilities.

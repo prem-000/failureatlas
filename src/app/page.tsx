@@ -1,10 +1,63 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { AtlasTypewriter } from '@/components/hero/AtlasTypewriter';
+
+const PHRASES = ["Into Insight.", "Into Growth.", "Into Mastery."];
+
+function TypewriterEffect() {
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    const currentPhrase = PHRASES[phraseIndex];
+
+    if (!isDeleting && charIndex < currentPhrase.length) {
+      timeout = setTimeout(() => setCharIndex(c => c + 1), 70);
+    } else if (isDeleting && charIndex > 0) {
+      timeout = setTimeout(() => setCharIndex(c => c - 1), 40);
+    } else if (!isDeleting && charIndex === currentPhrase.length) {
+      timeout = setTimeout(() => setIsDeleting(true), 2000);
+    } else if (isDeleting && charIndex === 0) {
+      setIsDeleting(false);
+      setPhraseIndex((p) => (p + 1) % PHRASES.length);
+    }
+    return () => clearTimeout(timeout);
+  }, [charIndex, isDeleting, phraseIndex]);
+
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <span style={{ visibility: 'hidden' }}>Into Mastery.</span>
+      <span style={{ position: 'absolute', left: '50%', top: 0, transform: 'translateX(-50%)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
+        <span style={{ color: '#ff5f52', textShadow: '0 0 20px rgba(255, 95, 82, 0.4)' }}>
+          {PHRASES[phraseIndex].substring(0, charIndex)}
+        </span>
+        <span 
+          style={{ 
+            display: 'inline-block',
+            width: '0.08em',
+            height: '0.9em',
+            backgroundColor: '#ff5f52',
+            marginLeft: '4px',
+            animation: 'blink 1s ease-in-out infinite'
+          }} 
+        />
+      </span>
+      <style>{`
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `}</style>
+    </span>
+  );
+}
+
 import { Menu, X } from 'lucide-react';
+import { TechMarquee } from '@/components/hero/TechMarquee';
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -18,7 +71,7 @@ export default function Home() {
 
           {/* Logo */}
           <div className="text-xl sm:text-2xl font-bold text-primary flex-shrink-0">
-            FailureAtlas
+            Praxis
           </div>
 
           {/* Desktop nav buttons */}
@@ -66,41 +119,53 @@ export default function Home() {
         {/* ─── Hero Section ─────────────────────────────────────────── */}
         <section className="text-center mb-12 sm:mb-16">
           <h1
-            className="font-bold mb-5 sm:mb-6 leading-tight tracking-tight"
-            style={{ fontSize: 'var(--text-hero)' }}
+            className="font-bold mb-6 sm:mb-8 tracking-tight flex flex-col items-center justify-center gap-1 sm:gap-2"
+            style={{ fontSize: 'var(--text-hero)', lineHeight: 0.95 }}
           >
-            <span style={{ color: 'var(--color-foreground)' }}>Failure</span>
-            <AtlasTypewriter />
+            <span style={{ color: '#FFFFFF' }}>Turn Practice</span>
+            <TypewriterEffect />
           </h1>
 
           <p
-            className="text-muted-foreground mb-6 sm:mb-8 max-w-xl mx-auto px-2"
-            style={{ fontSize: 'clamp(1rem, 2.5vw, 1.25rem)' }}
-          >
-            AI-powered failure intelligence for competitive programming
-          </p>
-
-          <p
             className="text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 px-2"
-            style={{ fontSize: 'clamp(0.875rem, 2vw, 1.0625rem)', lineHeight: 1.7 }}
+            style={{ fontSize: 'clamp(1rem, 2vw, 1.125rem)', lineHeight: 1.6 }}
           >
-            Transform your coding failures into learning opportunities. FailureAtlas analyzes your
-            submissions, identifies root causes, maps systemic weaknesses, and recommends personalized
-            learning strategies.
+            Praxis is a personal learning intelligence system.
+            <br className="hidden sm:block" />
+            <br className="hidden sm:block" />
+            Track your practice journey, uncover recurring patterns, strengthen weak concepts, and build lasting mastery through consistent improvement.
           </p>
 
           {/* CTA buttons — stacked on mobile, inline on sm+ */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0">
             <Link href="/register" className="w-full sm:w-auto">
               <Button size="lg" className="w-full sm:w-auto px-8">
-                Get Started Free
+                Start Practicing
               </Button>
             </Link>
             <Link href="/login" className="w-full sm:w-auto">
               <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
-                Sign In
+                Continue Journey
               </Button>
             </Link>
+          </div>
+        </section>
+      </main>
+
+      <TechMarquee />
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-10 sm:pb-16">
+        {/* ─── Philosophy Section ────────────────────────────────────── */}
+        <section className="text-center mb-12 sm:mb-20 max-w-3xl mx-auto px-4 bg-muted/30 py-10 rounded-2xl border border-border">
+          <h2 className="text-2xl font-bold mb-6 text-foreground">Learning Is Not About Winning</h2>
+          <div className="text-muted-foreground space-y-4" style={{ fontSize: 'clamp(0.875rem, 2vw, 1.0625rem)', lineHeight: 1.7 }}>
+            <p>Most platforms measure outcomes.<br/><strong className="text-primary">Praxis measures growth.</strong></p>
+            <p>Instead of focusing on pass or fail, success or failure, Praxis helps you understand the patterns behind your learning.</p>
+            <p className="font-medium text-foreground">
+              Every attempt becomes data.<br/>
+              Every challenge becomes feedback.<br/>
+              Every practice session becomes progress.
+            </p>
           </div>
         </section>
 
@@ -143,17 +208,25 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0">
             <Link href="/register" className="w-full sm:w-auto">
               <Button size="lg" className="w-full sm:w-auto px-8">
-                Get Started
+                Start Practicing
               </Button>
             </Link>
             <Link href="/login" className="w-full sm:w-auto">
               <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
-                Sign In
+                Continue Journey
               </Button>
             </Link>
           </div>
         </section>
       </main>
+
+      {/* ─── Footer ────────────────────────────────────────────── */}
+      <footer className="border-t border-border py-8 mt-12 text-center text-muted-foreground bg-background/50">
+        <div className="max-w-4xl mx-auto px-4 italic" style={{ fontSize: '0.95rem' }}>
+          <p>The goal is not to be better than others.</p>
+          <p>The goal is to be better than yesterday.</p>
+        </div>
+      </footer>
     </div>
   );
 }

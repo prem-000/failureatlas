@@ -252,7 +252,7 @@ export default function ProblemDetailPage() {
       <AppShell>
       <div style={{ display: 'flex', height: '100vh', background: '#131313', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
         <span style={{ fontSize: 40 }}>⚠️</span>
-        <span style={{ color: '#ef4444', fontSize: 15 }}>{error || 'No submissions found for this problem.'}</span>
+        <span style={{ color: '#ef4444', fontSize: 15 }}>{error || 'No practice sessions found for this problem.'}</span>
         <Link href="/problems" style={{ color: '#ff5f52', fontSize: 13, textDecoration: 'none', marginTop: 8 }}>← Back to Problems</Link>
       </div>
       </AppShell>
@@ -352,9 +352,9 @@ export default function ProblemDetailPage() {
 
         {/* Right column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Root Cause Breakdown */}
+          {/* Learning Insight Breakdown */}
           {topHypotheses.length > 0 && (
-            <SectionCard title="Root Cause Analysis" accent="#ff5f52">
+            <SectionCard title="Learning Insight Analysis" accent="#ff5f52">
               <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {topHypotheses.map(h => (
                   <div key={h.id}>
@@ -370,9 +370,9 @@ export default function ProblemDetailPage() {
             </SectionCard>
           )}
 
-          {/* Primary Weakness */}
+          {/* Primary Growth Area */}
           {latestDiagnosis?.primaryWeakness && (
-            <SectionCard title="Primary Weakness" accent="#a855f7">
+            <SectionCard title="Primary Growth Area" accent="#a855f7">
               <div style={{ padding: '16px 20px' }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#d8b4fe', marginBottom: 6 }}>
                   {latestDiagnosis.primaryWeakness.name.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}

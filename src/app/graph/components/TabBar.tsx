@@ -15,7 +15,7 @@ interface Tab {
 const TABS: Tab[] = [
   { id: 'roadmap',      label: 'Roadmap',              icon: Map,         description: 'Adaptive LeetCode practice plan' },
   { id: 'knowledge',    label: 'Knowledge Graph',       icon: GitFork,     description: 'Concept relationships' },
-  { id: 'intelligence', label: 'Failure Intelligence',  icon: BrainCircuit,description: 'Weakness story explorer' },
+  { id: 'intelligence', label: 'Learning Intelligence',  icon: BrainCircuit,description: 'Weakness story explorer' },
   { id: 'workspace',    label: 'Workspace',             icon: BookOpen,    description: 'Notes, cheat sheets, journal' },
 ];
 
@@ -129,7 +129,7 @@ export function TabBar({ activeTab, onChange }: TabBarProps) {
         flexShrink: 0,
       }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e', display: 'inline-block' }} />
-        Failure Intelligence OS
+        Learning Intelligence OS
       </div>
     </header>
   );

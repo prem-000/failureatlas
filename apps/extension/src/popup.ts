@@ -90,7 +90,7 @@ class ExtensionPopup {
           color: #71717a;
           line-height: 1.6;
         ">
-          Go to <strong style="color:#a1a1aa;">FailureAtlas → Settings → API Access</strong>
+          Go to <strong style="color:#a1a1aa;">Praxis → Settings → API Access</strong>
           to copy your Extension API Key, then paste it below.
         </div>
 

@@ -339,7 +339,7 @@ function RoadmapTabInner() {
               Generate Your Roadmap
             </h3>
             <p style={{ fontSize: 13, color: '#71717a', lineHeight: 1.6, marginBottom: 24 }}>
-              FailureAtlas will analyze your failure history, root causes, and weaknesses to generate a personalized <strong style={{ color: '#a1a1aa' }}>{topicLabel}</strong> roadmap — powered by Groq.
+              Praxis will analyze your practice history, learning insights, and growth areas to generate a personalized <strong style={{ color: '#a1a1aa' }}>{topicLabel}</strong> roadmap — powered by Groq.
             </p>
             <button
               className="generate-btn"
@@ -348,7 +348,7 @@ function RoadmapTabInner() {
               style={{ margin: '0 auto', display: 'flex' }}
             >
               {isGenerating ? (
-                <><Loader2 size={14} className="spin-icon" /> Analyzing failures...</>
+                <><Loader2 size={14} className="spin-icon" /> Analyzing sessions...</>
               ) : (
                 <><Sparkles size={14} /> Generate {topicLabel} Roadmap</>
               )}

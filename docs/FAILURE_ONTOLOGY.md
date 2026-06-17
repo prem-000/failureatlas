@@ -1,8 +1,8 @@
-# FailureAtlas Failure Ontology
+# Praxis Practice Trackingtology
 
 ## Overview
 
-The FailureAtlas ontology provides a structured taxonomy for classifying and analyzing competitive programming failures. This six-level hierarchy transforms raw submission failures into typed, traversable knowledge that enables precise learning interventions.
+The Praxis ontology provides a structured taxonomy for classifying and analyzing competitive programming failures. This six-level hierarchy transforms raw submission failures into typed, traversable knowledge that enables precise learning interventions.
 
 ## Six-Level Ontology Design
 
@@ -24,7 +24,7 @@ Level 6: LearningStrategy
 
 ### Level 1: Problem
 **Definition**: The specific competitive programming challenge being attempted.
-**Purpose**: Provides context for failure analysis and enables problem-specific pattern recognition.
+**Purpose**: Provides context for Practice Analysis and enables problem-specific pattern recognition.
 **Examples**: "Two Sum", "Binary Search", "Merge Intervals"
 
 ### Level 2: FailureEvent
@@ -54,7 +54,7 @@ Level 6: LearningStrategy
 **Purpose**: Identifies systemic deficiencies that require broader learning interventions.
 
 ### Level 6: LearningStrategy
-**Definition**: Specific, actionable learning interventions designed to address identified weaknesses.
+**Definition**: Specific, actionable learning interventions designed to address identified Growth Opportunities.
 **Purpose**: Translates analysis into concrete practice plans and learning recommendations.
 
 ## Root Cause Taxonomy

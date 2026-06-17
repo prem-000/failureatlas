@@ -119,17 +119,17 @@ export function WorkspaceTab() {
     const topFailure = failures?.[0];
     if (!top) return;
     const title = `AI Note: ${top.name}`;
-    const content = `## Most Frequent Weakness
+    const content = `## Most Frequent Growth Area
 **${top.name}**
 PageRank: ${top.pageRankScore.toFixed(3)} · Occurrences: ${top.frequency}
 
 ## Description
 ${top.description}
 
-## Most Recent Failure
-${topFailure ? `**${topFailure.problemTitle}** (${topFailure.difficulty}) — ${topFailure.status}` : 'No recent failures'}
+## Most Recent Session
+${topFailure ? `**${topFailure.problemTitle}** (${topFailure.difficulty}) — ${topFailure.status}` : 'No recent sessions'}
 
-## Root Cause
+## Learning Insight
 ${topFailure?.rootCause || 'Unknown'}
 
 ## Recommended Action
@@ -189,7 +189,7 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
         {[
           { id: 'notes' as WorkspaceSection, label: 'AI Notes', icon: FileText },
           { id: 'cheatsheets' as WorkspaceSection, label: 'Cheat Sheets', icon: BookOpen },
-          { id: 'journal' as WorkspaceSection, label: 'Mistake Journal', icon: Clock },
+          { id: 'journal' as WorkspaceSection, label: 'Practice Journal', icon: Clock },
           { id: 'bookmarks' as WorkspaceSection, label: 'Bookmarks', icon: Bookmark },
         ].map(({ id, label, icon: Icon }) => (
           <button
@@ -267,10 +267,10 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
                   <input className="input-field" placeholder="Note title..." value={noteTitle} onChange={e => setNoteTitle(e.target.value)} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 9, padding: '9px 12px', color: '#e4e4e7', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
                   <select className="input-field" value={noteTag} onChange={e => setNoteTag(e.target.value)} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 9, padding: '9px 12px', color: '#e4e4e7', fontSize: '12px', outline: 'none', fontFamily: 'inherit' }}>
                     <option value="general">general</option>
-                    <option value="weakness">weakness</option>
+                    <option value="growth-area">growth area</option>
                     <option value="problem">problem</option>
                     <option value="revision">revision</option>
-                    <option value="mistake">mistake</option>
+                    <option value="insight">insight</option>
                   </select>
                   <textarea className="input-field" placeholder="Write your note..." value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={10} />
                   <button className="save-btn" onClick={saveNote}>Save Note</button>
@@ -295,7 +295,7 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <Loader2 size={32} style={{ color: '#ff5f52', animation: 'spin 1s linear infinite', marginBottom: 16 }} />
               <div style={{ color: '#d4d4d8', fontSize: 16, fontWeight: 700 }}>Generating Cheat Sheet</div>
-              <div style={{ color: '#71717a', fontSize: 12, marginTop: 8 }}>Tailoring insights to your weaknesses...</div>
+              <div style={{ color: '#71717a', fontSize: 12, marginTop: 8 }}>Tailoring insights to your growth areas...</div>
             </div>
           ) : sheet ? (
             <div className="ws-content custom-scrollbar">
@@ -348,10 +348,10 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
       {/* ── MISTAKE JOURNAL ────────────────────────────────────────────────── */}
       {section === 'journal' && (
         <div className="ws-content custom-scrollbar">
-          <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#f4f4f5', marginBottom: 4 }}>Mistake Journal</h2>
-          <p style={{ fontSize: '12px', color: '#71717a', marginBottom: 20 }}>Auto-generated from your failure history.</p>
+          <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#f4f4f5', marginBottom: 4 }}>Practice Journal</h2>
+          <p style={{ fontSize: '12px', color: '#71717a', marginBottom: 20 }}>Auto-generated from your practice history.</p>
           {journalEntries.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#52525b', fontSize: 13, marginTop: 40 }}>No failure history yet. Submit some solutions first.</div>
+            <div style={{ textAlign: 'center', color: '#52525b', fontSize: 13, marginTop: 40 }}>No practice history yet. Submit some solutions first.</div>
           ) : (
             <div>
               {journalEntries.map((e, i) => (

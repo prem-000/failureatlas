@@ -172,13 +172,13 @@ export function WeaknessDrawer({ node, nodes, edges, failures, onClose }: Weakne
               </div>
               {failureNodes.length > 0 && (
                 <div style={{ marginTop: 10, fontSize: '11px', color: '#71717a' }}>
-                  <strong style={{ color: '#f97316' }}>{failureNodes.length}</strong> failure event{failureNodes.length !== 1 ? 's' : ''} recorded
+                  <strong style={{ color: '#f97316' }}>{failureNodes.length}</strong> practice session{failureNodes.length !== 1 ? 's' : ''} recorded
                 </div>
               )}
             </Section>
           )}
 
-          {/* Recent Failure Examples */}
+          {/* Recent Session Examples */}
           {relatedFailures.length > 0 && (
             <Section title="Recent Examples" icon={<Clock size={13} style={{ color: '#f97316' }} />}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -259,7 +259,7 @@ export function WeaknessDrawer({ node, nodes, edges, failures, onClose }: Weakne
           {rootCauses.length === 0 && evidenceList.length === 0 && problemNodes.length === 0 && strategies.length === 0 && (
             <div style={{ padding: 24, textAlign: 'center', color: '#52525b', fontSize: 13 }}>
               <div style={{ fontSize: 32, marginBottom: 10 }}>🔍</div>
-              <p>No connected story nodes found for this node. Submit more failed solutions to build the intelligence graph.</p>
+              <p>No connected story nodes found for this node. Submit more practice sessions to build the learning map.</p>
             </div>
           )}
         </div>

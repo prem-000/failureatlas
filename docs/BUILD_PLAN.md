@@ -1,12 +1,12 @@
-# FailureAtlas — Complete Build Plan
+# Praxis — Complete Build Plan
 
 ## What this file is
 
-A complete, phase-by-phase construction guide for the FailureAtlas system. Each phase lists exactly what to build, the exact AI prompt to use to build it, what files get created, and how to verify it works. Follow phases in order — each one depends on the last.
+A complete, phase-by-phase construction guide for the Praxis system. Each phase lists exactly what to build, the exact AI prompt to use to build it, what files get created, and how to verify it works. Follow phases in order — each one depends on the last.
 
 ## System Overview (Read Before Building)
 
-FailureAtlas is an AI-powered competitive programming failure intelligence platform. It has 4 major parts:
+Praxis is an AI-powered competitive programming Learning Intelligence platform. It has 4 major parts:
 
 | Part | What it is | Tech |
 |------|-----------|------|
@@ -60,7 +60,7 @@ Dark mode: MANDATORY — no light mode toggle
 
 **Exact prompt to use**:
 ```
-Build the complete Next.js 15 project configuration for FailureAtlas.
+Build the complete Next.js 15 project configuration for Praxis.
 
 Create these files:
 
@@ -117,7 +117,7 @@ Use TypeScript strict mode throughout.
 
 **Exact prompt**:
 ```
-Create src/types/index.ts for FailureAtlas with these exact TypeScript interfaces and types:
+Create src/types/index.ts for Praxis with these exact TypeScript interfaces and types:
 
 // Submission types
 SubmissionStatus = "Accepted" | "Wrong Answer" | "Time Limit Exceeded" | 
@@ -180,7 +180,7 @@ interface GraphFilters {
 
 // Diagnosis types
 interface DiagnosisResult {
-  diagnosisId, generatedAt, primaryWeakness: SystemicWeakness, 
+  diagnosisId, generatedAt, Growth Opportunities: SystemicWeakness, 
   secondaryWeaknesses, learningRecommendations: LearningRecommendation[], 
   progressMetrics
 }
@@ -296,7 +296,7 @@ Before moving to Phase 2, verify ALL of these work:
 ### Components to Build:
 
 1. **Myers Diff Implementation** (`src/lib/analysis/myers-diff.ts`)
-2. **Structural Code Pattern Analysis** (`src/lib/analysis/ast-diff.ts`)
+2. **Structural Code Practice Analysis** (`src/lib/analysis/ast-diff.ts`)
 3. **Behavioral Signal Parser** (`src/lib/analysis/behavioral.ts`)
 4. **Bayesian Root Cause Classifier** (`src/lib/inference/bayesian.ts`)
 5. **Graph Operations** (`src/lib/graph/operations.ts`)

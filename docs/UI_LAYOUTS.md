@@ -1,12 +1,12 @@
-# FailureAtlas Frontend UI & Layout Specification
+# Praxis Frontend UI & Layout Specification
 
 ## Overview
 
-FailureAtlas is a high-fidelity diagnostic platform that moves beyond *what failed* to decode *why it failed*. By leveraging Knowledge Graph inference and RAG-driven analysis, it pinpoints systemic weaknesses in software engineering patterns, specifically optimized for high-scale environments and algorithmic performance.
+Praxis is a high-fidelity diagnostic platform that moves beyond *what failed* to decode *why it failed*. By leveraging Knowledge Graph inference and RAG-driven analysis, it pinpoints systemic weaknesses in software engineering patterns, specifically optimized for high-scale environments and algorithmic performance.
 
 ## 🚀 Vision
 
-Engineered for entropy, FailureAtlas decodes systemic complexity using knowledge-graph inference to pinpoint the exact root cause of high-scale engineering failures. It transforms raw failure logs into actionable intelligence through:
+Engineered for entropy, Praxis decodes systemic complexity using knowledge-graph inference to pinpoint the exact root cause of high-scale engineering failures. It transforms raw failure logs into actionable intelligence through:
 
 - **Root Cause Inference**: AI-driven probabilistic modeling that separates symptoms from genuine systemic triggers
 - **Knowledge Graph Visualization**: A living, evolving map of the entire dependency architecture  
@@ -23,7 +23,7 @@ Engineered for entropy, FailureAtlas decodes systemic complexity using knowledge
 - **Typography**: Geist Sans font family
 - **Icons**: Heroicons and Lucide React
 
-## 🎨 Design System: "Failure Intelligence System"
+## 🎨 Design System: "Learning Intelligence System"
 
 The UI is built on a custom design system optimized for high-density information and technical legibility.
 
@@ -115,7 +115,7 @@ The UI is built on a custom design system optimized for high-density information
 ```
 ## 📐 Layout Architecture
 
-FailureAtlas utilizes specialized layout patterns to manage complex diagnostic data:
+Praxis utilizes specialized layout patterns to manage complex diagnostic data:
 
 ### Split-Pane RAG Interface
 The Diagnosis page uses a vertically stacked split-pane (60/40) allowing the user to maintain context of the AI conversation while reviewing retrieved evidence cards.
@@ -128,10 +128,10 @@ The Graph Explorer implements a full-bleed React Flow viewport, prioritizing spa
 
 ## ✨ Motion & Interactivity
 
-Movement in FailureAtlas is functional, designed to guide the engineer's focus during high-stakes diagnostics:
+Movement in Praxis is functional, designed to guide the engineer's focus during high-stakes diagnostics:
 
 ### Root Cause Pulse
-Root cause nodes (Amber) and critical alerts feature a subtle 2s ease-in-out box-shadow pulse in Brand Coral to draw immediate attention to the inferred failure trigger.
+Root cause nodes (Amber) and critical alerts feature a subtle 2s ease-in-out box-shadow pulse in Brand Coral to draw immediate attention to the inferred Practice Trackingger.
 
 ```css
 @keyframes root-cause-pulse {
@@ -191,7 +191,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
       )}
       <div className="flex items-center space-x-2">
         <Logo className="w-8 h-8" />
-        <span className="text-xl font-semibold">FailureAtlas</span>
+        <span className="text-xl font-semibold">Praxis</span>
         {title && (
           <>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -218,19 +218,19 @@ const HeroSection: React.FC = () => (
     <div className="max-w-5xl mx-auto">
       <div className="mb-6 inline-flex items-center space-x-2 px-4 py-2 bg-surface surface-elevated rounded-full">
         <Zap className="w-4 h-4 text-primary" />
-        <span className="text-caption font-medium">AI-Powered Failure Intelligence</span>
+        <span className="text-caption font-medium">AI-Powered Learning Intelligence</span>
       </div>
       
       <h1 className="text-6xl font-bold mb-6 leading-tight">
         Most platforms answer{" "}
         <span className="text-muted-foreground">what happened.</span>
         <br />
-        FailureAtlas answers{" "}
+        Praxis answers{" "}
         <span className="text-primary">why did it fail.</span>
       </h1>
       
       <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed">
-        Engineered for entropy, FailureAtlas decodes systemic complexity using 
+        Engineered for entropy, Praxis decodes systemic complexity using 
         knowledge-graph inference to pinpoint the exact root cause of high-scale 
         engineering failures.
       </p>
@@ -404,7 +404,7 @@ const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
         <Logo className="w-8 h-8 flex-shrink-0" />
         {isOpen && (
           <div>
-            <span className="font-semibold text-lg">FailureAtlas</span>
+            <span className="font-semibold text-lg">Praxis</span>
             <p className="text-caption text-muted-foreground">Intelligence System</p>
           </div>
         )}
@@ -456,7 +456,7 @@ const CriticalWeaknessCard: React.FC<CriticalWeaknessCardProps> = ({
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-2">
         <AlertTriangle className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold">Critical Weaknesses</h3>
+        <h3 className="text-lg font-semibold">Growth Opportunities</h3>
       </div>
       <Button variant="ghost" size="sm" className="text-caption">
         View Logic Map
@@ -526,7 +526,7 @@ const RecentFailuresFeed: React.FC<RecentFailuresFeedProps> = ({
   <div className="data-card">
     <div className="flex items-center space-x-2 mb-4">
       <ExclamationTriangleIcon className="w-5 h-5 text-failure" />
-      <h3 className="text-lg font-semibold">Recent Failure Events</h3>
+      <h3 className="text-lg font-semibold">Recent Practice Sessions</h3>
       <span className="text-caption text-muted-foreground">(Last 7 Days)</span>
     </div>
     
@@ -2076,7 +2076,7 @@ const customNodeTypes = {
 ## 🧬 Component Hierarchy Tree
 
 ```
-FailureAtlas Intelligence System
+Praxis Intelligence System
 ├── Landing Page (/) - High-Impact Value Proposition
 │   └── TopAppBar (Minimal Navigation)
 │   └── HeroSection
@@ -2432,7 +2432,7 @@ const trapFocus = (element: HTMLElement) => {
 };
 ```
 
-This comprehensive UI specification provides the complete frontend architecture for FailureAtlas, covering all pages, components, interactions, and states needed to build the AI-powered failure intelligence platform.
+This comprehensive UI specification provides the complete frontend architecture for Praxis, covering all pages, components, interactions, and states needed to build the AI-powered failure intelligence platform.
 
 ## 🎭 Enhanced Loading, Empty, and Error States
 
@@ -2591,4 +2591,4 @@ const KnowledgeGraphLoadingState: React.FC = () => (
 - **Documentation**: Storybook for component library
 - **Performance**: Core Web Vitals monitoring and optimization
 
-This enhanced FailureAtlas UI specification represents a sophisticated diagnostic intelligence system that transforms complex failure analysis into intuitive, actionable insights through advanced data visualization, intelligent interactions, and systematic design principles.
+This enhanced Praxis UI specification represents a sophisticated diagnostic intelligence system that transforms complex failure analysis into intuitive, actionable insights through advanced data visualization, intelligent interactions, and systematic design principles.

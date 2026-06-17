@@ -1,8 +1,8 @@
-# Contributing to FailureAtlas
+# Contributing to Praxis
 
 ## Overview
 
-We welcome contributions to FailureAtlas! This guide outlines our development workflow, coding standards, and contribution process. Whether you're fixing bugs, adding features, or improving documentation, this guide will help you contribute effectively.
+We welcome contributions to Praxis! This guide outlines our development workflow, coding standards, and contribution process. Whether you're fixing bugs, adding features, or improving documentation, this guide will help you contribute effectively.
 
 ## Development Workflow
 
@@ -278,7 +278,7 @@ const processData = (data: SubmissionEvent) => { /* ... */ };  // Good
 
 ## Monorepo Package Structure
 
-FailureAtlas uses a monorepo structure with pnpm workspaces. Understanding this structure is crucial for effective contributions.
+Praxis uses a monorepo structure with pnpm workspaces. Understanding this structure is crucial for effective contributions.
 
 ### Current Package Structure
 ```
@@ -484,11 +484,11 @@ describe('/api/submissions integration', () => {
 });
 ```
 
-## Failure Ontology Management
+## Learning Intelligencey Management
 
 ### Adding New Root Cause Types
 
-To add a new root cause to the failure ontology:
+To add a new root cause to the learning ontology:
 
 #### 1. Update Ontology Schema
 ```typescript
@@ -573,7 +573,7 @@ CREATE (r:RootCause {
   detectionSignals: ["memory_limit_exceeded", "segmentation_fault"]
 });
 
--- Link to appropriate weakness
+-- Link to Growth Opportunities
 MATCH (r:RootCause {causeId: "memory-management-error"})
 MATCH (w:Weakness {weaknessId: "resource-management"})
 CREATE (r)-[:INDICATES {strength: 0.85}]->(w);
@@ -830,4 +830,4 @@ export async function inferRootCause(
 }
 ```
 
-Thank you for contributing to FailureAtlas! Following these guidelines helps maintain code quality and enables effective collaboration across the development team.
+Thank you for contributing to Praxis! Following these guidelines helps maintain code quality and enables effective collaboration across the development team.

@@ -131,10 +131,10 @@ export default function RegisterPage() {
               margin: '0 auto 16px', boxShadow: '0 8px 32px rgba(255,95,82,0.3)',
             }}>F</div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
-              Create your account
+              Join Praxis
             </h1>
             <p style={{ fontSize: 13, color: '#6b7280', marginTop: 6 }}>
-              Start tracking your coding failures intelligently
+              Create your account and start practicing smarter
             </p>
           </div>
 

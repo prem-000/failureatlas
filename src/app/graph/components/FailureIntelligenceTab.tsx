@@ -37,12 +37,12 @@ type FilterType = 'all' | 'Weakness' | 'RootCause' | 'Evidence' | 'FailureEvent'
 
 const FILTER_OPTIONS: { id: FilterType; label: string; color: string }[] = [
   { id: 'all',              label: 'All',              color: '#71717a' },
-  { id: 'Weakness',         label: 'Weaknesses',       color: '#a855f7' },
-  { id: 'RootCause',        label: 'Root Causes',      color: '#f59e0b' },
+  { id: 'Weakness',         label: 'Growth Areas',     color: '#a855f7' },
+  { id: 'RootCause',        label: 'Learning Insights',color: '#f59e0b' },
   { id: 'Evidence',         label: 'Evidence',         color: '#71717a' },
-  { id: 'FailureEvent',     label: 'Failures',         color: '#f97316' },
+  { id: 'FailureEvent',     label: 'Sessions',         color: '#f97316' },
   { id: 'Problem',          label: 'Problems',         color: '#3b82f6' },
-  { id: 'LearningStrategy', label: 'Strategies',       color: '#22c55e' },
+  { id: 'LearningStrategy', label: 'Improvement Plans',color: '#22c55e' },
 ];
 
 function buildGraph(
@@ -161,15 +161,15 @@ function FailureIntelligenceInner() {
       }}>
         <BrainCircuit size={16} style={{ color: '#a855f7' }} />
         <div>
-          <span style={{ fontSize: '13px', fontWeight: 800, color: '#d8b4fe' }}>Failure Intelligence</span>
+          <span style={{ fontSize: '13px', fontWeight: 800, color: '#d8b4fe' }}>Learning Intelligence</span>
           <span style={{ fontSize: '11px', color: '#71717a', marginLeft: 10 }}>
-            Your failure story — Problem → Failure → Evidence → Root Cause → Weakness → Strategy
+            Your learning story — Problem → Practice Session → Evidence → Learning Insight → Growth Area → Improvement Plan
           </span>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 14 }}>
           {[
-            { label: 'Weaknesses', value: stats.weaknesses, color: '#a855f7' },
-            { label: 'Failures', value: stats.failures, color: '#f97316' },
+            { label: 'Growth Areas', value: stats.weaknesses, color: '#a855f7' },
+            { label: 'Sessions', value: stats.failures, color: '#f97316' },
             { label: 'Problems', value: stats.problems, color: '#3b82f6' },
           ].map(s => (
             <div key={s.label} className="fi-stat">
@@ -221,14 +221,14 @@ function FailureIntelligenceInner() {
       {isLoading ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14 }}>
           <Loader2 size={26} style={{ color: '#a855f7', animation: 'spin 0.8s linear infinite' }} />
-          <span style={{ color: '#71717a', fontSize: 13 }}>Loading failure graph...</span>
+          <span style={{ color: '#71717a', fontSize: 13 }}>Loading learning map...</span>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       ) : nodes.length === 0 ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14 }}>
           <div style={{ fontSize: 40 }}>🔭</div>
           <span style={{ color: '#a1a1aa', fontSize: 15, fontWeight: 700 }}>No graph data</span>
-          <span style={{ color: '#52525b', fontSize: 12 }}>Submit some failed solutions to build your failure graph.</span>
+          <span style={{ color: '#52525b', fontSize: 12 }}>Submit some practice sessions to build your learning map.</span>
         </div>
       ) : (
         <div style={{ flex: 1, position: 'relative' }}>

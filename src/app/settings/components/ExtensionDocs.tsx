@@ -12,7 +12,7 @@ const SECTIONS = [
   { id: 'overview', title: 'Overview' },
   { id: 'download', title: 'Download Extension' },
   { id: 'install', title: 'Install Extension' },
-  { id: 'connect', title: 'Connect to FailureAtlas' },
+  { id: 'connect', title: 'Connect to Praxis' },
   { id: 'verify', title: 'Verify Installation' },
   { id: 'troubleshooting', title: 'Troubleshooting' },
   { id: 'faq', title: 'FAQ' },
@@ -201,9 +201,9 @@ export function ExtensionDocs() {
     
     // Simple content matching
     const contentMap: Record<string, string> = {
-      'overview': 'FailureAtlas Extension captures LeetCode submissions attempt history failure patterns evidence collection learning path updates metadata',
+      'overview': 'Praxis Extension captures LeetCode submissions attempt history practice patterns evidence collection learning path updates metadata',
       'download': 'Download Extension ZIP Current Version Manifest V3 Chrome Compatible',
-      'install': 'chrome://extensions Developer Mode Load Unpacked pin FailureAtlas extension',
+      'install': 'chrome://extensions Developer Mode Load Unpacked pin Praxis extension',
       'connect': 'API Access Copy Extension API Key Connect',
       'verify': 'Verify Installation leetcode.com Submission received Diagnosis generation available',
       'troubleshooting': 'NOT AUTH API key missing detecting syncing invalid Permission',
@@ -299,15 +299,15 @@ export function ExtensionDocs() {
         
         <DocSection id="overview" title="Overview" hidden={!hasMatches('overview')}>
           <p style={{ fontSize: 16, color: '#a1a1aa', lineHeight: 1.6, margin: 0 }}>
-            The FailureAtlas Chrome Extension acts as a bridge between your browser and your FailureAtlas account. It monitors your coding sessions and securely syncs your submissions.
+            The Praxis Chrome Extension acts as a bridge between your browser and your Praxis account. It monitors your coding sessions and securely syncs your submissions.
           </p>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginTop: 12 }}>
             {[
               { icon: <Code size={20} color="#3b82f6" />, title: 'Automatic Capture', desc: 'Captures LeetCode submissions and attempt history automatically.' },
-              { icon: <ShieldAlert size={20} color="#ef4444" />, title: 'Failure Intelligence', desc: 'Extracts exact compile errors, test cases, and logic flaws.' },
+              { icon: <ShieldAlert size={20} color="#ef4444" />, title: 'Learning Intelligence', desc: 'Extracts exact compile errors, test cases, and logic flaws.' },
               { icon: <LayoutGrid size={20} color="#a855f7" />, title: 'Graph Synchronization', desc: 'Updates your personalized knowledge graph in real-time.' },
-              { icon: <Terminal size={20} color="#10b981" />, title: 'Personalized Diagnosis', desc: 'Prepares data for AI-driven root cause analysis.' }
+              { icon: <Terminal size={20} color="#10b981" />, title: 'Personalized Diagnosis', desc: 'Prepares data for AI-driven learning insight analysis.' }
             ].map((f, i) => (
               <div key={i} style={{ background: '#111111', border: '1px solid #1f1f1f', borderRadius: 12, padding: 20 }}>
                 <div style={{ marginBottom: 12 }}>{f.icon}</div>
@@ -323,9 +323,9 @@ export function ExtensionDocs() {
             <div style={{ width: 64, height: 64, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
               <Download size={28} color="#f4f4f5" />
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#f4f4f5', marginBottom: 8 }}>FailureAtlas Extension</h3>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#f4f4f5', marginBottom: 8 }}>Praxis Extension</h3>
             <p style={{ fontSize: 14, color: '#a1a1aa', marginBottom: 24, maxWidth: 300 }}>
-              Download the latest FailureAtlas Extension package to get started.
+              Download the latest Praxis Extension package to get started.
             </p>
             <a 
               href="/extension/failureatlas-extension-v1.0.0.zip" 
@@ -416,7 +416,7 @@ export function ExtensionDocs() {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <h4 style={{ fontSize: 18, fontWeight: 600, color: '#f4f4f5', marginBottom: 6 }}>Pin the Extension</h4>
-                  <p style={{ fontSize: 14, color: '#a1a1aa', margin: 0 }}>Click the puzzle icon in your browser toolbar and pin the FailureAtlas extension for easy access.</p>
+                  <p style={{ fontSize: 14, color: '#a1a1aa', margin: 0 }}>Click the puzzle icon in your browser toolbar and pin the Praxis extension for easy access.</p>
                 </div>
 
                 <button onClick={() => toggleProgress('pinned')} style={{ alignSelf: 'flex-start', background: progress.pinned ? '#052e16' : '#1a1a1a', border: `1px solid ${progress.pinned ? '#16a34a' : '#2a2a2a'}`, color: progress.pinned ? '#4ade80' : '#a1a1aa', padding: '8px 16px', borderRadius: 8, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -428,8 +428,8 @@ export function ExtensionDocs() {
           </div>
         </DocSection>
 
-        <DocSection id="connect" title="Connect to FailureAtlas" hidden={!hasMatches('connect')}>
-          <p style={{ fontSize: 15, color: '#a1a1aa', marginBottom: 24 }}>Link the extension to your FailureAtlas account using your API key.</p>
+        <DocSection id="connect" title="Connect to Praxis" hidden={!hasMatches('connect')}>
+          <p style={{ fontSize: 15, color: '#a1a1aa', marginBottom: 24 }}>Link the extension to your Praxis account using your API key.</p>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div style={{ background: '#111111', border: '1px solid #1f1f1f', borderRadius: 12, padding: 20 }}>
@@ -444,7 +444,7 @@ export function ExtensionDocs() {
               <h4 style={{ fontSize: 16, fontWeight: 600, color: '#f4f4f5', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Puzzle size={18} color="#3b82f6" /> 2. Connect Extension
               </h4>
-              <p style={{ fontSize: 14, color: '#a1a1aa', marginBottom: 16 }}>Click the FailureAtlas icon in your browser toolbar, paste your API key, and click Connect.</p>
+              <p style={{ fontSize: 14, color: '#a1a1aa', marginBottom: 16 }}>Click the Praxis icon in your browser toolbar, paste your API key, and click Connect.</p>
 
             </div>
 
@@ -468,11 +468,11 @@ export function ExtensionDocs() {
             <div style={{ padding: '12px 24px' }}>
               {[
                 'Visit leetcode.com and open any problem.',
-                'Open the FailureAtlas extension popup.',
+                'Open the Praxis extension popup.',
                 'Verify the status says "Connected" and "Monitoring active".',
                 'Submit code on LeetCode (even if it fails).',
                 'Confirm the extension shows "Submission received".',
-                'Check your FailureAtlas dashboard for the new submission.'
+                'Check your Praxis dashboard for the new submission.'
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: i === 5 ? 'none' : '1px solid #1a1a1a' }}>
                   <div style={{ color: '#3b82f6', marginTop: 2 }}><Circle size={16} /></div>
@@ -502,8 +502,8 @@ export function ExtensionDocs() {
             </Accordion>
 
             <Accordion title="Submission not syncing">
-              <p><strong>Cause:</strong> The FailureAtlas backend might be unavailable or network issues occurred.</p>
-              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Check if you can access the FailureAtlas dashboard. If the server is up, try reloading the extension in chrome://extensions.</p>
+              <p><strong>Cause:</strong> The Praxis backend might be unavailable or network issues occurred.</p>
+              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Check if you can access the Praxis dashboard. If the server is up, try reloading the extension in chrome://extensions.</p>
             </Accordion>
 
             <Accordion title="API key invalid">
@@ -521,10 +521,10 @@ export function ExtensionDocs() {
         <DocSection id="faq" title="FAQ" hidden={!hasMatches('faq')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <Accordion title="Is my code stored securely?">
-              Yes. We only store the data strictly required for failure analysis (e.g., compile errors, your code snippet, and the problem ID). Credentials and session cookies are never accessed.
+              Yes. We only store the data strictly required for learning analysis (e.g., compile errors, your code snippet, and the problem ID). Credentials and session cookies are never accessed.
             </Accordion>
             <Accordion title="Does it work on LeetCode contests?">
-              Yes, the extension is fully compatible with LeetCode contests and will track your failures in real-time.
+              Yes, the extension is fully compatible with LeetCode contests and will track your practice sessions in real-time.
             </Accordion>
             <Accordion title="Can I disable tracking temporarily?">
               Yes. You can click the extension icon and click "Disconnect" to pause tracking at any time, or toggle it off in chrome://extensions.
@@ -558,7 +558,7 @@ export function ExtensionDocs() {
               <Shield size={18} color="#4ade80" /> Data Privacy Guarantee
             </h4>
             <ul style={{ margin: 0, paddingLeft: 20, color: '#a1a1aa', fontSize: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <li>All communication with FailureAtlas is encrypted via HTTPS.</li>
+              <li>All communication with Praxis is encrypted via HTTPS.</li>
               <li>We never collect passwords, cookies, or session tokens.</li>
               <li>Your API key is only used for authentication and is sent securely in headers.</li>
               <li>Only submissions made to LeetCode are tracked. No other browsing history is accessed.</li>
@@ -589,7 +589,7 @@ export function ExtensionDocs() {
             </div>
             <div style={{ padding: '20px', background: '#111111' }}>
               <ul style={{ margin: 0, paddingLeft: 20, color: '#a1a1aa', fontSize: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <li>Initial release of the FailureAtlas Extension.</li>
+                <li>Initial release of the Praxis Extension.</li>
                 <li>Support for LeetCode submission tracking.</li>
                 <li>Secure API Key authentication.</li>
                 <li>Manifest V3 compliance.</li>

@@ -1,8 +1,8 @@
-# FailureAtlas Core Algorithms
+# Praxis Core Algorithms
 
 ## Overview
 
-FailureAtlas employs a sophisticated algorithmic pipeline that combines classical computer science algorithms with modern machine learning techniques to extract meaningful patterns from coding failure data.
+Praxis employs a sophisticated algorithmic pipeline that combines classical computer science algorithms with modern machine learning techniques to extract meaningful patterns from coding failure data.
 
 ## 1. Myers Diff Algorithm for Code Evolution
 
@@ -453,13 +453,13 @@ def build_structured_prompt(
     weakness_scores: Dict[str, float]
 ) -> str:
     """
-    Structured reasoning prompt for failure analysis
+    Structured reasoning prompt for practice analysis
     """
     
     template = """
 You are analyzing a competitive programming failure to identify learning opportunities.
 
-## Current Failure Context
+## Current Practice Session
 Problem: {problem_name} ({difficulty})
 Topics: {topics}
 Submission Status: {status}
@@ -479,7 +479,7 @@ Please reason through this step by step:
 
 2. **Root Cause Validation**: Based on the evidence, how confident are you that "{predicted_root_cause}" is the actual root cause? Consider alternative explanations.
 
-3. **Weakness Prioritization**: Which of the identified weaknesses should be addressed first based on:
+3. **Weakness Prioritization**: Which of the Growth Opportunities should be addressed first based on:
    - Frequency of occurrence  
    - Impact on problem-solving ability
    - Likelihood of improvement with targeted practice
@@ -552,4 +552,4 @@ The algorithms work together in a carefully orchestrated pipeline:
 4. **k-NN + Graph** → Hybrid retrieval for comprehensive context
 5. **Structured Reasoning + Evidence** → Structured reasoning over retrieved information
 
-This algorithmic synergy enables FailureAtlas to transform raw coding failures into actionable learning intelligence.
+This algorithmic synergy enables Praxis to transform raw coding failures into actionable Learning Intelligence.

@@ -4,6 +4,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
+import {
+  BookOpen,
+  Target,
+  TrendingUp,
+  BrainCircuit,
+} from "lucide-react";
 
 interface UserData {
   id: string;
@@ -136,30 +142,30 @@ export default function DashboardPage() {
     {
       label: 'Total Submissions',
       value: stats?.totalSubmissions ?? 0,
-      icon: '📤',
-      color: '#ff5f52',
-      bg: 'rgba(255,95,82,0.08)',
+      icon: <BookOpen className="h-8 w-8" />,
+      color: '#60a5fa',
+      iconClass: 'bg-blue-500/10 text-blue-400',
     },
     {
       label: 'Accepted',
       value: stats?.acceptedSubmissions ?? 0,
-      icon: '✅',
-      color: '#22c55e',
-      bg: 'rgba(34,197,94,0.08)',
+      icon: <Target className="h-8 w-8" />,
+      color: '#4ade80',
+      iconClass: 'bg-green-500/10 text-green-400',
     },
     {
       label: 'Acceptance Rate',
       value: `${stats?.acceptanceRate ?? 0}%`,
-      icon: '📈',
-      color: '#a78bfa',
-      bg: 'rgba(167,139,250,0.08)',
+      icon: <TrendingUp className="h-8 w-8" />,
+      color: '#c084fc',
+      iconClass: 'bg-purple-500/10 text-purple-400',
     },
     {
-      label: 'Major Weaknesses',
+      label: 'Growth Areas',
       value: stats?.weaknesses ?? 0,
-      icon: '⚠️',
-      color: '#f59e0b',
-      bg: 'rgba(245,158,11,0.08)',
+      icon: <BrainCircuit className="h-8 w-8" />,
+      color: '#fbbf24',
+      iconClass: 'bg-amber-500/10 text-amber-400',
     },
   ];
 
@@ -245,7 +251,7 @@ export default function DashboardPage() {
               {statCards.map((card, i) => (
                 <div
                   key={card.label}
-                  className="stat-card"
+                  className="stat-card group"
                   style={{
                     background: '#191919',
                     border: '1px solid rgba(255,255,255,0.06)',
@@ -274,12 +280,7 @@ export default function DashboardPage() {
                         </p>
                       )}
                     </div>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 10,
-                      background: card.bg,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 18,
-                    }}>
+                    <div className={`h-14 w-14 rounded-xl flex items-center justify-center group-hover:scale-110 transition-all duration-300 ${card.iconClass}`}>
                       {card.icon}
                     </div>
                   </div>
@@ -318,7 +319,7 @@ export default function DashboardPage() {
               ) : recentSubmissions.length === 0 ? (
                 <div style={{ padding: '60px 24px', textAlign: 'center' }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-                  <p style={{ color: '#6b7280', fontSize: 14 }}>No submissions yet.</p>
+                  <p style={{ color: '#6b7280', fontSize: 14 }}>No practice sessions yet.</p>
                   <p style={{ color: '#4b5563', fontSize: 12, marginTop: 4 }}>
                     Install the Chrome extension and start solving problems!
                   </p>

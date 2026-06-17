@@ -447,7 +447,7 @@ export default function SettingsPage() {
               <SectionCard title="Extension API Key" accent="#f59e0b">
                 <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div style={{ fontSize: 13, color: '#a1a1aa', lineHeight: 1.6 }}>
-                    Use this key to authenticate the FailureAtlas Chrome Extension with your account.
+                    Use this key to authenticate the Praxis Chrome Extension with your account.
                     Keep it secret — it has full access to submit data on your behalf.
                   </div>
 
@@ -474,7 +474,7 @@ export default function SettingsPage() {
                     { method: 'POST', path: '/api/submissions',        desc: 'Submit a new problem attempt for analysis' },
                     { method: 'GET',  path: '/api/submissions',        desc: 'List all your submissions with pagination' },
                     { method: 'GET',  path: '/api/submissions/:id',    desc: 'Fetch full detail for one submission' },
-                    { method: 'GET',  path: '/api/graph/subgraph',     desc: 'Get your failure knowledge graph' },
+                    { method: 'GET',  path: '/api/graph/subgraph',     desc: 'Get your learning knowledge graph' },
                     { method: 'GET',  path: '/api/graph/weaknesses',   desc: 'Get ranked systemic weaknesses' },
                     { method: 'POST', path: '/api/diagnosis/generate', desc: 'Generate AI diagnosis for a submission' },
                     { method: 'GET',  path: '/api/user/profile',       desc: 'Fetch your profile and aggregated stats' },

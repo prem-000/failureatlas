@@ -1,8 +1,8 @@
-# FailureAtlas Chrome Extension
+# Praxis Chrome Extension
 
 ## Overview
 
-The FailureAtlas Chrome Extension is the data collection frontend that passively monitors LeetCode submissions and feeds failure data into the FailureAtlas analysis pipeline. Built with Manifest V3, it provides seamless, non-intrusive capture of coding session data.
+The Praxis Chrome Extension is the data collection frontend that passively monitors LeetCode submissions and feeds failure data into the Praxis analysis pipeline. Built with Manifest V3, it provides seamless, non-intrusive capture of coding session data.
 
 ## Manifest V3 Architecture
 
@@ -11,9 +11,9 @@ The FailureAtlas Chrome Extension is the data collection frontend that passively
 ```json
 {
   "manifest_version": 3,
-  "name": "FailureAtlas",
+  "name": "Praxis",
   "version": "1.0.0",
-  "description": "FailureAtlas Chrome Extension — LeetCode submission capture",
+  "description": "Praxis Chrome Extension — LeetCode submission capture",
 
   "permissions": [
     "storage",
@@ -44,7 +44,7 @@ The FailureAtlas Chrome Extension is the data collection frontend that passively
 
   "action": {
     "default_popup": "popup.html",
-    "default_title": "FailureAtlas"
+    "default_title": "Praxis"
   },
 
   "icons": {
@@ -65,7 +65,7 @@ The FailureAtlas Chrome Extension is the data collection frontend that passively
 ### Core Permissions
 
 #### `storage`
-**Purpose**: Store user authentication tokens, session data, and cached failure events locally
+**Purpose**: Store user authentication tokens, session data, and cached Practice Sessions locally
 **Scope**: Limited to extension-specific data
 **Data Stored**:
 - JWT authentication token
@@ -107,8 +107,8 @@ The FailureAtlas Chrome Extension is the data collection frontend that passively
 - Submission results and timing
 - Code content and evolution
 
-#### `https://api.failureatlas.dev/*`
-**Purpose**: Send collected data to FailureAtlas backend API
+#### `https://api.praxis.dev/*`
+**Purpose**: Send collected data to Praxis backend API
 **Justification**: Extension must communicate with backend for analysis
 **Data Transmitted**:
 - Anonymized submission events
@@ -123,7 +123,7 @@ The extension activates only on specific LeetCode URL patterns to minimize resou
 
 ```javascript
 // content.js - Selective activation logic
-class FailureAtlasCollector {
+class PraxisCollector {
   constructor() {
     this.isActive = false;
     this.sessionId = null;
@@ -154,7 +154,7 @@ class FailureAtlasCollector {
     this.setupEventListeners();
     this.extractProblemMetadata();
     
-    console.log('[FailureAtlas] Activated for problem:', this.currentProblem?.slug);
+    console.log('[Praxis] Activated for problem:', this.currentProblem?.slug);
   }
 }
 ```
@@ -230,7 +230,7 @@ interface SubmissionEvent {
 }
 ```
 
-### Code Evolution Tracking
+### Code Practice Tracking
 
 Tracks code changes between attempts to enable diff analysis:
 
@@ -353,10 +353,10 @@ class DataTransmitter {
       });
       
       if (response.success) {
-        console.log('[FailureAtlas] Event transmitted successfully');
+        console.log('[Praxis] Event transmitted successfully');
       }
     } catch (error) {
-      console.error('[FailureAtlas] Transmission failed:', error);
+      console.error('[Praxis] Transmission failed:', error);
       this.queueForRetry(eventData);
     }
   }
@@ -377,9 +377,9 @@ class DataTransmitter {
 
 ```javascript
 // background.js - Handle API communication
-class FailureAtlasAPI {
+class PraxisAPI {
   constructor() {
-    this.baseURL = 'https://api.failureatlas.dev';
+    this.baseURL = 'https://api.praxis.dev';
     this.authToken = null;
     
     this.setupMessageListeners();
@@ -417,7 +417,7 @@ class FailureAtlasAPI {
         throw new Error(`HTTP ${response.status}`);
       }
     } catch (error) {
-      console.error('[FailureAtlas] API error:', error);
+      console.error('[Praxis] API error:', error);
       sendResponse({ success: false, error: error.message });
     }
   }
@@ -478,18 +478,18 @@ class PrivacyManager {
    ```
    
    - Click "Load unpacked" in Chrome Extensions page
-   - Select the `failureatlas/apps/extension/dist` folder
-   - Extension will appear in toolbar with FailureAtlas icon
+   - Select the `praxis/apps/extension/dist` folder
+   - Extension will appear in toolbar with Praxis icon
 
 3. **Configure Authentication**:
-   - Click the FailureAtlas extension icon
-   - Enter your FailureAtlas account credentials
+   - Click the Praxis extension icon
+   - Enter your Praxis account credentials
    - Extension will authenticate and begin monitoring
 
 4. **Verify Installation**:
    - Navigate to any LeetCode problem
    - Open Chrome DevTools Console
-   - Look for `[FailureAtlas] Activated for problem: [problem-slug]`
+   - Look for `[Praxis] Activated for problem: [problem-slug]`
 
 ### Production Distribution Preparation
 
@@ -499,7 +499,7 @@ class PrivacyManager {
 npm run build          # Production build (minified, no source maps)
 npm run package        # Creates distributable .zip
 
-# Generates: failureatlas-extension-v1.0.0.zip
+# Generates: praxis-extension-v1.0.0.zip
 ```
 
 #### Chrome Web Store Submission
@@ -617,7 +617,7 @@ class ErrorManager {
       ...additionalData
     };
     
-    console.error('[FailureAtlas Error]', errorReport);
+    console.error('[Praxis Error]', errorReport);
     
     // Send to backend for analysis (non-blocking)
     this.reportError(errorReport).catch(() => {
@@ -627,7 +627,7 @@ class ErrorManager {
   
   static async reportError(errorReport) {
     try {
-      await fetch('https://api.failureatlas.dev/api/errors', {
+      await fetch('https://api.praxis.dev/api/errors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(errorReport)
@@ -643,24 +643,24 @@ class ErrorManager {
 ```javascript
 class DebugMode {
   constructor() {
-    this.enabled = localStorage.getItem('failureatlas_debug') === 'true';
+    this.enabled = localStorage.getItem('praxis_debug') === 'true';
   }
   
   log(...args) {
     if (this.enabled) {
-      console.log('[FailureAtlas Debug]', ...args);
+      console.log('[Praxis Debug]', ...args);
     }
   }
   
   enable() {
     this.enabled = true;
-    localStorage.setItem('failureatlas_debug', 'true');
-    console.log('[FailureAtlas] Debug mode enabled');
+    localStorage.setItem('praxis_debug', 'true');
+    console.log('[Praxis] Debug mode enabled');
   }
   
   disable() {
     this.enabled = false;
-    localStorage.removeItem('failureatlas_debug');
+    localStorage.removeItem('praxis_debug');
   }
 }
 ```
@@ -668,7 +668,7 @@ class DebugMode {
 ## Privacy and Compliance
 
 ### Data Minimization
-- Only collect data necessary for failure analysis
+- Only collect data necessary for Practice Analysis
 - Automatic deletion of data older than 12 months
 - No collection of personal information or identifiers
 
@@ -682,4 +682,4 @@ class DebugMode {
 - Right to deletion with account termination
 - Transparent data usage in privacy policy
 
-The FailureAtlas Chrome Extension provides seamless, privacy-conscious data collection that enables the powerful failure intelligence analysis while maintaining user trust and compliance with privacy regulations.
+The Praxis Chrome Extension provides seamless, privacy-conscious data collection that enables the powerful Learning Intelligence analysis while maintaining user trust and compliance with privacy regulations.

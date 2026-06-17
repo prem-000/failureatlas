@@ -200,7 +200,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
         {/* Brand Logo */}
         <Link
           href="/dashboard"
-          title="FailureAtlas"
+          title="Praxis"
           style={{
             width: 40,
             height: 40,

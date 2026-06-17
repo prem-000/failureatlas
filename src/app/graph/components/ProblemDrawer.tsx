@@ -154,7 +154,7 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
               {[
                 { label: 'Attempts', value: problem.userAttempts || 0, color: problem.userAttempts ? '#f97316' : '#3f3f46' },
                 { label: 'Status', value: problem.nodeState, color: problem.nodeState === 'solved' || problem.nodeState === 'previously_solved' ? '#22c55e' : problem.nodeState === 'failed' ? '#ef4444' : '#71717a' },
-                { label: 'Failures', value: failures.length, color: failures.length > 0 ? '#ef4444' : '#3f3f46' },
+                { label: 'Sessions', value: failures.length, color: failures.length > 0 ? '#ef4444' : '#3f3f46' },
               ].map(s => (
                 <div key={s.label} style={{ flex: 1, background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px 12px', border: '1px solid rgba(255,255,255,0.04)' }}>
                   <div style={{ fontSize: '9px', color: '#52525b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{s.label}</div>
@@ -209,7 +209,7 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
           {/* Root Causes */}
           {uniqueRootCauses.length > 0 && (
             <div className="drawer-section">
-              <div className="drawer-section-title">Root Causes</div>
+              <div className="drawer-section-title">Learning Insights</div>
               {uniqueRootCauses.slice(0, 4).map((rc, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < uniqueRootCauses.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
                   <AlertTriangle size={11} style={{ color: '#f59e0b', flexShrink: 0 }} />

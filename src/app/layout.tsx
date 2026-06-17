@@ -13,12 +13,12 @@ export const viewport: Viewport = {
 // ✅ Remove viewport/themeColor from metadata
 export const metadata: Metadata = {
   title: {
-    default: 'FailureAtlas',
-    template: '%s | FailureAtlas',
+    default: 'Praxis | Practice. Reflect. Improve.',
+    template: '%s | Praxis',
   },
-  description: 'AI-powered competitive programming failure intelligence platform',
-  keywords: ['competitive programming', 'leetcode', 'codeforces', 'algorithm', 'debugging', 'AI'],
-  authors: [{ name: 'FailureAtlas' }],
+  description: 'AI-powered competitive programming practice and growth intelligence platform',
+  keywords: ['competitive programming', 'leetcode', 'codeforces', 'algorithm', 'debugging', 'AI', 'practice'],
+  authors: [{ name: 'Praxis' }],
   // ❌ Remove: viewport: 'width=device-width, initial-scale=1',
   // ❌ Remove: themeColor: '#131313',
 };
