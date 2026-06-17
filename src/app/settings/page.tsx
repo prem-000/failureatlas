@@ -201,28 +201,45 @@ function ProfileEditor({ user }: { user: UserProfile }) {
 
   return (
     <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <label style={{ fontSize: 11, color: '#71717a', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-          Display Name
-        </label>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Your name"
-          style={{ width: '100%', background: '#111111', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 14px', color: '#f4f4f5', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-        />
+      
+      {/* Profile Photo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+        {user.image ? (
+          <img src={user.image} alt="Profile" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }} />
+        ) : (
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ff5f52', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: '#fff' }}>
+            {(user.name || user.email || '?')[0].toUpperCase()}
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#f4f4f5' }}>Profile Photo</div>
+          <div style={{ fontSize: 11, color: '#71717a' }}>Managed by your authentication provider</div>
+        </div>
       </div>
-      <div>
-        <label style={{ fontSize: 11, color: '#71717a', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-          Username
-        </label>
-        <input
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-          placeholder="@username"
-          style={{ width: '100%', background: '#111111', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 14px', color: '#f4f4f5', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
-        />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div>
+          <label style={{ fontSize: 11, color: '#71717a', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+            Display Name
+          </label>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            disabled={user.provider === 'google'}
+            placeholder="Your name"
+            style={{ width: '100%', background: user.provider === 'google' ? '#0a0a0a' : '#111111', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 14px', color: user.provider === 'google' ? '#52525b' : '#f4f4f5', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, color: '#71717a', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+            Authentication Provider
+          </label>
+          <div style={{ width: '100%', background: '#0a0a0a', border: '1px solid #1a1a1a', borderRadius: 8, padding: '10px 14px', color: '#52525b', fontSize: 13, boxSizing: 'border-box', textTransform: 'capitalize' }}>
+            {user.provider || 'Email/Password'}
+          </div>
+        </div>
       </div>
+
       <div>
         <label style={{ fontSize: 11, color: '#71717a', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
           Email
@@ -327,14 +344,22 @@ export default function SettingsPage() {
 
           {/* User Avatar Row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-            <div style={{
-              width: 52, height: 52, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #ff5f52, #a855f7)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 22, fontWeight: 700, color: '#fff', flexShrink: 0,
-            }}>
-              {(user.name || user.email || '?')[0].toUpperCase()}
-            </div>
+            {user.image ? (
+              <img 
+                src={user.image} 
+                alt={user.name || 'User avatar'} 
+                style={{ width: 52, height: 52, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }} 
+              />
+            ) : (
+              <div style={{
+                width: 52, height: 52, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #ff5f52, #a855f7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 22, fontWeight: 700, color: '#fff', flexShrink: 0,
+              }}>
+                {(user.name || user.email || '?')[0].toUpperCase()}
+              </div>
+            )}
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#f4f4f5' }}>{user.name || 'Anonymous'}</div>
               <div style={{ fontSize: 12, color: '#52525b' }}>{user.email}</div>
@@ -467,6 +492,30 @@ export default function SettingsPage() {
                 </div>
               </SectionCard>
 
+              <SectionCard title="Extension Status" accent="#22c55e">
+                <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 12, height: 12, borderRadius: '50%',
+                      background: stats.lastSubmissionAt ? '#22c55e' : '#71717a',
+                      boxShadow: stats.lastSubmissionAt ? '0 0 10px #22c55e' : 'none'
+                    }} />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#e5e7eb' }}>
+                        {stats.lastSubmissionAt ? 'Connected' : 'Not Connected'}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#a1a1aa' }}>
+                        {stats.lastSubmissionAt 
+                          ? `Last Submission: ${new Date(stats.lastSubmissionAt).toLocaleString()}` 
+                          : 'No submissions yet'}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#52525b' }}>
+                    Status is determined by recent submissions
+                  </div>
+                </div>
+              </SectionCard>
 
               <SectionCard title="API Reference" accent="#52525b">
                 <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 10 }}>

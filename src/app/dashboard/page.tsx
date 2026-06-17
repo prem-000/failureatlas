@@ -15,6 +15,7 @@ interface UserData {
   id: string;
   name: string;
   email: string;
+  image?: string | null;
   createdAt?: string;
 }
 
@@ -222,14 +223,18 @@ export default function DashboardPage() {
                 border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: 10, padding: '6px 12px',
               }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #ff5f52, #ff8a80)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, color: '#fff',
-                }}>
-                  {getInitials(user.name || user.email)}
-                </div>
+                {user.image ? (
+                  <img src={user.image} alt={user.name || 'User'} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #ff5f52, #ff8a80)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700, color: '#fff',
+                  }}>
+                    {getInitials(user.name || user.email)}
+                  </div>
+                )}
                 <div>
                   <p style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>
                     {user.name || 'User'}

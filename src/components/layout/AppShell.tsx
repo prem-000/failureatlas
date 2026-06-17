@@ -12,7 +12,7 @@ interface AppShellProps {
 
 export function AppShell({ children, fullscreen = false, hideSidebar = false }: AppShellProps) {
   const router = useRouter();
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; image?: string | null } | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');

@@ -10,10 +10,13 @@ export interface ProfileData {
     email: string;
     name: string | null;
     username: string | null;
+    image?: string | null;
     createdAt: string;
     apiKey: string | null;
+    provider?: string | null;
   };
   stats: {
+    lastSubmissionAt: string | null;
     totalSubmissions: number;
     acceptedSubmissions: number;
     acceptanceRate: number;

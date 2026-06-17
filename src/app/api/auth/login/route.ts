@@ -44,7 +44,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       );
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
+    const validPassword = user.password ? await bcrypt.compare(password, user.password) : false;
     if (!validPassword) {
       return NextResponse.json(
         {

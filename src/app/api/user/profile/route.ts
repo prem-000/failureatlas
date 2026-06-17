@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
         name: true,
         createdAt: true,
         apiKey: true,
+        provider: true,
+        image: true,
       },
     });
 
@@ -101,6 +103,13 @@ export async function GET(request: NextRequest) {
       orderBy: { timestamp: 'asc' },
     });
 
+    const lastSubmission = await prisma.submissionEvent.findFirst({
+      where: { userId },
+      orderBy: { timestamp: 'desc' },
+      select: { timestamp: true },
+    });
+    const lastSubmissionAt = lastSubmission?.timestamp.toISOString() || null;
+
     const activityMap: Record<string, number> = {};
     for (const sub of recentSubmissions) {
       const dateKey = sub.timestamp.toISOString().split('T')[0];
@@ -145,10 +154,13 @@ export async function GET(request: NextRequest) {
           id: user.id,
           email: user.email,
           name: user.name,
+          image: user.image,
+          provider: user.provider,
           createdAt: user.createdAt.toISOString(),
           apiKey,
         },
         stats: {
+          lastSubmissionAt,
           totalSubmissions,
           acceptedSubmissions,
           acceptanceRate: parseFloat(acceptanceRate.toFixed(1)),

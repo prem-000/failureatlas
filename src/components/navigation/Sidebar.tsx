@@ -21,7 +21,7 @@ const NAV_ITEMS = [
 ];
 
 interface SidebarProps {
-  user?: { name?: string | null; email: string };
+  user?: { name?: string | null; email: string; image?: string | null };
   onSignOut?: () => void;
 }
 
@@ -267,7 +267,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
               width: 36,
               height: 36,
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #27272a 0%, #09090b 100%)',
+              background: user?.image ? `url(${user.image}) center/cover` : 'linear-gradient(135deg, #27272a 0%, #09090b 100%)',
               border: '1px solid rgba(255,255,255,0.1)',
               boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
               display: 'flex',
@@ -280,7 +280,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
               flexShrink: 0,
             }}
           >
-            {initial}
+            {!user?.image && initial}
           </div>
         </div>
       </aside>

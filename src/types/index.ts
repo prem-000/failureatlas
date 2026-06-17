@@ -156,7 +156,7 @@ export interface PracticeProblem {
 export interface User {
   id: string;
   email: string;
-  name: string;
+  name: string | null;
   createdAt: Date;
 }
 
