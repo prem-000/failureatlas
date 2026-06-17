@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="60">
+  <style>
+    .marquee {
+      animation: scroll 30s linear infinite;
+    }
+    @keyframes scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-4750px); }
+    }
+    text {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+  </style>
+  <rect width="100%" height="100%" fill="transparent" />
+  
+  <!-- Group that animates -->
+  <g class="marquee">
+    
+    <g transform="translate(0, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Next.js</text>
+    </g>
+  
+    <g transform="translate(250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">React</text>
+    </g>
+  
+    <g transform="translate(500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">TypeScript</text>
+    </g>
+  
+    <g transform="translate(750, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Tailwind CSS</text>
+    </g>
+  
+    <g transform="translate(1000, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/framermotion/framermotion-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Framer Motion</text>
+    </g>
+  
+    <g transform="translate(1250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Next.js API Routes</text>
+    </g>
+  
+    <g transform="translate(1500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/prisma/prisma-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Prisma</text>
+    </g>
+  
+    <g transform="translate(1750, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">PostgreSQL</text>
+    </g>
+  
+    <g transform="translate(2000, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Groq</text>
+    </g>
+  
+    <g transform="translate(2250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/meta/meta-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Llama 3</text>
+    </g>
+  
+    <g transform="translate(2500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">RAG</text>
+    </g>
+  
+    <g transform="translate(2750, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/numpy/numpy-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Embeddings</text>
+    </g>
+  
+    <g transform="translate(3000, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/chrome/chrome-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Chrome Extension</text>
+    </g>
+  
+    <g transform="translate(3250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vercel/vercel-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Vercel</text>
+    </g>
+  
+    <g transform="translate(3500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/github/github-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">GitHub</text>
+    </g>
+  
+    <g transform="translate(3750, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jupyter/jupyter-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Bayesian Inference</text>
+    </g>
+  
+    <g transform="translate(4000, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Myers Diff</text>
+    </g>
+  
+    <g transform="translate(4250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">PageRank</text>
+    </g>
+  
+    <g transform="translate(4500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/neo4j/neo4j-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Graph Intelligence</text>
+    </g>
+  
+    <!-- Duplicate for seamless scroll -->
+    <g transform="translate(4750, 0)">
+      
+    <g transform="translate(0, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Next.js</text>
+    </g>
+  
+    <g transform="translate(250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">React</text>
+    </g>
+  
+    <g transform="translate(500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">TypeScript</text>
+    </g>
+  
+    <g transform="translate(750, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Tailwind CSS</text>
+    </g>
+  
+    <g transform="translate(1000, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/framermotion/framermotion-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Framer Motion</text>
+    </g>
+  
+    <g transform="translate(1250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Next.js API Routes</text>
+    </g>
+  
+    <g transform="translate(1500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/prisma/prisma-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Prisma</text>
+    </g>
+  
+    <g transform="translate(1750, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">PostgreSQL</text>
+    </g>
+  
+    <g transform="translate(2000, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Groq</text>
+    </g>
+  
+    <g transform="translate(2250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/meta/meta-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Llama 3</text>
+    </g>
+  
+    <g transform="translate(2500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">RAG</text>
+    </g>
+  
+    <g transform="translate(2750, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/numpy/numpy-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Embeddings</text>
+    </g>
+  
+    <g transform="translate(3000, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/chrome/chrome-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Chrome Extension</text>
+    </g>
+  
+    <g transform="translate(3250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vercel/vercel-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Vercel</text>
+    </g>
+  
+    <g transform="translate(3500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/github/github-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">GitHub</text>
+    </g>
+  
+    <g transform="translate(3750, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/jupyter/jupyter-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Bayesian Inference</text>
+    </g>
+  
+    <g transform="translate(4000, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Myers Diff</text>
+    </g>
+  
+    <g transform="translate(4250, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">PageRank</text>
+    </g>
+  
+    <g transform="translate(4500, 10)">
+      <rect width="230" height="40" rx="8" fill="#111111" stroke="#ffffff" stroke-opacity="0.1" />
+      <image href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/neo4j/neo4j-original.svg" x="15" y="10" width="20" height="20" />
+      <text x="45" y="25" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" alignment-baseline="middle">Graph Intelligence</text>
+    </g>
+  
+    </g>
+  </g>
+  
+  <!-- Gradient overlays for smooth fade (Optional, might look weird depending on background) -->
+</svg>

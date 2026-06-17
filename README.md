@@ -29,15 +29,13 @@
   </a>
 </p>
 
+<h3 align="center">Built With Modern Engineering Tools</h3>
 <p align="center">
-  <img src="https://img.shields.io/badge/Next.js-15.0-000000?style=flat-square&logo=nextdotjs&logoColor=white"/>
-  <img src="https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&logo=react&logoColor=black"/>
-  <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white"/>
-  <img src="https://img.shields.io/badge/TailwindCSS-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Groq-LLaMA3-FF4444?style=flat-square&logo=meta&logoColor=white"/>
-  <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Prisma-5.7-2D3748?style=flat-square&logo=prisma&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Chrome-Extension-4285F4?style=flat-square&logo=googlechrome&logoColor=white"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./public/tech-marquee.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./public/tech-marquee.svg">
+    <img alt="Tech Stack" src="./public/tech-marquee.svg">
+  </picture>
 </p>
 
 ---

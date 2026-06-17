@@ -57,7 +57,6 @@ function TypewriterEffect() {
 }
 
 import { Menu, X } from 'lucide-react';
-import { TechMarquee } from '@/components/hero/TechMarquee';
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -151,8 +150,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-
-      <TechMarquee />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-10 sm:pb-16">
         {/* ─── Philosophy Section ────────────────────────────────────── */}
