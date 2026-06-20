@@ -1,11 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useSubmissionsList } from '@/hooks/usePhase3Queries';
 import { apiFetch } from '@/lib/api/client';
 import { useQueries } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { BehaviorInsightPanel } from '@/components/intelligence/BehaviorInsightPanel';
+import { SuccessInsightPanel } from '@/components/intelligence/SuccessInsightPanel';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface SubmissionDetail {
@@ -75,6 +78,11 @@ const EVIDENCE_TYPE_COLORS: Record<string, string> = {
   behavioral: '#f59e0b',
   test_failure: '#ef4444',
 };
+
+// Weakness ID → display name mapping
+function weaknessName(id: string): string {
+  return id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 function DiffViewer({ ops }: { ops: DiffOp[] }) {
@@ -211,6 +219,17 @@ export default function ProblemDetailPage() {
   const params = useParams();
   const slug = params?.id as string;
 
+  // Behavior insight drawer state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerWeaknessId, setDrawerWeaknessId] = useState('');
+  const [drawerWeaknessName, setDrawerWeaknessName] = useState('');
+
+  const openDrawer = (weaknessId: string, name: string) => {
+    setDrawerWeaknessId(weaknessId);
+    setDrawerWeaknessName(name);
+    setDrawerOpen(true);
+  };
+
   const { data: submissions = [], isLoading: listLoading, error: listError } = useSubmissionsList({
     limit: 50,
     problemSlug: slug,
@@ -274,6 +293,10 @@ export default function ProblemDetailPage() {
   }
   const topHypotheses = Array.from(hypothesisMap.values()).sort((a, b) => b.confidence - a.confidence).slice(0, 6);
 
+  // Determine if the latest submission is accepted
+  const isLatestAccepted = latest.submission.status === 'Accepted';
+  const latestEventId = latest.submission.eventId;
+
   return (
     <AppShell>
     <div style={{ width: '100%', minHeight: '100vh', background: '#131313' }}>
@@ -294,6 +317,15 @@ export default function ProblemDetailPage() {
               }}>
                 {problem.difficulty}
               </span>
+              {/* Accepted badge */}
+              {isLatestAccepted && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6,
+                  color: '#22c55e', background: '#052e16', border: '1px solid #166534',
+                }}>
+                  ✓ Accepted
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {(problem.topics || []).map(t => (
@@ -319,13 +351,22 @@ export default function ProblemDetailPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, padding: '24px 32px', alignItems: 'start' }}>
         {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* ── SUCCESS INTELLIGENCE (Accepted submissions) ── */}
+          {isLatestAccepted && (
+            <SuccessInsightPanel
+              submissionId={latestEventId}
+              problemTitle={problem.title}
+            />
+          )}
+
           {/* Attempt Timeline */}
           <SectionCard title="Attempt Timeline" accent="#3b82f6">
             <AttemptTimeline submissions={allData} />
           </SectionCard>
 
-          {/* Evidences */}
-          {allEvidences.length > 0 && (
+          {/* Evidences (only show for failed submissions) */}
+          {!isLatestAccepted && allEvidences.length > 0 && (
             <SectionCard title="Evidence Collected" accent="#f59e0b">
               <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {allEvidences.slice(0, 8).map(ev => (
@@ -352,26 +393,53 @@ export default function ProblemDetailPage() {
 
         {/* Right column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Learning Insight Breakdown */}
-          {topHypotheses.length > 0 && (
-            <SectionCard title="Learning Insight Analysis" accent="#ff5f52">
-              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Learning Insight Breakdown — clickable hypotheses open behavior drawer */}
+          {topHypotheses.length > 0 && !isLatestAccepted && (
+            <SectionCard title="Root Cause Analysis" accent="#ff5f52">
+              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Helper hint */}
+                <div style={{
+                  fontSize: 10, color: '#52525b', background: '#1a1a1a',
+                  border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', marginBottom: 2,
+                }}>
+                  💡 Click any root cause to open Behavior Intelligence
+                </div>
+
                 {topHypotheses.map(h => (
-                  <div key={h.id}>
+                  <button
+                    key={h.id}
+                    onClick={() => openDrawer(h.rootCauseType, h.name)}
+                    style={{
+                      width: '100%', textAlign: 'left', background: '#141414',
+                      border: '1px solid #1f1f1f', borderRadius: 8, padding: '10px 12px',
+                      cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = '#ff5f5260';
+                      (e.currentTarget as HTMLElement).style.background = '#1f1212';
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = '#1f1f1f';
+                      (e.currentTarget as HTMLElement).style.background = '#141414';
+                    }}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                       <span style={{ fontSize: 12, color: '#e4e4e7', fontWeight: 500 }}>{h.name}</span>
-                      <span style={{ fontSize: 11, color: '#71717a' }}>{Math.round(h.confidence * 100)}%</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, color: '#71717a' }}>{Math.round(h.confidence * 100)}%</span>
+                        <span style={{ fontSize: 10, color: '#ff5f5280' }}>→</span>
+                      </div>
                     </div>
                     <ConfidenceBar value={h.confidence} color="#ff5f52" />
-                    <div style={{ fontSize: 10, color: '#52525b', marginTop: 3 }}>{h.rootCauseType}</div>
-                  </div>
+                    <div style={{ fontSize: 10, color: '#52525b', marginTop: 4 }}>{h.rootCauseType}</div>
+                  </button>
                 ))}
               </div>
             </SectionCard>
           )}
 
           {/* Primary Growth Area */}
-          {latestDiagnosis?.primaryWeakness && (
+          {latestDiagnosis?.primaryWeakness && !isLatestAccepted && (
             <SectionCard title="Primary Growth Area" accent="#a855f7">
               <div style={{ padding: '16px 20px' }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#d8b4fe', marginBottom: 6 }}>
@@ -383,12 +451,30 @@ export default function ProblemDetailPage() {
                   </span>
                 </div>
                 <ConfidenceBar value={latestDiagnosis.primaryWeakness.confidence} color="#a855f7" />
+
+                {/* Quick action: open behavior drawer for primary weakness */}
+                <button
+                  onClick={() => openDrawer(
+                    latestDiagnosis!.primaryWeakness!.type || latestDiagnosis!.primaryWeakness!.name,
+                    latestDiagnosis!.primaryWeakness!.name
+                  )}
+                  style={{
+                    marginTop: 12, width: '100%', padding: '8px 0',
+                    background: '#a855f720', border: '1px solid #a855f740',
+                    borderRadius: 7, color: '#d8b4fe', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#a855f730')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '#a855f720')}
+                >
+                  🧠 View Behavior Analysis →
+                </button>
               </div>
             </SectionCard>
           )}
 
           {/* Practice Recommendations */}
-          {latestDiagnosis?.recommendations && latestDiagnosis.recommendations.length > 0 && (
+          {latestDiagnosis?.recommendations && latestDiagnosis.recommendations.length > 0 && !isLatestAccepted && (
             <SectionCard title="Targeted Practice" accent="#22c55e">
               <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {latestDiagnosis.recommendations.map(r => r.strategy && (
@@ -420,6 +506,14 @@ export default function ProblemDetailPage() {
         </div>
       </div>
     </div>
+
+    {/* Behavior Insight Drawer — rendered outside grid to overlay correctly */}
+    <BehaviorInsightPanel
+      weaknessId={drawerWeaknessId}
+      weaknessName={drawerWeaknessName}
+      isOpen={drawerOpen}
+      onClose={() => setDrawerOpen(false)}
+    />
     </AppShell>
   );
 }

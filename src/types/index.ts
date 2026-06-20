@@ -199,3 +199,104 @@ export interface SidebarState {
   isOpen: boolean;
   activeItemPath: string | null;
 }
+
+// ─── Behavior + Success Intelligence Types ────────────────────────────────────
+
+export type ImpactLevel = 'High' | 'Medium' | 'Low';
+export type SuccessLevel = 1 | 2 | 3 | 4;
+
+export interface HistoricalFailure {
+  problemTitle: string;
+  problemSlug: string;
+  status: string;
+  rootCauseType: string;
+  rootCauseName: string;
+  timestamp: string;
+}
+
+export interface LearningStep {
+  step: number;
+  action: string;
+  targetEdgeCase?: string;
+}
+
+export interface BehaviorInsight {
+  weaknessId: string;
+  weaknessName: string;
+  confidence: number;            // 0-1, from weighted Bayesian score
+  evidence: string[];            // what triggered this classification
+  behavioralPatterns: string[];  // observed patterns in plain language
+  historicalFailures: HistoricalFailure[];
+  recentFailureRate: number;     // 0-1, from last 50/90d window
+  historicalFailureRate: number; // 0-1, all-time
+  weightedScore: number;         // 0.7*recent + 0.3*historical
+  rootBehaviorCause: string;     // concise behavioral diagnosis
+  learningPrescription: LearningStep[];
+  estimatedImpact: ImpactLevel;  // High/Medium/Low — never a percentage
+}
+
+export interface EdgeCaseItem {
+  input: string;          // e.g. "[]", "[1]", "max constraint"
+  whyImportant: string;   // why this matters for this problem type
+  status: 'Covered' | 'At Risk';
+  confidence: number;     // 0-1, derived from code structure heuristics
+  reason: string;         // e.g. "Loop condition safely handles n=1"
+}
+
+export interface OptimizationItem {
+  current: string;
+  alternative: string;
+  benefit: string;
+  estimatedImpact: ImpactLevel;
+}
+
+export interface PatternIntelligence {
+  pattern: string;
+  patternSlug: string;
+  relatedPatterns: string[];
+  masteryCount: number;      // problems solved with this pattern
+  masteryTarget: number;
+  nextRecommendation: string;
+}
+
+export interface FutureRisk {
+  risk: string;
+  reason: string;
+  severity: ImpactLevel;
+}
+
+export interface CodeQuality {
+  strengths: string[];
+  improvements: string[];
+  overallScore: number;  // 0-1 heuristic score
+}
+
+export interface MLFeatures {
+  pattern_detected: string;
+  time_complexity: string;
+  space_complexity: string;
+  edge_case_score: number;
+  code_quality_score: number;
+  optimization_score: number;
+  success_level: number;
+}
+
+export interface SuccessInsight {
+  successLevel: SuccessLevel;            // L1-L4
+  successLevelLabel: string;             // 'Accepted' | 'Accepted + Optimal' | 'Pattern Mastery' | 'Transferable Skill'
+  patternDetected: string;
+  patternSlug: string;
+  patternConfidence: number;             // 0-1, from detection heuristic
+  timeComplexity: string;
+  spaceComplexity: string;
+  complexityConfidence: number;          // 0-1
+  algorithmicInsight: string;            // Groq-generated explanation (or rule-based fallback)
+  reasonForSuccess: string;              // Groq-generated explanation
+  strength: string;
+  coveredEdgeCases: EdgeCaseItem[];
+  optimizationReview: OptimizationItem[];
+  patternIntelligence: PatternIntelligence;
+  futureRisks: FutureRisk[];
+  codeQuality: CodeQuality;
+  mlFeatures: MLFeatures;                // stored in progressMetrics for training data
+}

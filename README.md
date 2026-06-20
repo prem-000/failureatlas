@@ -52,6 +52,23 @@
 - ⚡ **Improvement Plans** — Context-aware recommendations with LLM-generated explanations
 - 📈 **Knowledge Graph** — Visual React Flow graph of your weakness relationships and dependencies
 
+### 🔌 What Data the Extension Captures
+
+When you submit code on LeetCode, the extension automatically captures:
+- **Problem Details**: Title, slug, difficulty, URL, and topics/tags.
+- **Submission Status**: Accepted, Wrong Answer, Time Limit Exceeded, Memory Limit Exceeded, Runtime Error, or Compilation Error.
+- **Code & Language**: Your submitted code and the programming language used.
+- **Performance Metrics**: Runtime and memory usage, test cases passed, total test cases, and failed test case details.
+- **Session Data**: Time spent solving, attempt number, and whether it was a rapid submission.
+- **Code Evolution**: Differences (additions/deletions) tracking how your code changed over time before submission.
+
+#### How It Works (The Mechanism)
+The extension uses a lightweight content script injected into LeetCode to gather this data:
+1. **DOM MutationObserver**: Watches the submission result area for changes (e.g., when the "Pending" state changes to "Accepted" or "Wrong Answer").
+2. **Submit Button Listener**: Detects when you click "Submit", triggering an immediate code cache update.
+3. **Code Extraction**: Continuously caches your code every 2 seconds (using the Monaco Editor API or DOM parsing as a fallback) to ensure the exact code is captured before the page re-renders.
+4. **Regex Scraping**: Extracts runtime, memory, and test case data directly from the result text rendered on the page.
+
 ---
 
 ## 🛠 Tech Stack
