@@ -299,6 +299,21 @@ export default function ProblemDetailPage() {
 
   return (
     <AppShell>
+    <style>{`
+      .problem-grid {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 24px;
+        padding: 24px 32px;
+        align-items: start;
+      }
+      @media (max-width: 991px) {
+        .problem-grid {
+          grid-template-columns: 1fr !important;
+          padding: 16px 20px !important;
+        }
+      }
+    `}</style>
     <div style={{ width: '100%', minHeight: '100vh', background: '#131313' }}>
       {/* Header */}
       <div style={{ padding: '20px 32px', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>
@@ -348,7 +363,7 @@ export default function ProblemDetailPage() {
       </div>
 
       {/* Body — 2 columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, padding: '24px 32px', alignItems: 'start' }}>
+      <div className="problem-grid">
         {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 

@@ -217,7 +217,7 @@ function ProfileEditor({ user }: { user: UserProfile }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="settings-grid">
         <div>
           <label style={{ fontSize: 11, color: '#71717a', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
             Display Name
@@ -470,6 +470,18 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
+      <style>{`
+        .settings-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        @media (max-width: 640px) {
+          .settings-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
       <div style={{ width: '100%', minHeight: '100vh', background: '#131313' }}>
 
         {/* Header */}
