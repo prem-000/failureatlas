@@ -22,6 +22,8 @@ model User {
   learningPlans LearningPlan[]
   submissions   SubmissionEvent[]
   roadmapStates RoadmapState[]
+  preferences   UserPreferences?
+  dailyMissions DailyMission[]
 
   @@map("users")
 }
@@ -277,4 +279,32 @@ model RoadmapState {
   @@unique([userId, topic])
   @@index([userId])
   @@map("roadmap_states")
+}
+
+model UserPreferences {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  dailyMissionEmail  Boolean  @default(true)
+  preferredTime      String   @default("08:00")
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model DailyMission {
+  id                    String   @id @default(cuid())
+  userId                String
+  primaryProblemSlug    String
+  secondaryProblemSlug  String?
+  failureRisk           Float
+  successProbability    Float
+  aiHint                String
+  learningGain          Json
+  missionDate           DateTime
+  completed             Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("daily_missions")
 }

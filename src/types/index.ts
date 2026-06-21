@@ -235,12 +235,52 @@ export interface BehaviorInsight {
   estimatedImpact: ImpactLevel;  // High/Medium/Low — never a percentage
 }
 
-export interface EdgeCaseItem {
-  input: string;          // e.g. "[]", "[1]", "max constraint"
-  whyImportant: string;   // why this matters for this problem type
-  status: 'Covered' | 'At Risk';
-  confidence: number;     // 0-1, derived from code structure heuristics
-  reason: string;         // e.g. "Loop condition safely handles n=1"
+export interface AdversarialTestCase {
+  input: string;
+  expectedOutput: string;
+  purpose: string;
+  failureMode: string;
+  whyPassed?: string;
+  confidence: number;
+  riskScore: number;
+  noveltyScore?: number;
+  coverageScore?: number;
+  
+  // Tab-specific details
+  buggyVersion?: string;
+  buggyOutput?: string;
+  reason?: string;
+  failureProbability?: number;
+  impactScore?: 'High' | 'Medium' | 'Low';
+  bugSeverity?: 'Critical' | 'High' | 'Medium' | 'Low';
+  constraint?: string;
+  checks?: string;
+  result?: 'PASSED' | 'FAILED' | 'WARNING';
+}
+
+export interface ConstraintMetrics {
+  cpuImpact: string;
+  memoryImpact: string;
+  complexitySafety: string;
+}
+
+export interface CoverageIntelligence {
+  hiddenTestsSurvived: number;
+  potentialFailureModesAvoided: number;
+  constraintCoverage: number;
+  robustnessScore: number;
+  confidenceScore: number;
+}
+
+export interface AdversarialTestLab {
+  hiddenTests: AdversarialTestCase[];
+  breakMySolution: AdversarialTestCase[];
+  constraintExtremes: {
+    tests: AdversarialTestCase[];
+    metrics: ConstraintMetrics;
+  };
+  aiGeneratedCases: AdversarialTestCase[];
+  coverageIntelligence: CoverageIntelligence;
 }
 
 export interface OptimizationItem {
@@ -293,7 +333,7 @@ export interface SuccessInsight {
   algorithmicInsight: string;            // Groq-generated explanation (or rule-based fallback)
   reasonForSuccess: string;              // Groq-generated explanation
   strength: string;
-  coveredEdgeCases: EdgeCaseItem[];
+  adversarialTestLab: AdversarialTestLab;
   optimizationReview: OptimizationItem[];
   patternIntelligence: PatternIntelligence;
   futureRisks: FutureRisk[];

@@ -1,8 +1,8 @@
 'use client';
 import { AppShell } from '@/components/layout/AppShell';
-import { useUpdateProfile, useUserProfile, type ProfileData } from '@/hooks/usePhase3Queries';
+import { useUpdateProfile, useUserProfile, useUserPreferences, useUpdateUserPreferences, type ProfileData } from '@/hooks/usePhase3Queries';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ExtensionDocs } from './components/ExtensionDocs';
 
 type UserProfile = ProfileData['user'];
@@ -272,6 +272,142 @@ function ProfileEditor({ user }: { user: UserProfile }) {
   );
 }
 
+// ─── Daily Coach Preferences ───────────────────────────────────────────────────
+function DailyCoachPreferences() {
+  const queryClient = useQueryClient();
+  const { data: preferences, isLoading: loading, error: fetchError } = useUserPreferences();
+  const updatePreferences = useUpdateUserPreferences();
+
+  const [dailyMissionEmail, setDailyMissionEmail] = useState<boolean>(true);
+  const [preferredTime, setPreferredTime] = useState<string>('08:00');
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync state with query data when loaded
+  useEffect(() => {
+    if (preferences) {
+      setDailyMissionEmail(preferences.dailyMissionEmail);
+      setPreferredTime(preferences.preferredTime);
+    }
+  }, [preferences]);
+
+  const save = async () => {
+    setError(null);
+    try {
+      await updatePreferences.mutateAsync({
+        dailyMissionEmail,
+        preferredTime
+      });
+      await queryClient.invalidateQueries({ queryKey: ['user', 'preferences'] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e: any) {
+      setError(e.message || 'Failed to update preferences');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 20, color: '#71717a', fontSize: 13 }}>
+        Loading coach preferences...
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div style={{ padding: 20, color: '#ef4444', fontSize: 13 }}>
+        Error loading preferences: {(fetchError as Error).message}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ fontSize: 13, color: '#a1a1aa', lineHeight: 1.6 }}>
+        Configure your daily learning coach settings. Praxis automatically computes your roadmap progression and weakness graph to email you personalized missions.
+      </div>
+
+      <div style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: 8, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#e5e7eb', marginBottom: 4 }}>Enable Daily Mission Emails</div>
+          <div style={{ fontSize: 12, color: '#71717a' }}>Receive your personalized problem set, failure predictions, and AI hints every morning.</div>
+        </div>
+        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', position: 'relative' }}>
+          <input
+            type="checkbox"
+            checked={dailyMissionEmail}
+            onChange={e => setDailyMissionEmail(e.target.checked)}
+            style={{ display: 'none' }}
+          />
+          <div style={{
+            width: 44, height: 24, borderRadius: 12,
+            background: dailyMissionEmail ? '#a855f7' : '#27272a',
+            position: 'relative', transition: 'background-color 0.2s',
+            border: '1px solid #3f3f46'
+          }}>
+            <div style={{
+              width: 18, height: 18, borderRadius: '50%',
+              background: '#ffffff', position: 'absolute', top: 2,
+              left: dailyMissionEmail ? 22 : 2, transition: 'left 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+            }} />
+          </div>
+        </label>
+      </div>
+
+      <div>
+        <label style={{ fontSize: 11, color: '#71717a', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+          Preferred Delivery Time (24h format)
+        </label>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <select
+            value={preferredTime}
+            onChange={e => setPreferredTime(e.target.value)}
+            style={{
+              background: '#111111', border: '1px solid #2a2a2a', borderRadius: 8,
+              padding: '10px 14px', color: '#f4f4f5', fontSize: 13, outline: 'none',
+              width: 120, cursor: 'pointer'
+            }}
+          >
+            {Array.from({ length: 24 }).map((_, hour) => {
+              const hStr = hour.toString().padStart(2, '0');
+              const timeVal = `${hStr}:00`;
+              return (
+                <option key={timeVal} value={timeVal}>
+                  {timeVal} UTC
+                </option>
+              );
+            })}
+          </select>
+          <span style={{ fontSize: 12, color: '#71717a' }}>Emails will be queued for delivery at this hour daily.</span>
+        </div>
+      </div>
+
+      {error && (
+        <div style={{ fontSize: 12, color: '#ef4444', background: '#450a0a', border: '1px solid #991b1b', borderRadius: 6, padding: '8px 12px' }}>
+          {error}
+        </div>
+      )}
+
+      <button
+        onClick={save}
+        disabled={updatePreferences.isPending}
+        style={{
+          background: saved ? '#052e16' : '#a855f7',
+          border: 'none', borderRadius: 9, padding: '11px 20px',
+          color: '#fff', fontSize: 13, fontWeight: 600,
+          cursor: updatePreferences.isPending ? 'wait' : 'pointer',
+          transition: 'background 0.2s', alignSelf: 'flex-start',
+          boxShadow: saved ? 'none' : '0 4px 10px rgba(168, 85, 247, 0.2)'
+        }}
+      >
+        {updatePreferences.isPending ? 'Saving…' : saved ? '✓ Saved' : 'Save Preferences'}
+      </button>
+    </div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -279,7 +415,7 @@ export default function SettingsPage() {
   const user  = data?.user  ?? null;
   const stats = data?.stats ?? null;
   const error = queryError ? (queryError as Error).message : null;
-  const [activeTab, setActiveTab]           = useState<'profile' | 'stats' | 'api' | 'extension'>('profile');
+  const [activeTab, setActiveTab]           = useState<'profile' | 'stats' | 'missions' | 'api' | 'extension'>('profile');
   const [regenError,   setRegenError]       = useState<string | null>(null);
   const [regenSuccess, setRegenSuccess]     = useState(false);
 
@@ -324,6 +460,7 @@ export default function SettingsPage() {
   const TABS = [
     { key: 'profile', label: 'Profile' },
     { key: 'stats',   label: 'Statistics' },
+    { key: 'missions', label: 'Daily Coach' },
     { key: 'api',     label: 'API Access' },
     { key: 'extension', label: 'Extension Setup' },
   ] as const;
@@ -397,6 +534,13 @@ export default function SettingsPage() {
           {activeTab === 'profile' && (
             <SectionCard title="Profile Information" accent="#ff5f52">
               <ProfileEditor user={user} />
+            </SectionCard>
+          )}
+
+          {/* ── Daily Coach Tab ── */}
+          {activeTab === 'missions' && (
+            <SectionCard title="Daily Coach Preferences" accent="#a855f7">
+              <DailyCoachPreferences />
             </SectionCard>
           )}
 

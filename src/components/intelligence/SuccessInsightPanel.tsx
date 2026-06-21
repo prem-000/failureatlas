@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api/client';
 import { SuccessInsightCard } from './SuccessInsightCard';
-import { EdgeCaseIntelligenceCard } from './EdgeCaseIntelligenceCard';
+import { AdversarialTestLabCard } from './AdversarialTestLabCard';
 import { OptimizationReviewCard } from './OptimizationReviewCard';
 import { PatternIntelligenceCard } from './PatternIntelligenceCard';
 import { FutureRiskCard } from './FutureRiskCard';
@@ -15,7 +15,7 @@ type Section = 'overview' | 'edge-cases' | 'optimization' | 'pattern' | 'risk' |
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'overview',     label: 'Why It Worked' },
-  { id: 'edge-cases',  label: 'Edge Cases' },
+  { id: 'edge-cases',  label: 'Adversarial Test Lab' },
   { id: 'optimization',label: 'Optimization' },
   { id: 'pattern',     label: 'Pattern Mastery' },
   { id: 'risk',        label: 'Future Risks' },
@@ -168,7 +168,7 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
         borderRadius: '0 0 14px 14px', padding: '18px 20px',
       }}>
         {activeSection === 'overview' && <SuccessInsightCard insight={insight} />}
-        {activeSection === 'edge-cases' && <EdgeCaseIntelligenceCard edgeCases={insight.coveredEdgeCases} />}
+        {activeSection === 'edge-cases' && <AdversarialTestLabCard data={insight.adversarialTestLab} />}
         {activeSection === 'optimization' && <OptimizationReviewCard items={insight.optimizationReview} />}
         {activeSection === 'pattern' && <PatternIntelligenceCard intelligence={insight.patternIntelligence} />}
         {activeSection === 'risk' && <FutureRiskCard risks={insight.futureRisks} />}

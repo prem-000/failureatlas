@@ -5,7 +5,7 @@
  * Groq is used only AFTER this module to explain the facts.
  */
 
-import type { EdgeCaseItem, OptimizationItem, ImpactLevel, MLFeatures } from '@/types';
+import type { OptimizationItem, ImpactLevel, MLFeatures } from '@/types';
 
 // ─── Pattern Detection ────────────────────────────────────────────────────────
 
@@ -339,93 +339,7 @@ export function scoreCodeQuality(code: string): CodeQualityResult {
   };
 }
 
-// ─── Edge Case Coverage ───────────────────────────────────────────────────────
-
-export function detectEdgeCoverage(code: string, patternSlug: string): EdgeCaseItem[] {
-  const items: EdgeCaseItem[] = [];
-
-  // Helper: check if code handles empty input
-  const handlesEmpty =
-    /if\s+(not\s+\w+|len\s*\(\s*\w+\s*\)\s*==\s*0|\w+\s*==\s*\[\]|\w+\s*is\s*None)/.test(code) ||
-    /if\s*\(\s*\w+\s*==\s*null\s*\|\|\s*\w+\s*\.\s*length\s*==\s*0/.test(code);
-
-  items.push({
-    input: '[] (empty array)',
-    whyImportant: 'Empty inputs cause index-out-of-bounds if not guarded',
-    status: handlesEmpty ? 'Covered' : 'At Risk',
-    confidence: handlesEmpty ? 0.82 : 0.75,
-    reason: handlesEmpty
-      ? 'Code includes an early guard for empty/null input'
-      : 'No explicit empty-input check detected — may throw on empty arrays',
-  });
-
-  // Single element
-  const handlesSingleEl =
-    /len\s*\(\s*\w+\s*\)\s*==\s*1|\.length\s*==\s*1|n\s*==\s*1/.test(code) ||
-    handlesEmpty; // If it handles empty it likely handles single too via loop bounds
-  const singleElConfidence = handlesSingleEl ? 0.79 : 0.68;
-  items.push({
-    input: '[x] (single element)',
-    whyImportant: 'Single-element inputs test whether loop bounds are inclusive',
-    status: handlesSingleEl ? 'Covered' : 'At Risk',
-    confidence: singleElConfidence,
-    reason: handlesSingleEl
-      ? 'Loop condition or guard safely handles n=1'
-      : 'No explicit single-element guard — loop boundary may be off-by-one',
-  });
-
-  // Maximum constraints
-  const handlesBigInput =
-    /10\s*\*\*\s*[4-9]|1[0-9]{4,}|INT_MAX|Integer\.MAX|sys\.maxsize/.test(code) ||
-    (estimateComplexityRough(code) !== 'O(n²)' && estimateComplexityRough(code) !== 'O(2ⁿ)');
-  items.push({
-    input: 'Maximum constraint input (n=10⁵)',
-    whyImportant: 'O(n²) solutions TLE at maximum constraints',
-    status: handlesBigInput ? 'Covered' : 'At Risk',
-    confidence: handlesBigInput ? 0.72 : 0.80,
-    reason: handlesBigInput
-      ? 'Complexity appears within acceptable limits for max input'
-      : 'Nested loops detected — may TLE at maximum constraints',
-  });
-
-  // Duplicate values
-  const handlesDuplicates =
-    /set\(|\.discard\(|seen\s*=|visited\s*=|distinct|unique|dedup/.test(code) ||
-    patternSlug === 'hash_map';
-  items.push({
-    input: 'Duplicate-heavy input [1,1,1,1,...]',
-    whyImportant: 'Algorithms that assume unique values fail on duplicate-heavy inputs',
-    status: handlesDuplicates ? 'Covered' : 'At Risk',
-    confidence: handlesDuplicates ? 0.70 : 0.65,
-    reason: handlesDuplicates
-      ? 'Set / hash map usage suggests duplicate awareness'
-      : 'No deduplication logic detected — verify algorithm handles duplicates correctly',
-  });
-
-  // Boundary index (first/last)
-  const handlesBoundaryIndex =
-    /\[-1\]|n\s*-\s*1|length\s*-\s*1|\bfirst\b|\blast\b/.test(code) ||
-    patternSlug === 'two_pointer' || patternSlug === 'binary_search';
-  items.push({
-    input: 'Boundary indices (first=0, last=n-1)',
-    whyImportant: 'Off-by-one errors most commonly appear at array boundaries',
-    status: handlesBoundaryIndex ? 'Covered' : 'At Risk',
-    confidence: handlesBoundaryIndex ? 0.85 : 0.60,
-    reason: handlesBoundaryIndex
-      ? 'Code explicitly references boundary indices or uses a pattern that handles them'
-      : 'No explicit boundary index handling detected',
-  });
-
-  return items;
-}
-
-function estimateComplexityRough(code: string): string {
-  const nested = /for.*\n.*for|while.*\n.*while/.test(code);
-  if (nested) return 'O(n²)';
-  const hasRecursion = /def\s+(\w+).*\n[\s\S]*\1\s*\(/.test(code);
-  if (hasRecursion && !/@cache|@lru_cache|memo/.test(code)) return 'O(2ⁿ)';
-  return 'O(n)';
-}
+// ─── Edge Case Coverage (Removed in favor of Adversarial Test Lab) ───────────────────────────
 
 // ─── Optimization Review ──────────────────────────────────────────────────────
 
@@ -518,16 +432,15 @@ import type { FutureRisk } from '@/types';
 export function predictFutureRisks(
   patternSlug: string,
   complexity: ComplexityResult,
-  edgeCases: EdgeCaseItem[]
+  robustnessScore: number
 ): FutureRisk[] {
   const risks: FutureRisk[] = [];
 
-  const atRiskCases = edgeCases.filter(e => e.status === 'At Risk');
-  if (atRiskCases.length > 0) {
+  if (robustnessScore < 80) {
     risks.push({
-      risk: `Uncovered edge cases: ${atRiskCases.map(e => e.input).join(', ')}`,
-      reason: 'Harder variants of this problem often use exactly these edge cases as the differentiator',
-      severity: atRiskCases.length >= 3 ? 'High' : 'Medium',
+      risk: `Potential edge cases vulnerable`,
+      reason: 'Harder variants of this problem often use boundary conditions to differentiate solutions',
+      severity: robustnessScore < 60 ? 'High' : 'Medium',
     });
   }
 
@@ -571,20 +484,16 @@ export function predictFutureRisks(
 export function buildMLFeatures(opts: {
   patternSlug: string;
   complexity: ComplexityResult;
-  edgeCases: EdgeCaseItem[];
+  edgeCaseScore: number;
   quality: CodeQualityResult;
   optimization: { score: number };
   successLevel: number;
 }): MLFeatures {
-  const edgeCaseScore =
-    opts.edgeCases.reduce((sum, e) => sum + (e.status === 'Covered' ? e.confidence : 0), 0) /
-    Math.max(opts.edgeCases.length, 1);
-
   return {
     pattern_detected: opts.patternSlug,
     time_complexity: opts.complexity.time,
     space_complexity: opts.complexity.space,
-    edge_case_score: Math.round(edgeCaseScore * 100) / 100,
+    edge_case_score: opts.edgeCaseScore,
     code_quality_score: Math.round(opts.quality.score * 100) / 100,
     optimization_score: Math.round(opts.optimization.score * 100) / 100,
     success_level: opts.successLevel,

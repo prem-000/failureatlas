@@ -323,3 +323,32 @@ export function useDynamicCheatSheet(topic: string) {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+// ─── Daily Coach Preferences ───────────────────────────────────────────────────
+
+export interface UserPreferencesData {
+  id?: string;
+  userId?: string;
+  dailyMissionEmail: boolean;
+  preferredTime: string;
+  createdAt?: string;
+}
+
+export function useUserPreferences() {
+  return useQuery({
+    queryKey: ['user', 'preferences'],
+    queryFn: () =>
+      apiFetch<{ success: boolean; preferences: UserPreferencesData }>('/api/user/preferences').then((r) => r.preferences),
+    staleTime: 30000,
+  });
+}
+
+export function useUpdateUserPreferences() {
+  return useMutation({
+    mutationFn: (body: Partial<UserPreferencesData>) =>
+      apiFetch<{ success: boolean; preferences: UserPreferencesData }>('/api/user/preferences', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+  });
+}

@@ -15,12 +15,12 @@ import {
   detectPattern,
   estimateComplexity,
   scoreCodeQuality,
-  detectEdgeCoverage,
   scoreOptimization,
   classifySuccessLevel,
   predictFutureRisks,
   buildMLFeatures,
 } from '@/lib/analysis/code-intelligence';
+import { generateAdversarialTestLab } from '@/lib/behavior/adversarial-generator';
 import { recordSuccessInGraph } from '@/lib/graph/mastery-operations';
 import type { SuccessInsight, PatternIntelligence } from '@/types';
 
@@ -199,13 +199,20 @@ export async function generateSuccessInsight(
   const patternResult = detectPattern(code);
   const complexityResult = estimateComplexity(code, patternResult.patternSlug);
   const qualityResult = scoreCodeQuality(code);
-  const edgeCases = detectEdgeCoverage(code, patternResult.patternSlug);
-  const optimizationResult = scoreOptimization(code, patternResult.patternSlug);
-  const futureRisks = predictFutureRisks(patternResult.patternSlug, complexityResult, edgeCases);
+  
+  // Generate Adversarial Test Lab (Groq LLM / fallback)
+  const adversarialTestLab = await generateAdversarialTestLab(
+    userId,
+    submission.problem.title,
+    submission.problem.slug,
+    patternResult.patternSlug,
+    code,
+    complexityResult
+  );
 
-  const edgeCaseScore =
-    edgeCases.reduce((sum, e) => sum + (e.status === 'Covered' ? e.confidence : 0), 0) /
-    Math.max(edgeCases.length, 1);
+  const edgeCaseScore = adversarialTestLab.coverageIntelligence.robustnessScore / 100;
+  const optimizationResult = scoreOptimization(code, patternResult.patternSlug);
+  const futureRisks = predictFutureRisks(patternResult.patternSlug, complexityResult, adversarialTestLab.coverageIntelligence.robustnessScore);
 
   // ── Phase 2: Classify success level ──────────────────────────────────────────
   const { level, label } = classifySuccessLevel({
@@ -230,7 +237,7 @@ export async function generateSuccessInsight(
   const mlFeatures = buildMLFeatures({
     patternSlug: patternResult.patternSlug,
     complexity: complexityResult,
-    edgeCases,
+    edgeCaseScore,
     quality: qualityResult,
     optimization: optimizationResult,
     successLevel: level,
@@ -276,7 +283,7 @@ export async function generateSuccessInsight(
     algorithmicInsight: explanation.algorithmicInsight,
     reasonForSuccess: explanation.reasonForSuccess,
     strength: explanation.strength,
-    coveredEdgeCases: edgeCases,
+    adversarialTestLab,
     optimizationReview: optimizationResult.items,
     patternIntelligence,
     futureRisks,
