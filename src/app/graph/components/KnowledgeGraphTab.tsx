@@ -16,14 +16,22 @@ const nodeTypes: NodeTypes = { knowledgeNode: KnowledgeNode };
 
 function buildGraph(
   data: { nodes: any[]; edges: any[] } | undefined,
-  query: string
+  query: string,
+  isMobile: boolean
 ): { nodes: Node[]; edges: Edge[] } {
   if (!data) return { nodes: [], edges: [] };
 
   const q = query.toLowerCase().trim();
   const hasQuery = !!q;
+  const scale = isMobile ? 0.65 : 1.0;
 
-  const nodes: Node[] = (data.nodes || []).map(n => {
+  // Render fewer graph nodes initially on mobile for performance
+  let sourceNodes = data.nodes || [];
+  if (isMobile) {
+    sourceNodes = sourceNodes.slice(0, 45);
+  }
+
+  const nodes: Node[] = sourceNodes.map(n => {
     const matches = hasQuery && (
       n.label.toLowerCase().includes(q) ||
       (n.description || '').toLowerCase().includes(q) ||
@@ -32,7 +40,7 @@ function buildGraph(
     return {
       id: n.id,
       type: 'knowledgeNode',
-      position: { x: n.x, y: n.y },
+      position: { x: n.x * scale, y: n.y * scale },
       data: {
         label: n.label,
         kind: n.kind,
@@ -43,16 +51,19 @@ function buildGraph(
     };
   });
 
-  const edges: Edge[] = (data.edges || []).map(e => ({
-    id: `e-${e.source}-${e.target}`,
-    source: e.source,
-    target: e.target,
-    label: e.label,
-    type: 'smoothstep',
-    style: { stroke: '#27272a', strokeWidth: 1.5 },
-    labelStyle: { fill: '#52525b', fontSize: 9, fontWeight: 600 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#27272a' },
-  }));
+  const nodeIds = new Set(nodes.map(n => n.id));
+  const edges: Edge[] = (data.edges || [])
+    .filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
+    .map(e => ({
+      id: `e-${e.source}-${e.target}`,
+      source: e.source,
+      target: e.target,
+      label: e.label,
+      type: 'smoothstep',
+      style: { stroke: '#27272a', strokeWidth: 1.5 },
+      labelStyle: { fill: '#52525b', fontSize: 9, fontWeight: 600 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#27272a' },
+    }));
 
   return { nodes, edges };
 }
@@ -60,6 +71,14 @@ function buildGraph(
 export function KnowledgeGraphTab() {
   const [searchInput, setSearchInput] = useState('Binary Search');
   const [query, setQuery] = useState('Binary Search');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Debounce the input for generating the knowledge graph
   useEffect(() => {
@@ -72,15 +91,81 @@ export function KnowledgeGraphTab() {
   }, [searchInput]);
 
   const { data, isLoading } = useDynamicKnowledgeGraph(query);
-  const { nodes, edges } = buildGraph(data, searchInput);
+  const { nodes, edges } = buildGraph(data, searchInput, isMobile);
 
   return (
     <ReactFlowProvider>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <style>{`
-          .kg-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; background: rgba(13,13,15,0.8); }
-          .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; color: #52525b; }
-          .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+          .kg-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            flex-shrink: 0;
+            background: rgba(13,13,15,0.85);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+          }
+          .kg-legend-container {
+            display: flex;
+            gap: 10px;
+            padding: 8px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            flex-shrink: 0;
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: none;
+            ms-overflow-style: none;
+            -webkit-overflow-scrolling: touch;
+          }
+          .kg-legend-container::-webkit-scrollbar {
+            display: none;
+          }
+          .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #a1a1aa;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            padding: 6px 12px;
+            border-radius: 16px;
+            min-height: 32px;
+          }
+          .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+          }
+          .touch-action-graph {
+            touch-action: pan-x pan-y !important;
+          }
+          @media (max-width: 767px) {
+            .react-flow__controls {
+              position: fixed !important;
+              bottom: 96px !important;
+              right: 16px !important;
+              left: auto !important;
+              top: auto !important;
+              margin: 0 !important;
+              display: flex !important;
+              flex-direction: column !important;
+              z-index: 60 !important;
+            }
+            .react-flow__controls button {
+              width: 44px !important;
+              height: 44px !important;
+              min-width: 44px !important;
+              min-height: 44px !important;
+            }
+          }
         `}</style>
 
         {/* Toolbar */}
@@ -92,7 +177,7 @@ export function KnowledgeGraphTab() {
         </div>
 
         {/* Legend */}
-        <div style={{ display: 'flex', gap: 14, padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)', flexShrink: 0, overflowX: 'auto' }}>
+        <div className="kg-legend-container">
           {[
             { kind: 'concept', color: '#3b82f6' },
             { kind: 'subconcept', color: '#a855f7' },
@@ -109,7 +194,7 @@ export function KnowledgeGraphTab() {
         </div>
 
         {/* Graph */}
-        <div style={{ flex: 1, position: 'relative' }}>
+        <div className="touch-action-graph" style={{ flex: 1, position: 'relative' }}>
           {isLoading && (!nodes || nodes.length === 0) ? (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a0c', zIndex: 10 }}>
               <Loader2 size={32} style={{ color: '#a855f7', animation: 'spin 1s linear infinite', marginBottom: 16 }} />
@@ -125,6 +210,8 @@ export function KnowledgeGraphTab() {
               fitViewOptions={{ padding: 0.4 }}
               minZoom={0.3}
               maxZoom={2}
+              preventScrolling={true}
+              zoomOnPinch={true}
               style={{ background: '#0a0a0c' }}
             >
               <Background variant={BackgroundVariant.Dots} color="#1a1a1c" gap={24} size={1} />

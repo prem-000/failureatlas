@@ -52,7 +52,7 @@ export function AppShell({ children, fullscreen = false, hideSidebar = false }: 
         className={
           hideSidebar
             ? ''
-            : 'md:pl-[100px] pb-[80px] md:pb-0'
+            : 'md:pl-[100px] pb-[calc(56px+env(safe-area-inset-bottom,0px)+12px)] md:pb-0'
         }
         style={{
           flex: 1,

@@ -97,6 +97,40 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
         .timeline-dot {
           width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
         }
+        .drawer-close-btn {
+          background: none;
+          border: none;
+          color: #52525b;
+          cursor: pointer;
+          padding: 4px;
+          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        @media (max-width: 767px) {
+          .problem-drawer {
+            left: 0 !important;
+            right: 0 !important;
+            top: auto !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 90vh !important;
+            max-height: 90vh !important;
+            border-left: none !important;
+            border-top: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 20px 20px 0 0 !important;
+            transform: ${isOpen ? 'translateY(0)' : 'translateY(100%)'} !important;
+          }
+          .drawer-close-btn {
+            min-width: 44px !important;
+            min-height: 44px !important;
+          }
+          .drawer-scroll-content {
+            padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
+          }
+        }
       `}</style>
 
       <div className="problem-drawer custom-scrollbar">
@@ -117,18 +151,18 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
                 {problem.reason}
               </p>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#52525b', cursor: 'pointer', padding: 4, flexShrink: 0 }}>
+            <button onClick={onClose} className="drawer-close-btn">
               <X size={16} />
             </button>
           </div>
-
+ 
           {/* Tags */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
             {problem.topics.slice(0, 4).map(t => (
               <span key={t} className="tag-chip">{t}</span>
             ))}
           </div>
-
+ 
           {/* Open on LeetCode */}
           <a
             href={`https://leetcode.com/problems/${problem.slug}/`}
@@ -144,9 +178,9 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
             <ChevronRight size={11} />
           </a>
         </div>
-
+ 
         {/* Scrollable content */}
-        <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto' }}>
+        <div className="custom-scrollbar drawer-scroll-content" style={{ flex: 1, overflowY: 'auto' }}>
 
           {/* Stats */}
           <div className="drawer-section">

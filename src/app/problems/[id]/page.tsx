@@ -153,33 +153,118 @@ function SectionCard({ title, accent = '#ff5f52', children }: { title: string; a
 function AttemptTimeline({ submissions }: { submissions: SubmissionData[] }) {
   return (
     <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <style>{`
+        .timeline-item {
+          display: flex;
+          gap: 16px;
+          align-items: flex-start;
+        }
+        .timeline-spine {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          flex-shrink: 0;
+        }
+        .timeline-circle {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .timeline-connector {
+          width: 2px;
+          flex: 1;
+          background: #1f1f1f;
+          margin: 4px 0;
+          min-height: 20px;
+        }
+        .timeline-card {
+          flex: 1;
+          background: #141414;
+          border-radius: 10px;
+          border: 1px solid #1f1f1f;
+          padding: 12px 16px;
+          margin-bottom: 12px;
+        }
+        .timeline-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+        .timeline-card-metrics {
+          display: flex;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 767px) {
+          .timeline-item {
+            flex-direction: column !important;
+            gap: 8px !important;
+            margin-bottom: 16px;
+          }
+          .timeline-spine {
+            flex-direction: row !important;
+            width: 100% !important;
+            gap: 8px !important;
+          }
+          .timeline-connector {
+            width: 100% !important;
+            height: 2px !important;
+            min-height: auto !important;
+            flex: 1 !important;
+            margin: 0 !important;
+          }
+          .timeline-circle {
+            width: 24px !important;
+            height: 24px !important;
+            font-size: 9px !important;
+          }
+          .timeline-card {
+            width: 100% !important;
+            margin-bottom: 0 !important;
+            padding: 8px 12px !important;
+          }
+          .timeline-card-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 4px !important;
+          }
+          .timeline-card-metrics {
+            flex-direction: column !important;
+            gap: 6px !important;
+          }
+        }
+      `}</style>
       {submissions.map((sd, i) => {
         const colors = STATUS_COLORS[sd.submission.status] || { bg: '#1a1a1a', text: '#71717a', border: '#2a2a2a' };
         const isLast = i === submissions.length - 1;
         return (
-          <div key={sd.submission.eventId} style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <div key={sd.submission.eventId} className="timeline-item">
             {/* Timeline spine */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%',
+            <div className="timeline-spine">
+              <div className="timeline-circle" style={{
                 background: colors.bg, border: `2px solid ${colors.border}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 700, color: colors.text,
+                color: colors.text,
               }}>
                 {sd.submission.attemptNumber}
               </div>
-              {!isLast && <div style={{ width: 2, flex: 1, background: '#1f1f1f', margin: '4px 0', minHeight: 20 }} />}
+              {!isLast && <div className="timeline-connector" />}
             </div>
 
             {/* Card */}
-            <div style={{ flex: 1, background: '#141414', borderRadius: 10, border: '1px solid #1f1f1f', padding: '12px 16px', marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div className="timeline-card">
+              <div className="timeline-card-header">
                 <span style={{ fontSize: 12, fontWeight: 600, color: colors.text }}>{sd.submission.status}</span>
                 <span style={{ fontSize: 11, color: '#52525b' }}>
                   {new Date(sd.submission.timestamp).toLocaleString()}
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              <div className="timeline-card-metrics">
                 {sd.submission.runtime != null && (
                   <span style={{ fontSize: 11, color: '#71717a' }}>⚡ {sd.submission.runtime} ms</span>
                 )}

@@ -61,6 +61,34 @@ export function BehaviorInsightPanel({ weaknessId, weaknessName, isOpen, onClose
 
   return (
     <>
+      <style>{`
+        @media (max-width: 767px) {
+          .behavior-insight-panel {
+            left: 0 !important;
+            right: 0 !important;
+            top: auto !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 90vh !important;
+            max-height: 90vh !important;
+            border-left: none !important;
+            border-top: 1px solid #1f1f1f !important;
+            border-radius: 20px 20px 0 0 !important;
+            transform: ${isOpen ? 'translateY(0)' : 'translateY(100%)'} !important;
+            box-shadow: ${isOpen ? '0 -8px 40px rgba(0,0,0,0.6)' : 'none'} !important;
+          }
+          .behavior-close-btn {
+            width: 44px !important;
+            height: 44px !important;
+            font-size: 20px !important;
+          }
+          .behavior-scroll-content {
+            padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
+          }
+        }
+      `}</style>
+
       {/* Backdrop */}
       <div
         onClick={onClose}
@@ -73,7 +101,7 @@ export function BehaviorInsightPanel({ weaknessId, weaknessName, isOpen, onClose
       />
 
       {/* Drawer */}
-      <div style={{
+      <div className="behavior-insight-panel" style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, width: 420,
         background: '#161616', borderLeft: '1px solid #1f1f1f',
         zIndex: 50, display: 'flex', flexDirection: 'column',
@@ -103,6 +131,7 @@ export function BehaviorInsightPanel({ weaknessId, weaknessName, isOpen, onClose
           </div>
           <button
             onClick={onClose}
+            className="behavior-close-btn"
             style={{
               width: 30, height: 30, borderRadius: 8, background: '#1f1f1f',
               border: '1px solid #2a2a2a', color: '#71717a', cursor: 'pointer',
@@ -137,7 +166,7 @@ export function BehaviorInsightPanel({ weaknessId, weaknessName, isOpen, onClose
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px' }}>
+        <div className="behavior-scroll-content" style={{ flex: 1, overflowY: 'auto', padding: '16px 16px' }}>
           {loading && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', paddingTop: 48 }}>
               <div style={{

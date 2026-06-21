@@ -37,6 +37,89 @@ export function BehaviorTimeline({ insight }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <style>{`
+        .timeline-item {
+          display: flex;
+          gap: 14px;
+          align-items: flex-start;
+        }
+        .timeline-spine {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          flex-shrink: 0;
+        }
+        .timeline-circle {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          font-weight: 700;
+        }
+        .timeline-connector {
+          width: 2px;
+          flex: 1;
+          background: #1f1f1f;
+          margin: 4px 0;
+          min-height: 16px;
+        }
+        .timeline-card {
+          flex: 1;
+          background: #141414;
+          border-radius: 9px;
+          border: 1px solid #1f1f1f;
+          padding: 10px 14px;
+          margin-bottom: 10px;
+        }
+        .timeline-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 4px;
+        }
+        .timeline-card-metrics {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 767px) {
+          .timeline-item {
+            flex-direction: column !important;
+            gap: 8px !important;
+            margin-bottom: 16px;
+          }
+          .timeline-spine {
+            flex-direction: row !important;
+            width: 100% !important;
+            gap: 8px !important;
+          }
+          .timeline-connector {
+            width: 100% !important;
+            height: 2px !important;
+            min-height: auto !important;
+            flex: 1 !important;
+            margin: 0 !important;
+          }
+          .timeline-circle {
+            width: 20px !important;
+            height: 20px !important;
+            font-size: 8px !important;
+          }
+          .timeline-card {
+            width: 100% !important;
+            margin-bottom: 0 !important;
+            padding: 8px 12px !important;
+          }
+          .timeline-card-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 4px !important;
+          }
+        }
+      `}</style>
       {/* Summary banner */}
       <div style={{
         background: '#1a1015', border: '1px solid #3f1515', borderRadius: 10,
@@ -67,32 +150,25 @@ export function BehaviorTimeline({ insight }: Props) {
         const isLast = i === failures.length - 1;
 
         return (
-          <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <div key={i} className="timeline-item">
             {/* Spine */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%',
+            <div className="timeline-spine">
+              <div className="timeline-circle" style={{
                 background: statusStyle.bg, border: `2px solid ${statusStyle.text}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 700, color: statusStyle.text,
+                color: statusStyle.text,
               }}>
                 {i + 1}
               </div>
-              {!isLast && (
-                <div style={{ width: 2, flex: 1, background: '#1f1f1f', margin: '4px 0', minHeight: 16 }} />
-              )}
+              {!isLast && <div className="timeline-connector" />}
             </div>
 
             {/* Card */}
-            <div style={{
-              flex: 1, background: '#141414', borderRadius: 9, border: '1px solid #1f1f1f',
-              padding: '10px 14px', marginBottom: 10,
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+            <div className="timeline-card">
+              <div className="timeline-card-header">
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#e4e4e7' }}>{f.problemTitle}</span>
                 <span style={{ fontSize: 10, color: '#52525b', flexShrink: 0, marginLeft: 8 }}>{timeAgo(f.timestamp)}</span>
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <div className="timeline-card-metrics">
                 <span style={{
                   fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3,
                   background: statusStyle.bg, color: statusStyle.text,

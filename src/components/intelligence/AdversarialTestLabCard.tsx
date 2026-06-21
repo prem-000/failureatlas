@@ -162,11 +162,48 @@ export function AdversarialTestLabCard({ data }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <style>{`
+        .coverage-intelligence-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 10px;
+        }
+        .test-cards-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 24px;
+        }
+        .risk-metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 10px;
+        }
+        @media (max-width: 1024px) {
+          .coverage-intelligence-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+        @media (max-width: 767px) {
+          .coverage-intelligence-grid {
+            grid-template-columns: repeat(1, 1fr) !important;
+            padding: 8px !important;
+          }
+          .test-cards-grid {
+            grid-template-columns: repeat(1, 1fr) !important;
+            gap: 12px !important;
+          }
+          .risk-metrics-grid {
+            grid-template-columns: repeat(1, 1fr) !important;
+          }
+          .test-card {
+            flex-direction: column !important;
+            gap: 12px !important;
+            padding: 12px 14px !important;
+          }
+        }
+      `}</style>
       {/* ─── Coverage Intelligence Panel (Header Bar) ─── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: 10,
+      <div className="coverage-intelligence-grid" style={{
         background: '#0d1321',
         border: `1px solid ${colors.borderGlass}`,
         borderRadius: 12,
@@ -423,7 +460,7 @@ export function AdversarialTestLabCard({ data }: Props) {
       </div>
 
       {/* ─── Tab Contents (High-Density Info Cards) ─── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="test-cards-grid">
         
         {/* 1. Hidden Tests Content */}
         {activeTab === 'hidden' && (
@@ -433,7 +470,7 @@ export function AdversarialTestLabCard({ data }: Props) {
             </div>
           ) : (
             hiddenTests.map((test, idx) => (
-              <div key={idx} style={{
+              <div key={idx} className="test-card" style={{
                 background: colors.bgDark,
                 border: `1px solid ${colors.borderGlass}`,
                 borderRadius: 10,
@@ -521,7 +558,7 @@ export function AdversarialTestLabCard({ data }: Props) {
             </div>
           ) : (
             breakMySolution.map((test, idx) => (
-              <div key={idx} style={{
+              <div key={idx} className="test-card" style={{
                 background: colors.bgDark,
                 border: `1px solid ${colors.borderGlass}`,
                 borderRadius: 10,
@@ -637,11 +674,7 @@ export function AdversarialTestLabCard({ data }: Props) {
         {activeTab === 'constraints' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Premium Metric Cards */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: 10,
-            }}>
+            <div className="risk-metrics-grid">
               {/* CPU Impact Card */}
               <div style={{
                 background: 'rgba(13, 21, 39, 0.4)',
@@ -743,7 +776,7 @@ export function AdversarialTestLabCard({ data }: Props) {
               </div>
             ) : (
               constraintExtremes.tests.map((test, idx) => (
-                <div key={idx} style={{
+                <div key={idx} className="test-card" style={{
                   background: colors.bgDark,
                   border: `1px solid ${colors.borderGlass}`,
                   borderRadius: 10,
@@ -847,7 +880,7 @@ export function AdversarialTestLabCard({ data }: Props) {
             </div>
           ) : (
             aiGeneratedCases.map((test, idx) => (
-              <div key={idx} style={{
+              <div key={idx} className="test-card" style={{
                 background: colors.bgDark,
                 border: `1px solid ${colors.borderGlass}`,
                 borderRadius: 10,

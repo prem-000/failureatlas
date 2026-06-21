@@ -162,7 +162,7 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
   const DIFF_COLORS: Record<string, string> = { Easy: '#22c55e', Medium: '#f59e0b', Hard: '#ef4444' };
 
   return (
-    <div style={{ flex: 1, display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div className="ws-root" style={{ flex: 1, display: 'flex', height: '100%', overflow: 'hidden' }}>
       <style>{`
         .ws-nav { width: 180px; border-right: 1px solid rgba(255,255,255,0.05); background: rgba(10,10,12,0.9); display: flex; flex-direction: column; flex-shrink: 0; padding: 16px 10px; gap: 4px; }
         .ws-nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: none; background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 150ms; text-align: left; width: 100%; }
@@ -181,11 +181,82 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
         .cs-chip-inactive:hover { color: #a1a1aa; background: rgba(255,255,255,0.05); }
         .journal-entry { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
         .journal-date { font-size: '11px'; font-weight: 700; color: '#71717a'; min-width: 50px; }
+        @media (max-width: 767px) {
+          .ws-root {
+            flex-direction: column !important;
+          }
+          .ws-nav {
+            width: 100% !important;
+            height: auto !important;
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+            padding: 8px 12px !important;
+            gap: 8px !important;
+            scrollbar-width: none !important;
+            ms-overflow-style: none !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          .ws-nav::-webkit-scrollbar {
+            display: none !important;
+          }
+          .ws-nav-header {
+            display: none !important;
+          }
+          .ws-nav-item {
+            width: auto !important;
+            flex-shrink: 0 !important;
+            padding: 6px 12px !important;
+            min-height: 44px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .ws-nav-ai-btn {
+            margin-top: 0 !important;
+            margin-left: auto !important;
+            flex-shrink: 0 !important;
+            min-height: 44px !important;
+          }
+          .ws-content {
+            padding: 12px !important;
+          }
+          .notes-layout {
+            flex-direction: column !important;
+            overflow-y: auto !important;
+          }
+          .notes-list-pane {
+            width: 100% !important;
+            max-height: 200px !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+            flex-shrink: 0 !important;
+          }
+          .cs-chip-container {
+            flex-wrap: nowrap !important;
+            scrollbar-width: none !important;
+            ms-overflow-style: none !important;
+          }
+          .cs-chip-container::-webkit-scrollbar {
+            display: none !important;
+          }
+          .cs-chip {
+            min-height: 36px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .input-field {
+            font-size: 16px !important;
+          }
+        }
       `}</style>
-
+ 
       {/* Sidebar nav */}
       <nav className="ws-nav">
-        <div style={{ fontSize: '10px', color: '#3f3f46', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '4px 12px', marginBottom: 4 }}>Workspace</div>
+        <div className="ws-nav-header" style={{ fontSize: '10px', color: '#3f3f46', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '4px 12px', marginBottom: 4 }}>Workspace</div>
         {[
           { id: 'notes' as WorkspaceSection, label: 'AI Notes', icon: FileText },
           { id: 'cheatsheets' as WorkspaceSection, label: 'Cheat Sheets', icon: BookOpen },
@@ -201,11 +272,12 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
             {label}
           </button>
         ))}
-
+ 
         {/* AI generate note */}
         {weaknesses && weaknesses.length > 0 && (
           <button
             onClick={generateAINote}
+            className="ws-nav-ai-btn"
             style={{
               marginTop: 'auto',
               display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px',
@@ -218,12 +290,12 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
           </button>
         )}
       </nav>
-
+ 
       {/* ── NOTES ─────────────────────────────────────────────────────────── */}
       {section === 'notes' && (
-        <div style={{ flex: 1, display: 'flex', gap: 0, overflow: 'hidden' }}>
+        <div className="notes-layout" style={{ flex: 1, display: 'flex', gap: 0, overflow: 'hidden' }}>
           {/* Note list */}
-          <div className="custom-scrollbar" style={{ width: 220, borderRight: '1px solid rgba(255,255,255,0.05)', overflowY: 'auto', padding: 12 }}>
+          <div className="custom-scrollbar notes-list-pane" style={{ width: 220, borderRight: '1px solid rgba(255,255,255,0.05)', overflowY: 'auto', padding: 12 }}>
             <div style={{ fontSize: '10px', color: '#52525b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
               {notes.length} Note{notes.length !== 1 ? 's' : ''}
             </div>
@@ -285,7 +357,7 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
       {section === 'cheatsheets' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Topic chips */}
-          <div style={{ display: 'flex', gap: 6, padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0, overflowX: 'auto', flexWrap: 'wrap' }}>
+          <div className="cs-chip-container" style={{ display: 'flex', gap: 6, padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0, overflowX: 'auto', flexWrap: 'wrap' }}>
             {topicOptions.map(t => (
               <button key={t} className={`cs-chip${t === selectedSheet ? ' cs-chip-active' : ' cs-chip-inactive'}`} onClick={() => setSelectedSheet(t)}>{t}</button>
             ))}

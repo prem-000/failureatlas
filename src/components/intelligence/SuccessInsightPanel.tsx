@@ -134,10 +134,18 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
 
       {/* Section nav */}
       <div style={{
-        display: 'flex', overflowX: 'auto', gap: 0,
+        display: 'flex', overflowX: 'auto', gap: 8,
         background: '#111', border: '1px solid #1f1f1f', borderTop: 'none',
         scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        WebkitOverflowScrolling: 'touch',
       }}>
+        <style>{`
+          /* hide scrollbar on Webkit */
+          .success-nav-container::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
         {SECTIONS.map(sec => {
           const Icon = SECTION_ICONS[sec.id];
           return (
@@ -152,7 +160,8 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
                 transition: 'color 0.15s',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: 8,
+                minWidth: 'max-content',
               }}
             >
               <Icon size={14} style={{ color: activeSection === sec.id ? accent : '#52525b' }} />

@@ -25,6 +25,10 @@ const LAYOUT_X: Record<string, number> = {
   Weakness: 0, RootCause: 280, Evidence: 560, FailureEvent: 840, Problem: 1120, LearningStrategy: -240,
 };
 
+const LAYOUT_X_MOBILE: Record<string, number> = {
+  Weakness: 0, RootCause: 155, Evidence: 310, FailureEvent: 465, Problem: 620, LearningStrategy: -125,
+};
+
 const EDGE_COLORS: Record<string, string> = {
   INDICATES:    '#f59e0b',
   SUGGESTS:     '#a855f7',
@@ -48,21 +52,26 @@ const FILTER_OPTIONS: { id: FilterType; label: string; color: string }[] = [
 function buildGraph(
   graphData: SubgraphData | undefined,
   filter: FilterType,
-  query: string
+  query: string,
+  isMobile: boolean
 ): { nodes: Node[]; edges: Edge[] } {
   if (!graphData) return { nodes: [], edges: [] };
 
   const hasQuery = !!query.trim();
   const q = query.toLowerCase();
 
+  const layoutX = isMobile ? LAYOUT_X_MOBILE : LAYOUT_X;
+  const ySpacing = isMobile ? 85 : 130;
+  const yOffset = isMobile ? 40 : 60;
+
   const filteredNodes = graphData.nodes
     .filter(n => filter === 'all' || n.data.nodeType === filter)
     .map(n => {
       const type: string = n.data.nodeType;
-      const stageX = LAYOUT_X[type] ?? 0;
+      const stageX = layoutX[type] ?? 0;
       const sameType = graphData.nodes.filter(x => x.data.nodeType === type);
       const idx = sameType.indexOf(n);
-      const y = idx * 130 + 60;
+      const y = idx * ySpacing + yOffset;
 
       const matchesQuery = hasQuery && (
         String(n.data.label).toLowerCase().includes(q) ||
@@ -105,8 +114,17 @@ function buildGraph(
 
 function FailureIntelligenceInner() {
   const reactFlow = useReactFlow();
+  const [isMobile, setIsMobile] = useState(false);
 
-  const { data: graphData, isLoading } = useGraphSubgraph(300);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const limit = isMobile ? 120 : 300;
+  const { data: graphData, isLoading } = useGraphSubgraph(limit);
   const { data: failures } = useGraphFailures(50, 60);
   const { data: weaknesses } = useGraphWeaknesses(10);
 
@@ -118,10 +136,10 @@ function FailureIntelligenceInner() {
   const [layout, setLayout] = useState<'horizontal' | 'vertical'>('horizontal');
 
   useEffect(() => {
-    const { nodes: n, edges: e } = buildGraph(graphData, filter, query);
+    const { nodes: n, edges: e } = buildGraph(graphData, filter, query, isMobile);
     setNodes(n);
     setEdges(e);
-  }, [graphData, filter, query]);
+  }, [graphData, filter, query, isMobile]);
 
   useEffect(() => {
     if (!reactFlow || !query) return;
@@ -145,15 +163,96 @@ function FailureIntelligenceInner() {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <style>{`
-        .fi-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; background: rgba(13,13,15,0.8); backdrop-filter: blur(12px); flex-wrap: wrap; }
+        .fi-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 20px;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+          flex-shrink: 0;
+          background: rgba(13,13,15,0.85);
+          backdrop-filter: blur(12px);
+          flex-wrap: wrap;
+          position: sticky;
+          top: 0;
+          z-index: 50;
+        }
         .fi-filter-chip { padding: 5px 11px; border-radius: 20px; border: none; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 150ms; white-space: nowrap; }
         .fi-stat { display: flex; flex-direction: column; align-items: center; padding: 6px 14px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); }
         .legend-row { display: flex; align-items: center; gap: 6px; }
         .legend-dot2 { width: 8px; height: 8px; borderRadius: 50%; }
+        .fi-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+          padding: 10px 20px;
+        }
+        .edge-legend {
+          position: absolute;
+          bottom: 16px;
+          left: 16px;
+          background: rgba(12,12,14,0.9);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 10px;
+          padding: 10px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          backdrop-filter: blur(10px);
+          z-index: 50;
+        }
+        .touch-action-graph {
+          touch-action: pan-x pan-y !important;
+        }
+        @media (max-width: 767px) {
+          .fi-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+          .fi-header-stats {
+            margin-left: 0 !important;
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          .edge-legend {
+            position: absolute !important;
+            top: 10px !important;
+            left: 10px !important;
+            right: 10px !important;
+            bottom: auto !important;
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+            padding: 6px 10px !important;
+            border-radius: 8px !important;
+            gap: 10px !important;
+            z-index: 49 !important;
+            width: auto !important;
+          }
+          .react-flow__controls {
+            position: fixed !important;
+            bottom: 96px !important;
+            right: 16px !important;
+            left: auto !important;
+            top: auto !important;
+            margin: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            z-index: 60 !important;
+          }
+          .react-flow__controls button {
+            width: 44px !important;
+            height: 44px !important;
+            min-width: 44px !important;
+            min-height: 44px !important;
+          }
+        }
       `}</style>
 
       {/* Signature header banner */}
-      <div style={{
+      <div className="fi-header" style={{
         padding: '10px 20px',
         background: 'linear-gradient(90deg, rgba(168,85,247,0.08), rgba(239,68,68,0.04))',
         borderBottom: '1px solid rgba(168,85,247,0.12)',
@@ -166,7 +265,7 @@ function FailureIntelligenceInner() {
             Your learning story — Problem → Practice Session → Evidence → Learning Insight → Growth Area → Improvement Plan
           </span>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 14 }}>
+        <div className="fi-header-stats" style={{ marginLeft: 'auto', display: 'flex', gap: 14 }}>
           {[
             { label: 'Growth Areas', value: stats.weaknesses, color: '#a855f7' },
             { label: 'Sessions', value: stats.failures, color: '#f97316' },
@@ -231,7 +330,7 @@ function FailureIntelligenceInner() {
           <span style={{ color: '#52525b', fontSize: 12 }}>Submit some practice sessions to build your learning map.</span>
         </div>
       ) : (
-        <div style={{ flex: 1, position: 'relative' }}>
+        <div className="touch-action-graph" style={{ flex: 1, position: 'relative' }}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -253,11 +352,7 @@ function FailureIntelligenceInner() {
           </ReactFlow>
 
           {/* Edge legend */}
-          <div style={{
-            position: 'absolute', bottom: 16, left: 16, background: 'rgba(12,12,14,0.9)',
-            border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '10px 14px',
-            display: 'flex', flexDirection: 'column', gap: 5, backdropFilter: 'blur(10px)',
-          }}>
+          <div className="edge-legend">
             <span style={{ fontSize: '9px', color: '#3f3f46', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Edge Types</span>
             {Object.entries(EDGE_COLORS).map(([type, color]) => (
               <div key={type} className="legend-row">

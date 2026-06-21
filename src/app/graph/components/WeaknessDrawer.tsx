@@ -86,8 +86,42 @@ export function WeaknessDrawer({ node, nodes, edges, failures, onClose }: Weakne
           backdrop-filter: blur(20px);
         }
         .wdrawer-chip { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+        .drawer-close-btn {
+          background: none;
+          border: none;
+          color: #52525b;
+          cursor: pointer;
+          padding: 4px;
+          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        @media (max-width: 767px) {
+          .wdrawer {
+            left: 0 !important;
+            right: 0 !important;
+            top: auto !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 90vh !important;
+            max-height: 90vh !important;
+            border-left: none !important;
+            border-top: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 20px 20px 0 0 !important;
+            transform: translateY(0) !important;
+          }
+          .drawer-close-btn {
+            min-width: 44px !important;
+            min-height: 44px !important;
+          }
+          .drawer-scroll-content {
+            padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
+          }
+        }
       `}</style>
-
+ 
       <div className="wdrawer custom-scrollbar">
         {/* Header */}
         <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
@@ -108,14 +142,14 @@ export function WeaknessDrawer({ node, nodes, edges, failures, onClose }: Weakne
                 </div>
               )}
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#52525b', cursor: 'pointer', padding: 4 }}>
+            <button onClick={onClose} className="drawer-close-btn">
               <X size={16} />
             </button>
           </div>
         </div>
-
+ 
         {/* Scrollable content */}
-        <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto' }}>
+        <div className="custom-scrollbar drawer-scroll-content" style={{ flex: 1, overflowY: 'auto' }}>
 
           {/* WHY IT HAPPENS */}
           {rootCauses.length > 0 && (
