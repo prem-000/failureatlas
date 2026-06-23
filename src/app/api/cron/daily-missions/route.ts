@@ -41,11 +41,11 @@ export async function GET(request: NextRequest) {
     // 3. Process each user sequentially
     for (const user of eligibleUsers) {
       try {
-        logger.info(`👤 Generating daily mission for user email=${user.email} (id=${user.id})`);
+        logger.info(`🚀 Starting mission generation for ${user.email}`);
 
         // Generate the mission
         const mission = await generateDailyMission(user.id);
-        logger.info(`🎯 Mission generated for user: ${user.email}`);
+        logger.info(`✅ Mission generated successfully`);
 
         // Calculate mission number for this user
         const pastMissionsCount = await prisma.dailyMission.count({
@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
         const missionNumber = pastMissionsCount + 1;
 
         // Save mission to DB
+        logger.info(`💾 Saving mission to database`);
         await prisma.dailyMission.create({
           data: {
             userId: user.id,
@@ -67,8 +68,10 @@ export async function GET(request: NextRequest) {
             completed: false
           }
         });
+        logger.info(`✅ Mission saved`);
 
         // Fetch user's solved status to compute roadmap completion rate
+        logger.info(`📊 Calculating completion metrics`);
         const successfulSubmissions = await prisma.submissionEvent.findMany({
           where: { userId: user.id, status: 'Accepted' },
           include: { problem: true }
@@ -86,6 +89,7 @@ export async function GET(request: NextRequest) {
           : 0;
 
         // Compile HTML email template
+        logger.info(`📧 Compiling email template`);
         const emailHtml = compileMissionEmailHtml(
           missionNumber,
           mission.primaryProblem.stage,
@@ -94,15 +98,15 @@ export async function GET(request: NextRequest) {
         );
 
         // Send email via Resend
-        logger.info(`📧 Sending mission email to ${user.email}`);
+        logger.info(`📨 Sending email via Resend`);
         const sendResult = await sendEmail({
           to: user.email,
           subject: `🎯 Today's Praxis Mission #${missionNumber}`,
           html: emailHtml
         });
 
-        logger.info('📨 Resend response:', sendResult);
-        logger.info(`✅ Email sent successfully to ${user.email}`);
+        logger.info(`✅ Email sent`);
+        logger.info(`📨 Resend response: ${JSON.stringify(sendResult)}`);
 
         results.push({
           userId: user.id,
@@ -113,7 +117,12 @@ export async function GET(request: NextRequest) {
           sendResult
         });
       } catch (userError: any) {
-        logger.error(`❌ Failed to process daily mission for user id=${user.id}:`, userError);
+        logger.error(`❌ Failed to process daily mission for user id=${user.id}`);
+        logger.error(`❌ Error message: ${userError?.message}`);
+        logger.error(`❌ Error stack: ${userError?.stack}`);
+        logger.error(
+          `❌ Full error object: ${JSON.stringify(userError, Object.getOwnPropertyNames(userError), 2)}`
+        );
         results.push({
           userId: user.id,
           email: user.email,
@@ -129,7 +138,9 @@ export async function GET(request: NextRequest) {
       results
     });
   } catch (error: any) {
-    logger.error('❌ Daily mission cron job failed:', error);
+    logger.error(`❌ Cron job failed`);
+    logger.error(`❌ Message: ${error?.message}`);
+    logger.error(`❌ Stack: ${error?.stack}`);
     return NextResponse.json(
       { success: false, error: error.message || 'Cron execution failed' },
       { status: 500 }
