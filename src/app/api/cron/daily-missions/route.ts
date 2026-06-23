@@ -11,14 +11,17 @@ export async function GET(request: NextRequest) {
   try {
     logger.info('⏰ Daily Mission Cron Job triggered.');
 
-    // 1. Verify Vercel Cron Secret in production
-    if (process.env.NODE_ENV === 'production') {
-      const authHeader = request.headers.get('authorization');
-      if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        logger.warn('🚫 Unauthorized cron trigger attempt.');
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    const isVercelCron = request.headers.get('x-vercel-cron');
+
+    if (process.env.NODE_ENV === 'production' && !isVercelCron) {
+      logger.warn('🚫 Unauthorized cron trigger attempt.');
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
+
+    logger.info('✅ Cron authorization passed.');
 
     // 2. Fetch all Google OAuth users who have daily mission emails enabled
     // If they have no UserPreferences entry yet, they default to enabled (dailyMissionEmail = true)
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    logger.info(`👥 Found ${eligibleUsers.length} eligible Google users for daily missions.`);
+    logger.info(`👥 Found ${eligibleUsers.length} eligible users.`);
 
     const results = [];
 
@@ -52,6 +55,7 @@ export async function GET(request: NextRequest) {
 
         // Generate the mission
         const mission = await generateDailyMission(user.id);
+        logger.info(`🎯 Mission generated for user: ${user.email}`);
 
         // Calculate mission number for this user
         const pastMissionsCount = await prisma.dailyMission.count({
@@ -100,11 +104,15 @@ export async function GET(request: NextRequest) {
         );
 
         // Send email via Resend
+        logger.info(`📧 Sending mission email to ${user.email}`);
         const sendResult = await sendEmail({
           to: user.email,
           subject: `🎯 Today's Praxis Mission #${missionNumber}`,
           html: emailHtml
         });
+
+        logger.info('📨 Resend response:', sendResult);
+        logger.info(`✅ Email sent successfully to ${user.email}`);
 
         results.push({
           userId: user.id,
