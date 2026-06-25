@@ -118,69 +118,88 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
   const gradient = LEVEL_GRADIENT[insight.successLevel];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
       {/* Header banner */}
       <div style={{
         background: gradient, border: `1px solid ${accent}33`,
-        borderRadius: '14px 14px 0 0', padding: '18px 22px',
-        display: 'flex', alignItems: 'center', gap: 14,
+        borderRadius: '14px 14px 0 0', padding: '16px 18px',
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
-        <Trophy size={28} style={{ color: '#3b82f6', flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: accent, letterSpacing: '0.08em', marginBottom: 2 }}>
+        <Trophy size={24} style={{ color: '#3b82f6', flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: accent, letterSpacing: '0.08em', marginBottom: 2 }}>
             SUCCESS INTELLIGENCE
           </div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#f4f4f5' }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#f4f4f5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {insight.successLevelLabel} · {insight.patternDetected}
           </div>
-          <div style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
-            {insight.timeComplexity} time · {insight.spaceComplexity} space · {insight.strength}
+          <div style={{ fontSize: 10, color: '#71717a', marginTop: 2 }}>
+            {insight.timeComplexity} · {insight.spaceComplexity} · {insight.strength}
           </div>
         </div>
-        <div style={{
-          padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 800,
+        <div className="compact" style={{
+          padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 800,
           background: `${accent}22`, color: accent, border: `1px solid ${accent}44`,
+          flexShrink: 0,
         }}>
           L{insight.successLevel}
         </div>
       </div>
 
-      {/* Section nav */}
-      <div className="success-nav-container" style={{
-        display: 'flex', overflowX: 'auto', gap: 8,
-        background: '#111', border: '1px solid #1f1f1f', borderTop: 'none',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
-        WebkitOverflowScrolling: 'touch',
-        scrollSnapType: 'x proximity',
-      }}>
+      {/* Section nav — sticky, horizontally scrollable with snap */}
+      <div
+        className="success-nav-container"
+        style={{
+          display: 'flex',
+          overflowX: 'auto',
+          gap: 0,
+          background: '#111',
+          border: '1px solid #1f1f1f',
+          borderTop: 'none',
+          scrollbarWidth: 'none' as any,
+          WebkitOverflowScrolling: 'touch' as any,
+          scrollSnapType: 'x mandatory',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          padding: '0 4px',
+        }}
+      >
         <style>{`
-          /* hide scrollbar on Webkit */
-          .success-nav-container::-webkit-scrollbar {
-            display: none;
+          .success-nav-container::-webkit-scrollbar { display: none; }
+          .success-nav-tab-indicator {
+            animation: tab-indicator-slide 0.2s ease-out both;
           }
         `}</style>
         {SECTIONS.map(sec => {
           const Icon = SECTION_ICONS[sec.id];
+          const isActive = activeSection === sec.id;
           return (
             <button
               key={sec.id}
               ref={el => { tabRefs.current[sec.id] = el; }}
               onClick={() => setActiveSection(sec.id)}
+              className="compact"
               style={{
-                flex: '0 0 auto', padding: '9px 14px', background: 'none', border: 'none',
-                cursor: 'pointer', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
-                color: activeSection === sec.id ? accent : '#52525b',
-                borderBottom: activeSection === sec.id ? `2px solid ${accent}` : '2px solid transparent',
+                flex: '0 0 auto',
+                padding: '10px 12px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                color: isActive ? accent : '#52525b',
+                borderBottom: isActive ? `2px solid ${accent}` : '2px solid transparent',
                 transition: 'color 0.15s',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 6,
+                scrollSnapAlign: 'start',
                 minWidth: 'max-content',
-                flexShrink: 0,
               }}
             >
-              <Icon size={14} style={{ color: activeSection === sec.id ? accent : '#52525b' }} />
+              <Icon size={13} style={{ color: isActive ? accent : '#52525b', flexShrink: 0 }} />
               {sec.label}
             </button>
           );
@@ -190,7 +209,9 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
       {/* Section content */}
       <div style={{
         background: '#161616', border: '1px solid #1f1f1f', borderTop: 'none',
-        borderRadius: '0 0 14px 14px', padding: '18px 20px',
+        borderRadius: '0 0 14px 14px', padding: '16px',
+        width: '100%', maxWidth: '100%', overflow: 'hidden',
+        boxSizing: 'border-box',
       }}>
         {activeSection === 'overview' && <SuccessInsightCard insight={insight} />}
         {activeSection === 'edge-cases' && <AdversarialTestLabCard data={insight.adversarialTestLab} />}

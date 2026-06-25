@@ -93,34 +93,36 @@ function DiffViewer({ ops }: { ops: DiffOp[] }) {
     </div>
   );
   return (
-    <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7, overflowX: 'auto' }}>
-      {ops.map((op, i) => {
-        const isInsert = op.type === 'INSERT';
-        const isDelete = op.type === 'DELETE';
-        if (op.type === 'EQUAL') {
+    <div className="diff-scroll-wrapper">
+      <div style={{ fontFamily: 'monospace', fontSize: 'clamp(10px,2.5vw,12px)', lineHeight: 1.7 }}>
+        {ops.map((op, i) => {
+          const isInsert = op.type === 'INSERT';
+          const isDelete = op.type === 'DELETE';
+          if (op.type === 'EQUAL') {
+            return (
+              <div key={i} style={{ padding: '1px 14px', color: '#3f3f46' }}>
+                <span style={{ color: '#52525b', marginRight: 10, userSelect: 'none' }}>&nbsp;</span>
+                {op.content}
+              </div>
+            );
+          }
           return (
-            <div key={i} style={{ padding: '1px 14px', color: '#3f3f46' }}>
-              <span style={{ color: '#52525b', marginRight: 10, userSelect: 'none' }}>&nbsp;</span>
-              {op.content}
+            <div key={i} style={{
+              display: 'flex', gap: 10,
+              background: isInsert ? '#052e1630' : '#450a0a30',
+              borderLeft: `3px solid ${isInsert ? '#22c55e' : '#ef4444'}`,
+              padding: '2px 14px',
+            }}>
+              <span style={{ color: isInsert ? '#22c55e' : '#ef4444', userSelect: 'none', minWidth: 14, fontWeight: 700 }}>
+                {isInsert ? '+' : '\u2212'}
+              </span>
+              <span style={{ color: isInsert ? '#86efac' : '#fca5a5', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {op.content}
+              </span>
             </div>
           );
-        }
-        return (
-          <div key={i} style={{
-            display: 'flex', gap: 10,
-            background: isInsert ? '#052e1630' : '#450a0a30',
-            borderLeft: `3px solid ${isInsert ? '#22c55e' : '#ef4444'}`,
-            padding: '2px 14px',
-          }}>
-            <span style={{ color: isInsert ? '#22c55e' : '#ef4444', userSelect: 'none', minWidth: 14, fontWeight: 700 }}>
-              {isInsert ? '+' : '−'}
-            </span>
-            <span style={{ color: isInsert ? '#86efac' : '#fca5a5', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-              {op.content}
-            </span>
-          </div>
-        );
-      })}
+        })}
+      </div>
     </div>
   );
 }
@@ -139,9 +141,9 @@ function ConfidenceBar({ value, color = '#ff5f52' }: { value: number; color?: st
 
 function SectionCard({ title, accent = '#ff5f52', children }: { title: string; accent?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: '#191919', border: '1px solid #1f1f1f', borderRadius: 12, overflow: 'hidden' }}>
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid #1f1f1f', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 3, height: 16, background: accent, borderRadius: 2 }} />
+    <div style={{ background: '#191919', border: '1px solid #1f1f1f', borderRadius: 12, overflow: 'hidden', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid #1f1f1f', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 3, height: 16, background: accent, borderRadius: 2, flexShrink: 0 }} />
         <span style={{ fontSize: 13, fontWeight: 700, color: '#e4e4e7', letterSpacing: '-0.01em' }}>{title}</span>
       </div>
       <div>{children}</div>
@@ -389,56 +391,62 @@ export default function ProblemDetailPage() {
         display: grid;
         grid-template-columns: 1fr 360px;
         gap: 24px;
-        padding: 24px 32px;
+        padding: 24px 28px;
         align-items: start;
       }
-      @media (max-width: 991px) {
+      @media (max-width: 767px) {
+        .problem-grid {
+          grid-template-columns: 1fr !important;
+          padding: 12px !important;
+          gap: 16px !important;
+        }
+      }
+      @media (max-width: 991px) and (min-width: 768px) {
         .problem-grid {
           grid-template-columns: 1fr !important;
           padding: 16px 20px !important;
         }
       }
     `}</style>
-    <div style={{ width: '100%', minHeight: '100vh', background: '#131313' }}>
+    <div style={{ width: '100%', maxWidth: '100%', minHeight: '100vh', background: '#131313', overflowX: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '20px 32px', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>
-        <Link href="/problems" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#71717a', textDecoration: 'none', marginBottom: 14 }}>
+      <div style={{ padding: 'clamp(14px, 4vw, 20px) clamp(14px, 4vw, 28px)', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>
+        <Link href="/problems" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#71717a', textDecoration: 'none', marginBottom: 12 }}>
           ← Problem Tracker
         </Link>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <span style={{ fontSize: '22px', fontWeight: 800, color: '#f4f4f5', letterSpacing: '-0.03em' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 'clamp(17px, 4vw, 22px)', fontWeight: 800, color: '#f4f4f5', letterSpacing: '-0.03em', wordBreak: 'break-word' }}>
                 {problem.title}
               </span>
-              <span style={{
+              <span className="compact" style={{
                 fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6,
-                color: diffColor, background: `${diffColor}22`,
+                color: diffColor, background: `${diffColor}22`, flexShrink: 0,
               }}>
                 {problem.difficulty}
               </span>
-              {/* Accepted badge */}
               {isLatestAccepted && (
-                <span style={{
+                <span className="compact" style={{
                   fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6,
-                  color: '#22c55e', background: '#052e16', border: '1px solid #166534',
+                  color: '#22c55e', background: '#052e16', border: '1px solid #166534', flexShrink: 0,
                 }}>
                   ✓ Accepted
                 </span>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {(problem.topics || []).map(t => (
-                <span key={t} style={{ fontSize: 10, color: '#71717a', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '2px 8px' }}>{t}</span>
+                <span key={t} className="compact" style={{ fontSize: 10, color: '#71717a', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '2px 8px' }}>{t}</span>
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, color: '#71717a' }}>{allData.length} attempt{allData.length !== 1 ? 's' : ''}</span>
             {problem.url && (
               <a href={problem.url} target="_blank" rel="noreferrer" style={{
                 fontSize: 12, color: '#ff5f52', textDecoration: 'none', background: '#ff5f5215',
-                border: '1px solid #ff5f5230', borderRadius: 7, padding: '6px 14px', fontWeight: 600,
+                border: '1px solid #ff5f5230', borderRadius: 7, padding: '7px 14px', fontWeight: 600,
               }}>
                 Open Problem ↗
               </a>

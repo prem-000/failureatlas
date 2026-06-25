@@ -130,12 +130,12 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
             left: 0;
             right: 0;
             z-index: 100;
-            background: rgba(15, 15, 18, 0.85);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            height: calc(56px + env(safe-area-inset-bottom, 0px));
-            padding: 0 4px;
+            background: rgba(13, 13, 15, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            height: calc(64px + env(safe-area-inset-bottom, 0px));
+            padding: 0 2px;
             padding-bottom: env(safe-area-inset-bottom, 0px);
             align-items: center;
             justify-content: space-around;
@@ -148,25 +148,38 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 2px;
+          gap: 3px;
           flex: 1;
           height: 100%;
           border-radius: 12px;
           text-decoration: none;
           color: #52525b;
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.02em;
-          transition: color 150ms ease, background 150ms ease;
+          transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
           min-height: 44px;
           min-width: 44px;
           border: none;
           background: transparent;
           cursor: pointer;
           -webkit-tap-highlight-color: transparent;
+          position: relative;
         }
         .mobile-tab-item.active {
           color: #ff5f52;
+        }
+        .mobile-tab-item.active::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 28px;
+          height: 2px;
+          border-radius: 0 0 2px 2px;
+          background: #ff5f52;
+          box-shadow: 0 0 8px #ff5f52;
         }
         .mobile-tab-item:active {
           background: rgba(255, 255, 255, 0.04);
@@ -178,9 +191,9 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           border-radius: 50%;
           background: #ff5f52;
           box-shadow: 0 0 6px #ff5f52;
-          margin-top: 1px;
+          margin-top: 2px;
           opacity: 0;
-          transition: opacity 150ms ease;
+          transition: opacity 200ms ease;
         }
         .mobile-tab-item.active .mobile-tab-active-dot {
           opacity: 1;
@@ -297,10 +310,9 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
               href={href}
               className={`mobile-tab-item${active ? ' active' : ''}`}
               aria-label={label}
-              style={{ minHeight: 44, minWidth: 44 }}
             >
-              <Icon size={20} strokeWidth={active ? 2.2 : 1.7} />
-              <span>{label}</span>
+              <Icon size={19} strokeWidth={active ? 2.2 : 1.7} />
+              <span style={{ fontSize: 10 }}>{label}</span>
               <span className="mobile-tab-active-dot" aria-hidden="true" />
             </Link>
           );
@@ -309,10 +321,9 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           onClick={onSignOut}
           className="mobile-tab-item"
           aria-label="Sign out"
-          style={{ minHeight: 44, minWidth: 44 }}
         >
-          <LogOut size={20} strokeWidth={1.7} />
-          <span>Sign out</span>
+          <LogOut size={19} strokeWidth={1.7} />
+          <span style={{ fontSize: 10 }}>Sign out</span>
           <span className="mobile-tab-active-dot" style={{ opacity: 0 }} aria-hidden="true" />
         </button>
       </nav>

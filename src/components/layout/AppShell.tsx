@@ -39,6 +39,8 @@ export function AppShell({ children, fullscreen = false, hideSidebar = false }: 
         background: '#131313',
         fontFamily: 'Inter, system-ui, sans-serif',
         overflowX: 'hidden',
+        maxWidth: '100vw',
+        position: 'relative',
       }}
     >
       {/* Sidebar — pill rail on desktop, bottom tab bar on mobile */}
@@ -52,11 +54,14 @@ export function AppShell({ children, fullscreen = false, hideSidebar = false }: 
         className={
           hideSidebar
             ? ''
-            : 'md:pl-[100px] pb-[calc(56px+env(safe-area-inset-bottom,0px)+12px)] md:pb-0'
+            : 'md:pl-[100px] pb-[calc(64px+env(safe-area-inset-bottom,0px)+12px)] md:pb-0'
         }
         style={{
           flex: 1,
           minWidth: 0, /* prevent flex children from overflowing */
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: 'hidden',
           ...(fullscreen ? { display: 'flex', flexDirection: 'column' } : {}),
         }}
       >
