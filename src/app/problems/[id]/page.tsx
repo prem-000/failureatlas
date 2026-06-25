@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useSubmissionsList } from '@/hooks/usePhase3Queries';
 import { apiFetch } from '@/lib/api/client';
@@ -501,6 +501,42 @@ export default function ProblemDetailPage() {
 
   const allData = detailQueries.map((q) => q.data).filter(Boolean) as SubmissionData[];
 
+  // ── Compute section IDs eagerly so hooks always run in the same order ──────
+  // (Must be before any early returns — Rules of Hooks)
+  const sectionIds = useMemo(() => {
+    if (!allData.length) return [];
+    const isAccepted = allData[0].submission.status === 'Accepted';
+    const ids: string[] = [];
+    if (isAccepted) ids.push('success');
+    ids.push('timeline');
+    const evidences = allData.flatMap(d => d.evidences);
+    if (!isAccepted && evidences.length > 0) ids.push('evidence');
+    const hypotheses = allData.flatMap(d => d.rootCauseHypotheses);
+    if (hypotheses.length > 0 && !isAccepted) ids.push('root-cause');
+    const diag = allData.find(d => d.diagnosis)?.diagnosis;
+    if (diag?.primaryWeakness && !isAccepted) ids.push('growth');
+    if (diag?.recommendations?.length && !isAccepted) ids.push('practice');
+    return ids;
+  }, [allData]);
+
+  // ── Hooks that must run unconditionally (before any early returns) ──────────
+  const activeSection = useScrollSpy(sectionIds);
+
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  useEffect(() => {
+    if (activeSection && tabRefs.current[activeSection]) {
+      tabRefs.current[activeSection]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, [activeSection]);
+
+  const scrollToSection = useCallback((id: string) => {
+    const el = document.getElementById(`section-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setMenuSheetOpen(false);
+  }, []);
+
+  // ── Early returns (all hooks already called above) ──────────────────────────
   if (loading) {
     return (
       <AppShell>
@@ -720,27 +756,7 @@ export default function ProblemDetailPage() {
     });
   }
 
-  // Section IDs for scroll spy
-  const sectionIds = mobileSections.map(s => s.id);
-
-  // ── Scroll spy (only active on mobile — harmless on desktop since elements don't exist) ──
-  const activeSection = useScrollSpy(sectionIds);
-
-  // Tab ref map for auto-scroll-into-view
-  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  useEffect(() => {
-    if (activeSection && tabRefs.current[activeSection]) {
-      tabRefs.current[activeSection]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
-  }, [activeSection]);
-
-  // Scroll to section helper
-  const scrollToSection = useCallback((id: string) => {
-    const el = document.getElementById(`section-${id}`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setMenuSheetOpen(false);
-  }, []);
+  // (sectionIds, activeSection, tabRefs, scrollToSection are all computed before early returns above)
 
   // ── Bottom sheet nav content ──────────────────────────────────────────────────
   const menuSheetContent = (
