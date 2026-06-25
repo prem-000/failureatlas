@@ -409,3 +409,261 @@ a.compact,
     padding-right: 1.5rem !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   FULL ANALYSIS PAGE — MOBILE UX REDESIGN
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Sticky analysis section tab bar ──────────────────────── */
+.analysis-sticky-nav {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 767px) {
+  .analysis-sticky-nav {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    background: rgba(19, 19, 19, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid #1f1f1f;
+    transition: box-shadow 0.2s ease;
+    /* Ensure tab bar height is fixed so sticky-top calculations work */
+    height: 48px;
+    align-items: stretch;
+    flex-shrink: 0;
+  }
+  .analysis-sticky-nav.scrolled {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  }
+  .analysis-sticky-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .analysis-nav-tab {
+    flex: 0 0 auto;
+    padding: 0 14px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: #52525b;
+    transition: color 0.15s, border-color 0.2s;
+    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .analysis-nav-tab.active {
+    color: #ff5f52;
+    border-bottom-color: #ff5f52;
+  }
+}
+
+/* ─── Mobile accordion card ─────────────────────────────────── */
+.analysis-accordion-card {
+  background: #191919;
+  border: 1px solid #1f1f1f;
+  border-radius: 14px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.analysis-accordion-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.analysis-accordion-trigger:active {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.analysis-accordion-body {
+  overflow: hidden;
+  transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.25s ease;
+}
+.analysis-accordion-body.open {
+  animation: accordion-open 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes accordion-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Sticky mini-header inside an open accordion */
+.analysis-section-sticky-header {
+  position: sticky;
+  top: 48px; /* height of .analysis-sticky-nav */
+  z-index: 10;
+  background: rgba(25, 25, 25, 0.97);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  border-bottom: 1px solid #1f1f1f;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ─── Floating "Open Problem" CTA bar ───────────────────────── */
+.floating-open-problem {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .floating-open-problem {
+    display: flex;
+    position: fixed;
+    /* sits above the bottom tab bar (64px) + safe area, with a small gap */
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px);
+    left: 12px;
+    right: 12px;
+    z-index: 30;
+    background: #ff5f52;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(255, 95, 82, 0.4);
+    animation: floating-cta-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .floating-open-problem a,
+  .floating-open-problem button {
+    flex: 1;
+    padding: 14px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .floating-open-problem:active {
+    transform: scale(0.98);
+  }
+}
+
+@keyframes floating-cta-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Floating "Analysis Menu" button ───────────────────────── */
+.floating-menu-btn {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .floating-menu-btn {
+    display: flex;
+    position: fixed;
+    /* With floating CTA: sit above that bar (14px*2 button height ~52px) */
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 68px);
+    right: 16px;
+    z-index: 30;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: rgba(22, 22, 22, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid #2a2a2a;
+    border-radius: 24px;
+    color: #a1a1aa;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    transition: color 0.15s, border-color 0.15s, transform 0.15s;
+    animation: floating-menu-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .floating-menu-btn:active {
+    transform: scale(0.95);
+  }
+}
+
+@keyframes floating-menu-in {
+  from { opacity: 0; transform: scale(0.85) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ─── "Show More" text collapse ─────────────────────────────── */
+.show-more-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: none;
+}
+.show-more-text.expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+}
+.show-more-btn {
+  background: none;
+  border: none;
+  color: #ff5f52;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Mobile-only section anchor offset (accounts for sticky nav) */
+.analysis-section-anchor {
+  scroll-margin-top: 56px; /* tab-bar (48px) + a little breathing room */
+}
+
+/* ─── On desktop, hide all mobile-only analysis UI ─────────── */
+@media (min-width: 768px) {
+  .analysis-sticky-nav,
+  .floating-open-problem,
+  .floating-menu-btn {
+    display: none !important;
+  }
+}
