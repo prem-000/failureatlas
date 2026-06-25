@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { X, CheckCircle, XCircle, AlertTriangle, Clock, Code2, Lightbulb, ChevronRight, ExternalLink } from 'lucide-react';
 import type { RoadmapProblem } from '@/hooks/usePhase3Queries';
 import type { FailureData } from '@/hooks/usePhase3Queries';
@@ -24,6 +25,9 @@ function getTimeAgo(ts: string): string {
 }
 
 export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDrawerProps) {
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchTranslation, setTouchTranslation] = useState<number>(0);
+
   if (!problem) return null;
 
   const diffColor = DIFF_COLORS[problem.difficulty] || '#71717a';
@@ -38,6 +42,28 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
   const allEvidence = failures.flatMap(f => f.evidence || []);
   const allRootCauses = failures.flatMap(f => f.rootCauses || []);
   const uniqueRootCauses = Array.from(new Map(allRootCauses.map(r => [r.name, r])).values());
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.innerWidth >= 768) return;
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const currentY = e.targetTouches[0].clientY;
+    const diff = currentY - touchStart;
+    if (diff > 0) {
+      setTouchTranslation(diff);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStart(null);
+    if (touchTranslation > 100) {
+      onClose();
+    }
+    setTouchTranslation(0);
+  };
 
   return (
     <>
@@ -108,6 +134,14 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
           align-items: center;
           justify-content: center;
         }
+        .mobile-drag-pill {
+          width: 36px;
+          height: 4px;
+          border-radius: 2px;
+          background: rgba(255,255,255,0.25);
+          margin: 8px auto 0 auto;
+          display: none;
+        }
         @media (max-width: 767px) {
           .problem-drawer {
             left: 0 !important;
@@ -121,7 +155,7 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
             border-left: none !important;
             border-top: 1px solid rgba(255,255,255,0.08) !important;
             border-radius: 20px 20px 0 0 !important;
-            transform: ${isOpen ? 'translateY(0)' : 'translateY(100%)'} !important;
+            transform: translateY(0) !important;
           }
           .drawer-close-btn {
             min-width: 44px !important;
@@ -130,10 +164,28 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
           .drawer-scroll-content {
             padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
           }
+          .mobile-drag-pill {
+            display: block !important;
+          }
         }
       `}</style>
 
-      <div className="problem-drawer custom-scrollbar">
+      <div
+        className="problem-drawer custom-scrollbar"
+        style={{
+          transform: touchTranslation > 0 ? `translateY(${touchTranslation}px)` : undefined,
+          transition: touchStart !== null ? 'none' : 'transform 300ms cubic-bezier(0.16,1,0.3,1)',
+        }}
+      >
+        {/* Mobile Drag Header */}
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{ cursor: 'grab', flexShrink: 0 }}
+        >
+          <div className="mobile-drag-pill" />
+        </div>
         {/* Header */}
         <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>

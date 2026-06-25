@@ -23,6 +23,7 @@ import {
 import { generateAdversarialTestLab } from '@/lib/behavior/adversarial-generator';
 import { recordSuccessInGraph } from '@/lib/graph/mastery-operations';
 import type { SuccessInsight, PatternIntelligence } from '@/types';
+import { getConstraintIntelligence } from '@/lib/analysis/constraint-engine';
 
 // ─── Groq explanation layer ───────────────────────────────────────────────────
 // Only called AFTER all facts are computed. Uses facts as context.
@@ -213,6 +214,14 @@ export async function generateSuccessInsight(
   const edgeCaseScore = adversarialTestLab.coverageIntelligence.robustnessScore / 100;
   const optimizationResult = scoreOptimization(code, patternResult.patternSlug);
   const futureRisks = predictFutureRisks(patternResult.patternSlug, complexityResult, adversarialTestLab.coverageIntelligence.robustnessScore);
+  const constraintIntelligence = await getConstraintIntelligence(
+    submission.problem.title,
+    submission.problem.slug,
+    submission.problem.difficulty,
+    complexityResult.time,
+    submission.problem.topics || [],
+    code
+  );
 
   // ── Phase 2: Classify success level ──────────────────────────────────────────
   const { level, label } = classifySuccessLevel({
@@ -287,6 +296,7 @@ export async function generateSuccessInsight(
     optimizationReview: optimizationResult.items,
     patternIntelligence,
     futureRisks,
+    constraintIntelligence,
     codeQuality: {
       strengths: qualityResult.strengths,
       improvements: qualityResult.improvements,

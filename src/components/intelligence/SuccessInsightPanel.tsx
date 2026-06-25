@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '@/lib/api/client';
 import { SuccessInsightCard } from './SuccessInsightCard';
 import { AdversarialTestLabCard } from './AdversarialTestLabCard';
 import { OptimizationReviewCard } from './OptimizationReviewCard';
 import { PatternIntelligenceCard } from './PatternIntelligenceCard';
-import { FutureRiskCard } from './FutureRiskCard';
+import { ConstraintIntelligenceCard } from './ConstraintIntelligenceCard';
 import { CodeQualityCard } from './CodeQualityCard';
 import type { SuccessInsight } from '@/types';
-import { Trophy, BrainCircuit, ShieldCheck, Zap, Network, Radar, Code2 } from 'lucide-react';
+import { Trophy, BrainCircuit, ShieldCheck, Zap, Network, Scale, Code2 } from 'lucide-react';
 
 type Section = 'overview' | 'edge-cases' | 'optimization' | 'pattern' | 'risk' | 'quality';
 
@@ -18,7 +18,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'edge-cases',  label: 'Adversarial Test Lab' },
   { id: 'optimization',label: 'Optimization' },
   { id: 'pattern',     label: 'Pattern Mastery' },
-  { id: 'risk',        label: 'Future Risks' },
+  { id: 'risk',        label: 'Constraint Intelligence' },
   { id: 'quality',     label: 'Code Quality' },
 ];
 
@@ -27,7 +27,7 @@ const SECTION_ICONS: Record<Section, React.ComponentType<{ size?: number; style?
   'edge-cases': ShieldCheck,
   optimization: Zap,
   pattern: Network,
-  risk: Radar,
+  risk: Scale,
   quality: Code2,
 };
 
@@ -51,6 +51,19 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
   const [insight, setInsight] = useState<SuccessInsight | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const tabRefs = useRef<Record<Section, HTMLButtonElement | null>>({} as any);
+
+  useEffect(() => {
+    const activeBtn = tabRefs.current[activeSection];
+    if (activeBtn) {
+      activeBtn.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+  }, [activeSection]);
 
   useEffect(() => {
     if (!submissionId) return;
@@ -133,12 +146,13 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
       </div>
 
       {/* Section nav */}
-      <div style={{
+      <div className="success-nav-container" style={{
         display: 'flex', overflowX: 'auto', gap: 8,
         background: '#111', border: '1px solid #1f1f1f', borderTop: 'none',
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
         WebkitOverflowScrolling: 'touch',
+        scrollSnapType: 'x proximity',
       }}>
         <style>{`
           /* hide scrollbar on Webkit */
@@ -151,6 +165,7 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
           return (
             <button
               key={sec.id}
+              ref={el => { tabRefs.current[sec.id] = el; }}
               onClick={() => setActiveSection(sec.id)}
               style={{
                 flex: '0 0 auto', padding: '9px 14px', background: 'none', border: 'none',
@@ -162,6 +177,7 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
                 alignItems: 'center',
                 gap: 8,
                 minWidth: 'max-content',
+                flexShrink: 0,
               }}
             >
               <Icon size={14} style={{ color: activeSection === sec.id ? accent : '#52525b' }} />
@@ -180,7 +196,13 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
         {activeSection === 'edge-cases' && <AdversarialTestLabCard data={insight.adversarialTestLab} />}
         {activeSection === 'optimization' && <OptimizationReviewCard items={insight.optimizationReview} />}
         {activeSection === 'pattern' && <PatternIntelligenceCard intelligence={insight.patternIntelligence} />}
-        {activeSection === 'risk' && <FutureRiskCard risks={insight.futureRisks} />}
+        {activeSection === 'risk' && (
+          <ConstraintIntelligenceCard
+            data={insight.constraintIntelligence}
+            detectedComplexity={insight.timeComplexity}
+            problemTitle={problemTitle}
+          />
+        )}
         {activeSection === 'quality' && <CodeQualityCard quality={insight.codeQuality} />}
       </div>
     </div>

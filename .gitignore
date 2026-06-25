@@ -52,3 +52,5 @@ Thumbs.db
 # Database
 *.sqlite
 *.sqlite-journal
+.vercel
+.env*.local

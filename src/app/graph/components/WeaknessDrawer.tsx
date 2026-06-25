@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { X, AlertTriangle, Zap, BookOpen, TrendingDown, Clock, CheckCircle, Activity } from 'lucide-react';
 import type { FailureData, WeaknessData } from '@/hooks/usePhase3Queries';
 import type { Node, Edge } from 'reactflow';
@@ -34,6 +35,9 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
 }
 
 export function WeaknessDrawer({ node, nodes, edges, failures, onClose }: WeaknessDrawerProps) {
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchTranslation, setTouchTranslation] = useState<number>(0);
+
   if (!node) return null;
 
   const nodeType: string = node.data?.nodeType || '';
@@ -75,6 +79,28 @@ export function WeaknessDrawer({ node, nodes, edges, failures, onClose }: Weakne
 
   const riskColor = pageRank > 0.5 ? '#ef4444' : pageRank > 0.3 ? '#f97316' : pageRank > 0.1 ? '#f59e0b' : '#22c55e';
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.innerWidth >= 768) return;
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const currentY = e.targetTouches[0].clientY;
+    const diff = currentY - touchStart;
+    if (diff > 0) {
+      setTouchTranslation(diff);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStart(null);
+    if (touchTranslation > 100) {
+      onClose();
+    }
+    setTouchTranslation(0);
+  };
+
   return (
     <>
       <style>{`
@@ -96,6 +122,14 @@ export function WeaknessDrawer({ node, nodes, edges, failures, onClose }: Weakne
           display: inline-flex;
           align-items: center;
           justify-content: center;
+        }
+        .mobile-drag-pill {
+          width: 36px;
+          height: 4px;
+          border-radius: 2px;
+          background: rgba(255,255,255,0.25);
+          margin: 8px auto 0 auto;
+          display: none;
         }
         @media (max-width: 767px) {
           .wdrawer {
@@ -119,10 +153,28 @@ export function WeaknessDrawer({ node, nodes, edges, failures, onClose }: Weakne
           .drawer-scroll-content {
             padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
           }
+          .mobile-drag-pill {
+            display: block !important;
+          }
         }
       `}</style>
  
-      <div className="wdrawer custom-scrollbar">
+      <div
+        className="wdrawer custom-scrollbar"
+        style={{
+          transform: touchTranslation > 0 ? `translateY(${touchTranslation}px)` : undefined,
+          transition: touchStart !== null ? 'none' : 'transform 300ms cubic-bezier(0.16,1,0.3,1)',
+        }}
+      >
+        {/* Mobile Drag Header */}
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{ cursor: 'grab', flexShrink: 0 }}
+        >
+          <div className="mobile-drag-pill" />
+        </div>
         {/* Header */}
         <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

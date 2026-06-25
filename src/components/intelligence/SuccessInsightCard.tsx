@@ -33,11 +33,34 @@ export function SuccessInsightCard({ insight }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <style>{`
+        .success-header-grid {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 16px;
+          align-items: center;
+        }
+        .success-pattern-complexity-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+        @media (max-width: 500px) {
+          .success-header-grid {
+            grid-template-columns: 1fr !important;
+            justify-items: center;
+            text-align: center;
+          }
+          .success-pattern-complexity-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
       {/* Level badge + header */}
-      <div style={{
+      <div className="success-header-grid" style={{
         background: '#141414', border: '1px solid #1f1f1f', borderRadius: 12,
         padding: '16px 20px',
-        display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 16, alignItems: 'center',
       }}>
         {/* Level badge */}
         <div style={{
@@ -45,6 +68,7 @@ export function SuccessInsightCard({ insight }: Props) {
           background: lvl.bg, border: `2px solid ${lvl.border}`,
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           gap: 2,
+          margin: '0 auto',
         }}>
           <LvlIcon size={18} style={{ color: lvl.text }} />
           <span style={{ fontSize: 10, fontWeight: 800, color: lvl.text }}>{lvl.label}</span>
@@ -61,7 +85,7 @@ export function SuccessInsightCard({ insight }: Props) {
       </div>
 
       {/* Pattern + Complexity row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="success-pattern-complexity-grid">
         {/* Pattern */}
         <div style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: 10, padding: '12px 14px' }}>
           <div style={{ fontSize: 10, color: '#71717a', fontWeight: 600, letterSpacing: '0.06em', marginBottom: 6 }}>PATTERN DETECTED</div>

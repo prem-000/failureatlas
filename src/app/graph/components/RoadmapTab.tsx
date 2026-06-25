@@ -8,7 +8,7 @@ import ReactFlow, {
   MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Sparkles, RefreshCw, ChevronDown, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Sparkles, RefreshCw, ChevronDown, ArrowRight, Loader2, AlertCircle, Maximize2, Minimize2, Target } from 'lucide-react';
 import { RoadmapNode } from './RoadmapNode';
 import { ProblemDrawer } from './ProblemDrawer';
 import { SearchBar } from './SearchBar';
@@ -31,7 +31,8 @@ const edgeTypes: any = { smart: SmartEdge };
 
 function buildReactFlowGraph(
   levelData: RoadmapLevel,
-  searchQuery: string
+  searchQuery: string,
+  isMobile: boolean
 ): { nodes: Node[]; edges: Edge[] } {
   const hasSearch = !!searchQuery.trim();
   const query = searchQuery.toLowerCase();
@@ -102,7 +103,7 @@ function buildReactFlowGraph(
     id: `e-${e.source}-${e.target}`,
     source: e.source,
     target: e.target,
-    type: 'smart',
+    type: isMobile ? 'straight' : 'smart',
     data: {
       type: e.type,
       confidence: e.confidence,
@@ -127,6 +128,38 @@ function RoadmapTabInner() {
   const [currentLevelIdx, setCurrentLevelIdx] = useState(0);
 
   const { data: dynamicTopics, isLoading: topicsLoading } = useDynamicTopics();
+  const [isMobile, setIsMobile] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchTranslation, setTouchTranslation] = useState<number>(0);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.innerWidth >= 768) return;
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const currentY = e.targetTouches[0].clientY;
+    const diff = currentY - touchStart;
+    if (diff > 0) {
+      setTouchTranslation(diff);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStart(null);
+    if (touchTranslation > 100) {
+      setSelectedEdge(null);
+    }
+    setTouchTranslation(0);
+  };
   
   // Auto-select first dynamic topic
   useEffect(() => {
@@ -160,10 +193,10 @@ function RoadmapTabInner() {
     if (!currentLevelData?.nodes) {
       setNodes([]); setEdges([]); return;
     }
-    const { nodes: n, edges: e } = buildReactFlowGraph(currentLevelData, searchQuery);
+    const { nodes: n, edges: e } = buildReactFlowGraph(currentLevelData, searchQuery, isMobile);
     setNodes(n);
     setEdges(e);
-  }, [currentLevelData, searchQuery]);
+  }, [currentLevelData, searchQuery, isMobile]);
 
   // Auto-fit view when search changes
   useEffect(() => {
@@ -173,6 +206,21 @@ function RoadmapTabInner() {
       setTimeout(() => reactFlow.fitView({ nodes: highlighted, duration: 400, padding: 0.3 }), 50);
     }
   }, [searchQuery, nodes, reactFlow]);
+
+  const fitGraph = () => {
+    reactFlow.fitView({ duration: 400, padding: 0.3 });
+  };
+
+  const resetZoom = () => {
+    reactFlow.zoomTo(1, { duration: 400 });
+  };
+
+  const focusSearchResult = () => {
+    const targetNode = nodes.find(n => n.data?.isHighlighted);
+    if (targetNode) {
+      reactFlow.setCenter(targetNode.position.x, targetNode.position.y, { zoom: 1.2, duration: 400 });
+    }
+  };
 
   const handleGenerate = useCallback(async () => {
     const finalTopic = selectedTopic || 'binary-search';
@@ -385,6 +433,24 @@ function RoadmapTabInner() {
             />
           </ReactFlow>
 
+          {/* Custom Mobile Graph Controls */}
+          <div className="mobile-graph-controls">
+            <button onClick={fitGraph} className="control-btn" title="Fit Graph">
+              <Maximize2 size={13} />
+              {!isMobile && 'Fit View'}
+            </button>
+            <button onClick={resetZoom} className="control-btn" title="Reset Zoom">
+              <Minimize2 size={13} />
+              {!isMobile && '1:1 Zoom'}
+            </button>
+            {nodes.some(n => n.data?.isHighlighted) && (
+              <button onClick={focusSearchResult} className="control-btn highlight" title="Focus Search Result">
+                <Target size={13} />
+                {!isMobile && 'Focus Result'}
+              </button>
+            )}
+          </div>
+
           {/* Generation error overlay */}
           {generateMutation.isError && (
             <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 7, color: '#fca5a5', fontSize: 12, fontWeight: 600 }}>
@@ -402,16 +468,108 @@ function RoadmapTabInner() {
         onClose={() => setSelectedProblem(null)}
       />
 
+      {/* Styles for mobile controls & inspector */}
+      <style>{`
+        .mobile-graph-controls {
+          position: absolute;
+          bottom: 16px;
+          left: 16px;
+          display: flex;
+          gap: 8px;
+          z-index: 50;
+        }
+        .control-btn {
+          background: rgba(15, 15, 18, 0.9);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #a1a1aa;
+          padding: 7px 12px;
+          border-radius: 8px;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 150ms ease;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .control-btn:hover {
+          color: #f4f4f5;
+          background: rgba(255, 255, 255, 0.12);
+          border-color: rgba(255, 255, 255, 0.15);
+        }
+        .control-btn.highlight {
+          border-color: rgba(168, 85, 247, 0.4);
+          color: #d8b4fe;
+          box-shadow: 0 0 8px rgba(168, 85, 247, 0.2);
+        }
+        .control-btn.highlight:hover {
+          background: rgba(168, 85, 247, 0.15);
+          border-color: rgba(168, 85, 247, 0.6);
+        }
+        .connection-drawer {
+          position: absolute; right: 0; top: 0; bottom: 0; width: 380px;
+          background: rgba(15,15,18,0.95); border-left: 1px solid rgba(255,255,255,0.08);
+          box-shadow: -8px 0 32px rgba(0,0,0,0.5); backdrop-filter: blur(16px);
+          display: flex; flex-direction: column; z-index: 100;
+          transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .mobile-drag-pill {
+          width: 36px;
+          height: 4px;
+          border-radius: 2px;
+          background: rgba(255,255,255,0.25);
+          margin: 8px auto 0 auto;
+          display: none;
+        }
+        @media (max-width: 767px) {
+          .mobile-graph-controls {
+            bottom: 96px !important;
+            left: 16px !important;
+            right: 80px !important;
+            justify-content: flex-start;
+          }
+          .control-btn {
+            background: rgba(15, 15, 18, 0.95);
+            padding: 9px 12px;
+          }
+          .connection-drawer {
+            left: 0 !important;
+            right: 0 !important;
+            top: auto !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 70vh !important;
+            max-height: 70vh !important;
+            border-left: none !important;
+            border-top: 1px solid rgba(255,255,255,0.08) !important;
+            border-radius: 20px 20px 0 0 !important;
+            transform: translateY(0) !important;
+          }
+          .mobile-drag-pill {
+            display: block !important;
+          }
+        }
+      `}</style>
+
       {/* Connection Inspector Drawer */}
       {selectedEdge && (
-        <div style={{
-          position: 'absolute', right: 0, top: 0, bottom: 0, width: 380,
-          background: 'rgba(15,15,18,0.95)', borderLeft: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '-8px 0 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(16px)',
-          display: 'flex', flexDirection: 'column', zIndex: 100,
-          transform: selectedEdge ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)',
-        }}>
+        <div
+          className="connection-drawer"
+          style={{
+            transform: touchTranslation > 0 ? `translateY(${touchTranslation}px)` : undefined,
+            transition: touchStart !== null ? 'none' : 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          {/* Mobile Drag Header */}
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            style={{ cursor: 'grab', flexShrink: 0 }}
+          >
+            <div className="mobile-drag-pill" />
+          </div>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f4f4f5', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Sparkles size={16} color="#a1a1aa" /> Connection Inspector

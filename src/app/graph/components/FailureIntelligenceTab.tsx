@@ -8,7 +8,7 @@ import ReactFlow, {
   MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { BrainCircuit, Layers, GitFork, Loader2 } from 'lucide-react';
+import { BrainCircuit, Layers, GitFork, Loader2, Maximize2, Minimize2, Target } from 'lucide-react';
 import { FailureNode } from './FailureNode';
 import { WeaknessDrawer } from './WeaknessDrawer';
 import { SearchBar } from './SearchBar';
@@ -97,8 +97,8 @@ function buildGraph(
       id: e.id,
       source: e.source,
       target: e.target,
-      type: 'smoothstep',
-      animated: e.type === 'TRIGGERED' || e.type === 'HAS_EVIDENCE',
+      type: isMobile ? 'straight' : 'smoothstep',
+      animated: !isMobile && (e.type === 'TRIGGERED' || e.type === 'HAS_EVIDENCE'),
       style: {
         stroke: EDGE_COLORS[e.type || ''] || '#27272a',
         strokeWidth: 1.5,
@@ -153,6 +153,21 @@ function FailureIntelligenceInner() {
     setSelectedNode(node);
   }, []);
 
+  const fitGraph = () => {
+    reactFlow.fitView({ duration: 400, padding: 0.3 });
+  };
+
+  const resetZoom = () => {
+    reactFlow.zoomTo(1, { duration: 400 });
+  };
+
+  const focusSearchResult = () => {
+    const targetNode = nodes.find(n => n.data?.isHighlighted);
+    if (targetNode) {
+      reactFlow.setCenter(targetNode.position.x, targetNode.position.y, { zoom: 1.2, duration: 400 });
+    }
+  };
+
   const stats = useMemo(() => ({
     weaknesses: graphData?.stats.weaknesses || 0,
     failures: graphData?.stats.failures || 0,
@@ -205,6 +220,42 @@ function FailureIntelligenceInner() {
         .touch-action-graph {
           touch-action: pan-x pan-y !important;
         }
+        .mobile-graph-controls {
+          position: absolute;
+          bottom: 16px;
+          left: 16px;
+          display: flex;
+          gap: 8px;
+          z-index: 50;
+        }
+        .control-btn {
+          background: rgba(15, 15, 18, 0.9);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #a1a1aa;
+          padding: 7px 12px;
+          border-radius: 8px;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 150ms ease;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .control-btn:hover {
+          color: #f4f4f5;
+          background: rgba(255, 255, 255, 0.12);
+          border-color: rgba(255, 255, 255, 0.15);
+        }
+        .control-btn.highlight {
+          border-color: rgba(168, 85, 247, 0.4);
+          color: #d8b4fe;
+          box-shadow: 0 0 8px rgba(168, 85, 247, 0.2);
+        }
+        .control-btn.highlight:hover {
+          background: rgba(168, 85, 247, 0.15);
+          border-color: rgba(168, 85, 247, 0.6);
+        }
         @media (max-width: 767px) {
           .fi-header {
             flex-direction: column !important;
@@ -248,6 +299,16 @@ function FailureIntelligenceInner() {
             min-width: 44px !important;
             min-height: 44px !important;
           }
+          .mobile-graph-controls {
+            bottom: 96px !important;
+            left: 16px !important;
+            right: 80px !important;
+            justify-content: flex-start;
+          }
+          .control-btn {
+            background: rgba(15, 15, 18, 0.95);
+            padding: 9px 12px;
+          }
         }
       `}</style>
 
@@ -280,7 +341,7 @@ function FailureIntelligenceInner() {
       </div>
 
       {/* Toolbar */}
-      <div className="fi-toolbar">
+      <div className="fi-toolbar" style={{ backdropFilter: isMobile ? 'none' : 'blur(12px)' }}>
         {/* Type filters */}
         <div style={{ display: 'flex', gap: 5, flex: 1, flexWrap: 'wrap' }}>
           {FILTER_OPTIONS.map(f => (
@@ -350,6 +411,24 @@ function FailureIntelligenceInner() {
               style={{ background: 'rgba(15,15,18,0.85)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10 }}
             />
           </ReactFlow>
+
+          {/* Custom Mobile Graph Controls */}
+          <div className="mobile-graph-controls">
+            <button onClick={fitGraph} className="control-btn" title="Fit Graph">
+              <Maximize2 size={13} />
+              {!isMobile && 'Fit View'}
+            </button>
+            <button onClick={resetZoom} className="control-btn" title="Reset Zoom">
+              <Minimize2 size={13} />
+              {!isMobile && '1:1 Zoom'}
+            </button>
+            {nodes.some(n => n.data?.isHighlighted) && (
+              <button onClick={focusSearchResult} className="control-btn highlight" title="Focus Search Result">
+                <Target size={13} />
+                {!isMobile && 'Focus Result'}
+              </button>
+            )}
+          </div>
 
           {/* Edge legend */}
           <div className="edge-legend">

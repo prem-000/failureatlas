@@ -321,6 +321,38 @@ export interface MLFeatures {
   success_level: number;
 }
 
+export interface ConstraintIntelligence {
+  problemConstraints: string[];
+  maxInputSize: number;
+  inputSizeVariable: string;
+  complexityBudget: {
+    complexity: string;
+    operations: number;
+    reasoning: string;
+  }[];
+  solutionAnalysis: {
+    detectedComplexity: string;
+    estimatedOperations: number;
+    safetyMargin: number;
+    verdict: 'Safe' | 'Borderline' | 'Dangerous';
+  };
+  variantSimulator: {
+    inputSize: number;
+    status: '✅' | '⚠' | '❌';
+  }[];
+  patternRecommendations: {
+    pattern: string;
+    confidence: number;
+    reason: string;
+  }[];
+  learningOpportunity: {
+    currentComplexity: string;
+    optimalComplexity: string;
+    improvement: string;
+    technique: string;
+  };
+}
+
 export interface SuccessInsight {
   successLevel: SuccessLevel;            // L1-L4
   successLevelLabel: string;             // 'Accepted' | 'Accepted + Optimal' | 'Pattern Mastery' | 'Transferable Skill'
@@ -339,4 +371,5 @@ export interface SuccessInsight {
   futureRisks: FutureRisk[];
   codeQuality: CodeQuality;
   mlFeatures: MLFeatures;                // stored in progressMetrics for training data
+  constraintIntelligence?: ConstraintIntelligence;
 }
