@@ -373,3 +373,50 @@ export interface SuccessInsight {
   mlFeatures: MLFeatures;                // stored in progressMetrics for training data
   constraintIntelligence?: ConstraintIntelligence;
 }
+
+// ─── Failure Replay Intelligence ──────────────────────────────────────────────
+
+export interface ExecutionStep {
+  step: number;
+  description: string;          // human-readable explanation of what happened
+  codeSnippet?: string;         // relevant line(s) of code
+  variableState?: Record<string, string>; // variable name → value at this step
+  significance: 'normal' | 'critical' | 'bug'; // highlight bug-triggering steps
+}
+
+export interface ReplayRootCause {
+  type: string;                 // e.g. 'boundary-condition-error'
+  label: string;                // human-readable, e.g. 'Off-by-one in loop bound'
+  confidence: number;           // 0–100
+  evidenceSummary: string;      // one sentence of proof
+}
+
+export interface ReplayAIExplanation {
+  whyItFails: string;           // Groq explanation of why this input breaks the code
+  fixSuggestion: string;        // actionable fix recommendation
+  keyInsight: string;           // one-liner core insight
+}
+
+export interface CounterExample {
+  input: string;                // e.g. "[1]" or "nums=[1], target=0"
+  inputLabel: string;           // e.g. "nums" or "s"
+  expected: string;             // expected output
+  actual: string;               // user's output
+  errorType?: string;           // 'wrong_answer' | 'runtime_error' | 'timeout'
+  candidatesTestedCount: number; // how many inputs were tried before finding this
+  executionTrace: ExecutionStep[];
+  rootCause: ReplayRootCause;
+  aiExplanation: ReplayAIExplanation;
+}
+
+export interface FailureReplay {
+  submissionId: string;
+  problemTitle: string;
+  problemSlug: string;
+  verdict: string;
+  language: string;
+  seed: number;                 // random seed used (for "generate another")
+  counterExample: CounterExample | null;
+  noFailureFound: boolean;      // true if 5000 candidates all passed (surprising!)
+  generatedAt: string;          // ISO timestamp
+}

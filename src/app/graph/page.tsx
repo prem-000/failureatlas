@@ -7,6 +7,7 @@ import { RoadmapTab } from './components/RoadmapTab';
 import { KnowledgeGraphTab } from './components/KnowledgeGraphTab';
 import { FailureIntelligenceTab } from './components/FailureIntelligenceTab';
 import { WorkspaceTab } from './components/WorkspaceTab';
+import { FailureReplayTab } from './components/FailureReplayTab';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { useGraphWeaknesses, useGraphFailures } from '@/hooks/usePhase3Queries';
 
@@ -68,6 +69,7 @@ export default function GraphPage() {
           {activeTab === 'knowledge'    && <KnowledgeGraphTab />}
           {activeTab === 'intelligence' && <FailureIntelligenceTab />}
           {activeTab === 'workspace'    && <WorkspaceTab />}
+          {activeTab === 'replay'      && <FailureReplayTab />}
         </div>
       </div>
 
