@@ -4,8 +4,8 @@
 # --- Stage 1: Base Image ---
 FROM node:22-alpine AS base
 
-# Install libc6-compat for native node modules (such as Prisma and Sharp on Alpine)
-RUN apk add --no-cache libc6-compat
+# Install libc6-compat and openssl for native node modules (Prisma requires openssl on Alpine)
+RUN apk add --no-cache libc6-compat openssl
 
 # Set environment variables for package manager and Next.js telemetry
 ENV PNPM_HOME="/pnpm"
@@ -46,6 +46,12 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 # Run Prisma client generation and Next.js production build
 RUN pnpm run build
 
+# Normalize the Prisma client from pnpm's hashed virtual store to a predictable path
+# pnpm stores it under node_modules/.pnpm/@prisma+client@.../node_modules/.prisma/client
+RUN mkdir -p /app/prisma-client-normalized && \
+    find /app/node_modules -path '*/.prisma/client' -type d | head -1 | \
+    xargs -I{} cp -rL {} /app/prisma-client-normalized/
+
 # --- Stage 4: Production Runner ---
 FROM node:22-alpine AS runner
 
@@ -67,9 +73,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma schema and generated Prisma client engine files
+# Copy Prisma schema and the normalized Prisma client engine files
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma/client ./node_modules/.prisma/client
+COPY --from=builder --chown=nextjs:nodejs /app/prisma-client-normalized/client ./node_modules/.prisma/client
 
 # Set permissions to run as the non-root user
 USER nextjs
