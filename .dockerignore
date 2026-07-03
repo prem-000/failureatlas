@@ -1,0 +1,43 @@
+# Dependency directories
+node_modules/
+**/node_modules/
+pnpm-debug.log*
+
+# Next.js build output
+.next/
+out/
+
+# Vercel and local configs
+.vercel/
+.env*.local
+.env
+.env.local
+
+# Git and GitHub
+.git
+.gitignore
+.github/
+
+# Ignore Chrome extension source files but keep package.json for workspace lockfile compatibility
+apps/extension/*
+!apps/extension/package.json
+
+# Ignore Machine Learning services / files
+failureatlas-ml/
+
+# Ignore local system/IDE files
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Documentation and temporary files
+docs/
+README.md
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
