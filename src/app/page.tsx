@@ -62,7 +62,7 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ overflowX: 'hidden' }}>
+    <div className="min-h-screen bg-background text-foreground" style={{ overflowX: 'clip' }}>
 
       {/* ─── Navigation ──────────────────────────────────────────────── */}
       <nav className="border-b border-border sticky top-0 z-50 bg-background/90 backdrop-blur-md">

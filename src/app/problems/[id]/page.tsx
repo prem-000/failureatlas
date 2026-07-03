@@ -816,7 +816,7 @@ export default function ProblemDetailPage() {
         }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: '100%', minHeight: '100vh', background: '#131313', overflowX: 'hidden' }}>
+      <div style={{ width: '100%', maxWidth: '100%', minHeight: '100vh', background: '#131313', overflowX: 'clip' }}>
 
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div style={{ padding: 'clamp(14px, 4vw, 20px) clamp(14px, 4vw, 28px)', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>

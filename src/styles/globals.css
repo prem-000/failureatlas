@@ -59,8 +59,8 @@ html,
 body {
   width: 100%;
   height: 100%;
-  /* Prevent horizontal overflow at the root level */
-  overflow-x: hidden;
+  /* Prevent horizontal overflow at the root level without breaking sticky */
+  overflow-x: clip;
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-geist-sans);
@@ -354,7 +354,7 @@ a.compact,
 @media (max-width: 767px) {
   /* Prevent horizontal overflow globally */
   html, body {
-    overflow-x: hidden !important;
+    overflow-x: clip !important;
     max-width: 100vw !important;
     width: 100% !important;
   }

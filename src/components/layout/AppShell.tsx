@@ -38,7 +38,7 @@ export function AppShell({ children, fullscreen = false, hideSidebar = false }: 
         minHeight: '100vh',
         background: '#131313',
         fontFamily: 'Inter, system-ui, sans-serif',
-        overflowX: 'hidden',
+        overflowX: 'clip',
         maxWidth: '100vw',
         position: 'relative',
       }}
@@ -61,7 +61,7 @@ export function AppShell({ children, fullscreen = false, hideSidebar = false }: 
           minWidth: 0, /* prevent flex children from overflowing */
           width: '100%',
           maxWidth: '100%',
-          overflowX: 'hidden',
+          overflowX: 'clip',
           ...(fullscreen ? { display: 'flex', flexDirection: 'column' } : {}),
         }}
       >

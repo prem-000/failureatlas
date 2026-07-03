@@ -304,7 +304,7 @@ export default function ProblemsPage() {
 
   return (
     <AppShell>
-      <div style={{ width: '100%', maxWidth: '100%', minHeight: '100vh', background: '#131313', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+      <div style={{ width: '100%', maxWidth: '100%', minHeight: '100vh', background: '#131313', display: 'flex', flexDirection: 'column', overflowX: 'clip' }}>
         {/* Header */}
         <div style={{ padding: isMobile ? '16px' : '20px 28px', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
