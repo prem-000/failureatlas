@@ -373,6 +373,8 @@ export async function POST(request: NextRequest) {
         reasoningChain,
         similarFailures: similarForUi,
         recommendations: uiRecommendations,
+        // Used by the UI to trigger FailureExplanation generation
+        latestSubmissionId: latestFailure.eventId,
       },
       diagnosis: {
         diagnosisId: diagnosis.id,

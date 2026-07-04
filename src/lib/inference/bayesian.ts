@@ -11,6 +11,12 @@ export interface BayesianEvidence {
   hasManyMinorChanges: boolean;
   verdict: SubmissionStatus;
   failedTestCase?: string;
+  // ─── Network signals (optional — only present when interceptor has run) ───
+  hasHighLatency?: boolean;       // round-trip > 2000 ms
+  hasRetries?: boolean;           // retry_count > 0 (polling)
+  hasTLEFromRuntime?: boolean;    // verdict === 'Time Limit Exceeded'
+  hasMLE?: boolean;               // verdict === 'Memory Limit Exceeded'
+  failedTestcaseRatio?: number;   // passedTestcases / totalTestcases (0–1)
 }
 
 export interface UserInferenceHistory {
@@ -157,7 +163,48 @@ const LIKELIHOODS: Record<string, Record<RootCauseType, number>> = {
     'data-structure-mismatch': 0.30,
     'implementation-detail-error': 0.65,
     'input-output-handling-error': 0.15,
-  }
+  },
+  // ─── Network signals ────────────────────────────────────────────────────────
+  hasHighLatency: {
+    'boundary-condition-error': 0.05,
+    'algorithm-selection-mistake': 0.55,
+    'pattern-recognition-gap': 0.40,
+    'time-complexity-oversight': 0.90,
+    'space-complexity-oversight': 0.20,
+    'data-structure-mismatch': 0.35,
+    'implementation-detail-error': 0.10,
+    'input-output-handling-error': 0.05,
+  },
+  hasRetries: {
+    'boundary-condition-error': 0.50,
+    'algorithm-selection-mistake': 0.25,
+    'pattern-recognition-gap': 0.30,
+    'time-complexity-oversight': 0.60,
+    'space-complexity-oversight': 0.40,
+    'data-structure-mismatch': 0.30,
+    'implementation-detail-error': 0.55,
+    'input-output-handling-error': 0.30,
+  },
+  hasTLEFromRuntime: {
+    'boundary-condition-error': 0.05,
+    'algorithm-selection-mistake': 0.75,
+    'pattern-recognition-gap': 0.55,
+    'time-complexity-oversight': 0.98,
+    'space-complexity-oversight': 0.15,
+    'data-structure-mismatch': 0.45,
+    'implementation-detail-error': 0.10,
+    'input-output-handling-error': 0.05,
+  },
+  hasMLE: {
+    'boundary-condition-error': 0.02,
+    'algorithm-selection-mistake': 0.35,
+    'pattern-recognition-gap': 0.25,
+    'time-complexity-oversight': 0.20,
+    'space-complexity-oversight': 0.97,
+    'data-structure-mismatch': 0.55,
+    'implementation-detail-error': 0.05,
+    'input-output-handling-error': 0.02,
+  },
 };
 
 export function runBayesianInference(
@@ -200,6 +247,16 @@ export function runBayesianInference(
   else if (evidence.verdict === 'Memory Limit Exceeded') activeEvidence.push('verdictMLE');
   else if (evidence.verdict === 'Wrong Answer') activeEvidence.push('verdictWA');
   else if (evidence.verdict === 'Runtime Error') activeEvidence.push('verdictRE');
+
+  // Network signals (optional — only present when interceptor evidence is available)
+  if (evidence.hasHighLatency)     activeEvidence.push('hasHighLatency');
+  if (evidence.hasRetries)         activeEvidence.push('hasRetries');
+  if (evidence.hasTLEFromRuntime)  activeEvidence.push('hasTLEFromRuntime');
+  if (evidence.hasMLE)             activeEvidence.push('hasMLE');
+  // Low pass-rate is a soft signal — only activate if < 50% tests passed
+  if (evidence.failedTestcaseRatio != null && evidence.failedTestcaseRatio < 0.5) {
+    activeEvidence.push('verdictWA'); // treat near-total failure as WA signal
+  }
 
   // 3. Compute joint probabilities / posteriors
   // Posterior(rc) = Prior(rc) * Product_i( P(Evidence_i | rc) )

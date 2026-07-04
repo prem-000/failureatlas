@@ -185,6 +185,8 @@ export interface DiagnosisData {
     timestamp: string;
   }>;
   recommendations: Array<{ name: string; description: string; priority: number }>;
+  /** ID of the most recent failed submission — used to fetch the FailureExplanation */
+  latestSubmissionId?: string;
 }
 
 export function useDiagnosisGenerate() {
@@ -350,5 +352,74 @@ export function useUpdateUserPreferences() {
         method: 'POST',
         body: JSON.stringify(body),
       }),
+  });
+}
+
+// ─── Failure Explanation ───────────────────────────────────────────────────────
+
+export type FailureExplanationData = {
+  submissionId: string;
+  verdict: string;
+  testCasesPassed: number | null;
+  totalTestCases: number | null;
+  rootCause: string;
+  rootCauseCategory: string;
+  confidence: number;
+  reason: string;
+  logicBreakdown: string;
+  learningConcept: string;
+  recommendation: string;
+  estimatedLearningTimeMinutes: number;
+  evidenceItems: Array<{ label: string; confirmed: boolean; source: string }>;
+  representativeTestCase: {
+    input: string;
+    expectedOutput: string;
+    userOutput?: string;
+    explanation: string;
+    failureMode: string;
+    isActualFailedCase: boolean;
+  } | null;
+  recurringPatterns: Array<{ category: string; count: number; problemType: string }>;
+  generatedAt: string;
+};
+
+/**
+ * Fetch an existing (cached) failure explanation for a submission.
+ * Returns 404 data as null — use useGenerateFailureExplanation to trigger generation.
+ */
+export function useFailureExplanation(submissionId: string | undefined) {
+  return useQuery({
+    queryKey: ['failure-explanation', submissionId],
+    queryFn: async () => {
+      if (!submissionId) return null;
+      try {
+        const r = await apiFetch<{ success: boolean; data: FailureExplanationData }>(
+          `/api/submissions/${submissionId}/explain`
+        );
+        return r.data ?? null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!submissionId,
+    staleTime: 60000,
+    retry: false,
+  });
+}
+
+/**
+ * Trigger generation (or regeneration) of a failure explanation.
+ * Returns the newly-generated FailureExplanationData.
+ */
+export function useGenerateFailureExplanation() {
+  return useMutation({
+    mutationFn: ({ submissionId, force = false }: { submissionId: string; force?: boolean }) =>
+      apiFetch<{ success: boolean; data: FailureExplanationData }>(
+        `/api/submissions/${submissionId}/explain`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ force }),
+        }
+      ).then(r => r.data),
   });
 }

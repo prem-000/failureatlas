@@ -46,13 +46,108 @@ export interface BehavioralSignal {
 
 export interface Evidence {
   evidenceId: string;
-  type: 'code_diff' | 'behavioral' | 'test_failure';
+  type: 'code_diff' | 'behavioral' | 'test_failure' | 'network';
   description: string;
   confidence: number;
   source: string;
   rawData: Record<string, unknown>;
   extractedAt: Date;
 }
+
+// ─── Network Interceptor Types ─────────────────────────────────────────────────
+
+export interface InterceptorRequest {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+  timestamp: number; // epoch ms
+  size?: number;
+}
+
+export interface InterceptorResponse {
+  statusCode: number;
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+  timestamp: number; // epoch ms
+  size?: number;
+  // Parsed from LeetCode response body
+  verdict?: string;
+  runtime?: number;      // ms
+  memory?: number;       // MB
+  totalTestcases?: number;
+  passedTestcases?: number;
+  failedTestcase?: string;
+  serverProcessingMs?: number;
+}
+
+export interface InterceptorMetrics {
+  latencyMs?: number;
+  retryCount?: number;
+  pollingFrequency?: number;
+  totalRoundTripMs?: number;
+}
+
+export interface InterceptorEvent {
+  submissionId?: string;    // preferred match key (LeetCode submission_id)
+  submissionHash?: string;  // fallback: SHA256(slug+lang+code+ts_bucket)
+  request: InterceptorRequest;
+  response: InterceptorResponse;
+  metrics: InterceptorMetrics;
+}
+
+// ─── Typed evidence interfaces (mirrors Prisma models) ─────────────────────────
+
+export interface BehaviorEvidence {
+  id: string;
+  submissionId: string;
+  typingTime?: number;
+  editorEvents?: number;
+  tabSwitches?: number;
+  focusLoss?: number;
+  sessionDuration?: number;
+  rawData: Record<string, unknown>;
+  createdAt: Date;
+}
+
+export interface NetworkEvidence {
+  id: string;
+  submissionId: string;
+  requestMethod?: string;
+  requestUrl?: string;
+  requestHeaders: Record<string, string>;
+  requestBody: Record<string, unknown>;
+  requestSize?: number;
+  requestTimestamp?: Date;
+  responseStatusCode?: number;
+  responseHeaders: Record<string, string>;
+  responseBody: Record<string, unknown>;
+  responseSize?: number;
+  responseTimestamp?: Date;
+  verdict?: string;
+  runtime?: number;
+  memory?: number;
+  totalTestcases?: number;
+  passedTestcases?: number;
+  failedTestcase?: string;
+  serverProcessingMs?: number;
+  latencyMs?: number;
+  retryCount: number;
+  pollingFrequency?: number;
+  createdAt: Date;
+}
+
+export interface CodeEvidence {
+  id: string;
+  submissionId: string;
+  previousCode?: string;
+  currentCode?: string;
+  diff?: string;
+  changedLines?: number;
+  confidence?: number;
+  createdAt: Date;
+}
+
 
 // Root cause types
 export type RootCauseType =
@@ -419,4 +514,73 @@ export interface FailureReplay {
   counterExample: CounterExample | null;
   noFailureFound: boolean;      // true if 5000 candidates all passed (surprising!)
   generatedAt: string;          // ISO timestamp
+}
+
+// ─── AI Failure Explanation Engine Types ──────────────────────────────────────
+
+export type FailureCategory =
+  | 'Boundary Condition'
+  | 'Edge Case'
+  | 'Off-by-One'
+  | 'Overflow'
+  | 'Bit Manipulation'
+  | 'Greedy Failure'
+  | 'HashMap Misuse'
+  | 'Graph Traversal'
+  | 'Dynamic Programming State Error'
+  | 'Binary Search Condition'
+  | 'Prefix Sum Error'
+  | 'Algorithm Selection'
+  | 'Implementation Detail'
+  | 'Unknown';
+
+export interface ExplanationEvidenceItem {
+  label: string;         // e.g. "Last element skipped"
+  confirmed: boolean;    // true = ✓ confirmed, false = ⚠ inferred
+  source: 'network' | 'diff' | 'behavioral' | 'history';
+}
+
+export interface ExplanationTestCase {
+  input: string;
+  expectedOutput: string;
+  userOutput?: string;             // only when captured by network interceptor
+  explanation: string;             // AI-generated: why this input breaks the code
+  failureMode: string;             // e.g. "off-by-one in loop bound"
+  isActualFailedCase: boolean;     // true = real LeetCode data, false = AI-generated representative
+}
+
+export interface RecurringPattern {
+  category: FailureCategory;
+  count: number;
+  problemType: string;             // e.g. "Array", "Graph"
+}
+
+export interface FailureExplanation {
+  submissionId: string;
+  verdict: string;                         // e.g. "Wrong Answer"
+  testCasesPassed: number | null;
+  totalTestCases: number | null;
+
+  // Core diagnosis
+  rootCause: string;                       // e.g. "Boundary Condition Missed"
+  rootCauseCategory: FailureCategory;
+  confidence: number;                      // 0–100
+
+  // Explanation text
+  reason: string;                          // 2–3 sentence explanation of why it failed
+  logicBreakdown: string;                  // where exactly the code goes wrong
+  learningConcept: string;                 // concept to study, e.g. "Loop Boundaries"
+  recommendation: string;                  // what to practice next
+  estimatedLearningTimeMinutes: number;
+
+  // Evidence checklist
+  evidenceItems: ExplanationEvidenceItem[];
+
+  // Test case (real or representative)
+  representativeTestCase: ExplanationTestCase | null;
+
+  // Historical patterns
+  recurringPatterns: RecurringPattern[];
+
+  generatedAt: string; // ISO timestamp
 }

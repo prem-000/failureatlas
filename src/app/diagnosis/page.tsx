@@ -1,7 +1,7 @@
 'use client';
 import { AppShell } from '@/components/layout/AppShell';
-import { useDiagnosisGenerate, type DiagnosisData } from '@/hooks/usePhase3Queries';
-
+import { useDiagnosisGenerate, type DiagnosisData, useFailureExplanation, useGenerateFailureExplanation } from '@/hooks/usePhase3Queries';
+import { FailureExplanationCard } from '@/components/intelligence/FailureExplanationCard';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -188,6 +188,7 @@ const QUICK_PROMPTS = [
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function DiagnosisPage() {
   const diagnosisMutation = useDiagnosisGenerate();
+  const generateExplanation = useGenerateFailureExplanation();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: uuid(),
@@ -199,8 +200,13 @@ export default function DiagnosisPage() {
   const [input, setInput] = useState('');
   const loading = diagnosisMutation.isPending;
   const [lastResult, setLastResult] = useState<DiagnosisResult | null>(null);
+  const [latestSubmissionId, setLatestSubmissionId] = useState<string | undefined>(undefined);
+  const [activePanel, setActivePanel] = useState<'evidence' | 'explanation'>('evidence');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Fetch the explanation for the most recent failure
+  const { data: failureExplanation, isLoading: explanationLoading } = useFailureExplanation(latestSubmissionId);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -215,6 +221,14 @@ export default function DiagnosisPage() {
     try {
       const d = await diagnosisMutation.mutateAsync(text.trim());
       setLastResult(d);
+
+      // If the diagnosis returned a submission ID, fetch the explanation
+      if (d.latestSubmissionId) {
+        setLatestSubmissionId(d.latestSubmissionId);
+        // Trigger explanation generation in the background
+        generateExplanation.mutate({ submissionId: d.latestSubmissionId });
+        setActivePanel('explanation');
+      }
 
       const assistantMsg: Message = {
         id: uuid(),
@@ -231,7 +245,7 @@ export default function DiagnosisPage() {
         timestamp: new Date(),
       }]);
     }
-  }, [loading, diagnosisMutation]);
+  }, [loading, diagnosisMutation, generateExplanation]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -340,15 +354,59 @@ export default function DiagnosisPage() {
           </div>
         </div>
 
-        {/* Right: Evidence Panel (40%) */}
+        {/* Right: Evidence + Explanation Panel (40%) */}
         <div className="diagnosis-evidence" style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', background: '#141414' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #1f1f1f' }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#71717a', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-              RAG Evidence & Context
-            </span>
+          {/* Tab switcher */}
+          <div style={{ padding: '0 20px', borderBottom: '1px solid #1f1f1f', display: 'flex', gap: 0 }}>
+            {(['evidence', 'explanation'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActivePanel(tab)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: activePanel === tab ? '2px solid #ff5f52' : '2px solid transparent',
+                  padding: '12px 16px',
+                  fontSize: 12,
+                  fontWeight: activePanel === tab ? 700 : 500,
+                  color: activePanel === tab ? '#f4f4f5' : '#52525b',
+                  cursor: 'pointer',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {tab === 'evidence' ? '🔬 RAG Evidence' : '🧠 AI Explanation'}
+                {tab === 'explanation' && (failureExplanation || explanationLoading) && (
+                  <span style={{ marginLeft: 6, width: 6, height: 6, borderRadius: '50%', background: '#ff5f52', display: 'inline-block', verticalAlign: 'middle' }} />
+                )}
+              </button>
+            ))}
           </div>
+
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <EvidencePanel result={lastResult} />
+            {activePanel === 'evidence' && <EvidencePanel result={lastResult} />}
+            {activePanel === 'explanation' && (
+              <div style={{ height: '100%', overflowY: 'auto', padding: 16 }}>
+                {explanationLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
+                    <div style={{ width: 24, height: 24, border: '2px solid #1f1f1f', borderTop: '2px solid #ff5f52', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    <span style={{ fontSize: 13, color: '#52525b' }}>Generating explanation…</span>
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                  </div>
+                ) : failureExplanation ? (
+                  <FailureExplanationCard explanation={failureExplanation as any} />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, padding: 32 }}>
+                    <span style={{ fontSize: 40 }}>🧠</span>
+                    <span style={{ color: '#71717a', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>AI Test Case Explanation</span>
+                    <span style={{ color: '#3f3f46', fontSize: 12, textAlign: 'center', lineHeight: 1.6 }}>
+                      Submit a solution on LeetCode and ask the AI to analyze it. The explanation will appear here automatically for failed submissions.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

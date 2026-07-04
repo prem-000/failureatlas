@@ -25,6 +25,9 @@ import { computeWeaknessPageRank, type WeaknessScore } from '@/lib/graph/pageran
 import { saveTextEmbedding, buildFailureEmbeddingContent } from '@/lib/embeddings/pipeline';
 import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
 import { generateAIDiagnosis } from '@/lib/diagnosis/generator';
+import { generateFailureExplanation, type ExplanationEngineInput } from '@/lib/explanation/engine';
+import { upsertCodeEvidence } from '@/lib/interceptor/uploader';
+import { isHighLatency } from '@/lib/interceptor/extractor';
 import type { SubmissionEvent, Evidence } from '@/types';
 
 
@@ -351,6 +354,15 @@ async function runAnalysisPipeline(
         rawData: ch,
       });
     }
+
+    // ── Persist CodeEvidence row (typed table) ──────────────────────────────
+    upsertCodeEvidence(subRecord.id, {
+      previousCode: lastAttempt.submissionCode,
+      currentCode:  mappedCurrent.submissionCode,
+      diff:         diffOps.map(o => `${o.type[0]}${o.content}`).join('\n'),
+      changedLines: changesCount,
+      confidence:   diffConfidence,
+    }).catch(e => console.warn('⚠️ CodeEvidence upsert failed (non-fatal):', e?.message));
   }
 
   // ── Behavioral evidence ───────────────────────────────────────────────────
@@ -405,6 +417,11 @@ async function runAnalysisPipeline(
   }
 
   // ── Bayesian root cause inference ─────────────────────────────────────────
+  // Check for any NetworkEvidence already stored by the interceptor
+  const networkEv = await prisma.networkEvidence.findUnique({
+    where: { submissionId: subRecord.id },
+  });
+
   const bayesEvidence: BayesianEvidence = {
     hasBoundaryDiff,
     hasStructuralBoundaryChange,
@@ -416,6 +433,14 @@ async function runAnalysisPipeline(
     hasManyMinorChanges,
     verdict: mappedCurrent.submissionStatus,
     failedTestCase: fields.failedTestCase,
+    // Network signals — only populated when interceptor has already fired
+    hasHighLatency:     networkEv ? isHighLatency(networkEv.latencyMs)                    : undefined,
+    hasRetries:         networkEv ? networkEv.retryCount > 0                               : undefined,
+    hasTLEFromRuntime:  networkEv ? networkEv.verdict === 'Time Limit Exceeded'            : undefined,
+    hasMLE:             networkEv ? networkEv.verdict === 'Memory Limit Exceeded'           : undefined,
+    failedTestcaseRatio: networkEv?.passedTestcases != null && networkEv?.totalTestcases
+      ? networkEv.passedTestcases / Math.max(networkEv.totalTestcases, 1)
+      : undefined,
   };
   const hypotheses = runBayesianInference(bayesEvidence);
 
@@ -524,5 +549,112 @@ async function runAnalysisPipeline(
     console.log(`✅ Analysis complete for submission ${subRecord.id}`);
   } catch (e: any) {
     console.warn('⚠️ AI diagnosis failed (non-fatal):', e?.message);
+  }
+
+  // ── AI Failure Explanation Engine (auto-trigger for failed submissions) ────
+  // Runs after all other pipeline steps. Non-fatal — never blocks the pipeline.
+  if (fields.submissionStatus !== 'Accepted') {
+    try {
+      // Fetch hypotheses that were just persisted
+      const persistedHypotheses = await prisma.rootCauseHypothesis
+        .findMany({
+          where: { evidence: { submission: { id: subRecord.id } } },
+          select: { rootCauseType: true, name: true, confidence: true },
+        })
+        .then(rows =>
+          rows.map(r => ({
+            rootCause: r.rootCauseType as any,
+            name: r.name,
+            confidence: r.confidence,
+            evidence: [],
+          }))
+        );
+
+      // Fetch network evidence
+      const networkEv = await prisma.networkEvidence.findUnique({
+        where: { submissionId: subRecord.id },
+      });
+
+      // Historical pattern counts
+      const rawHypotheses = await prisma.rootCauseHypothesis.findMany({
+        where: { evidence: { submission: { userId } } },
+        select: { rootCauseType: true },
+      });
+      const LABEL_MAP: Record<string, string> = {
+        'boundary-condition-error': 'Boundary Condition',
+        'algorithm-selection-mistake': 'Algorithm Selection',
+        'pattern-recognition-gap': 'Algorithm Selection',
+        'time-complexity-oversight': 'Implementation Detail',
+        'space-complexity-oversight': 'Implementation Detail',
+        'data-structure-mismatch': 'HashMap Misuse',
+        'implementation-detail-error': 'Implementation Detail',
+        'input-output-handling-error': 'Edge Case',
+      };
+      const historicalPatternCounts: Record<string, number> = {};
+      for (const h of rawHypotheses) {
+        const label = LABEL_MAP[h.rootCauseType] ?? h.rootCauseType;
+        historicalPatternCounts[label] = (historicalPatternCounts[label] ?? 0) + 1;
+      }
+
+      const engineInput: ExplanationEngineInput = {
+        submission: {
+          ...mappedCurrent,
+          testCasesPassed: fields.testCasesPassed,
+          totalTestCases: fields.totalTestCases,
+          failedTestCase: fields.failedTestCase,
+        },
+        networkVerdictRaw: networkEv?.verdict ?? null,
+        networkFailedInput: networkEv?.failedTestcase ?? null,
+        networkExpectedOutput: null,
+        networkUserOutput: null,
+        networkPassedTestcases: networkEv?.passedTestcases ?? null,
+        networkTotalTestcases: networkEv?.totalTestcases ?? null,
+        diffOps: [], // already handled by main pipeline; no re-diff needed
+        behavioralSignals: [],
+        hypotheses: persistedHypotheses,
+        similarFailures: [],
+        weaknessScores: [],
+        historicalPatternCounts,
+      };
+
+      const explanation = await generateFailureExplanation(engineInput);
+
+      await prisma.failureExplanation.upsert({
+        where: { submissionId: subRecord.id },
+        update: {
+          rootCause: explanation.rootCause,
+          rootCauseCategory: explanation.rootCauseCategory,
+          confidence: explanation.confidence,
+          reason: explanation.reason,
+          logicBreakdown: explanation.logicBreakdown,
+          learningConcept: explanation.learningConcept,
+          recommendation: explanation.recommendation,
+          estimatedLearningTimeMinutes: explanation.estimatedLearningTimeMinutes,
+          evidenceItems: explanation.evidenceItems as any,
+          representativeTestCase: explanation.representativeTestCase as any,
+          recurringPatterns: explanation.recurringPatterns as any,
+          generatedAt: new Date(explanation.generatedAt),
+        },
+        create: {
+          submissionId: subRecord.id,
+          rootCause: explanation.rootCause,
+          rootCauseCategory: explanation.rootCauseCategory,
+          confidence: explanation.confidence,
+          reason: explanation.reason,
+          logicBreakdown: explanation.logicBreakdown,
+          learningConcept: explanation.learningConcept,
+          recommendation: explanation.recommendation,
+          estimatedLearningTimeMinutes: explanation.estimatedLearningTimeMinutes,
+          evidenceItems: explanation.evidenceItems as any,
+          representativeTestCase: explanation.representativeTestCase as any,
+          recurringPatterns: explanation.recurringPatterns as any,
+          generatedAt: new Date(explanation.generatedAt),
+        },
+      });
+
+      console.log(`✅ Failure explanation generated for submission ${subRecord.id}`);
+    } catch (e: any) {
+      console.warn('⚠️ Failure explanation generation failed (non-fatal):', e?.message);
+    }
   }
 }

@@ -45,34 +45,41 @@ model Problem {
 }
 
 model SubmissionEvent {
-  id              String           @id @default(cuid())
-  userId          String
-  problemId       String
-  eventId         String           @unique
+  id                String            @id @default(cuid())
+  userId            String
+  problemId         String
+  eventId           String            @unique
   submissionTraceId String?
-  sessionId       String
-  timestamp       DateTime
-  status          String
-  language        String
-  code            String
-  runtime         Int?
-  memory          Int?
-  testCasesPassed Int?
-  totalTestCases  Int?
-  failedTestCase  String?
-  timeSpent       Int
-  attemptNumber   Int
-  rapidSubmission Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  diagnosis       DiagnosisResult?
-  evidence        Evidence[]
-  problem         Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submissionHash    String?           @unique
+  sessionId         String
+  timestamp         DateTime
+  status            String
+  language          String
+  code              String
+  runtime           Int?
+  memory            Int?
+  testCasesPassed   Int?
+  totalTestCases    Int?
+  failedTestCase    String?
+  timeSpent         Int
+  attemptNumber     Int
+  rapidSubmission   Boolean           @default(false)
+  source            String            @default("extension") // 'extension' | 'interceptor' | 'merged'
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  diagnosis         DiagnosisResult?
+  evidence          Evidence[]
+  behaviorEvidence  BehaviorEvidence?
+  networkEvidence   NetworkEvidence?
+  codeEvidence      CodeEvidence?
+  failureExplanation FailureExplanation?
+  problem           Problem           @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([problemId])
   @@index([timestamp])
+  @@index([submissionHash])
   @@map("submission_events")
 }
 
@@ -308,4 +315,92 @@ model DailyMission {
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("daily_missions")
+}
+
+// ─── Typed evidence tables (Network Interceptor Pipeline) ─────────────────────
+
+model BehaviorEvidence {
+  id              String          @id @default(cuid())
+  submissionId    String          @unique
+  typingTime      Int?            // milliseconds spent typing
+  editorEvents    Int?            // total editor interactions
+  tabSwitches     Int?            // times user switched tabs
+  focusLoss       Int?            // times editor lost focus
+  sessionDuration Int?            // total session duration in seconds
+  rawData         Json            @default("{}")
+  createdAt       DateTime        @default(now())
+  submission      SubmissionEvent @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("behavior_evidence")
+}
+
+model NetworkEvidence {
+  id                  String          @id @default(cuid())
+  submissionId        String          @unique
+  requestMethod       String?
+  requestUrl          String?
+  requestHeaders      Json            @default("{}")
+  requestBody         Json            @default("{}")
+  requestSize         Int?
+  requestTimestamp    DateTime?
+  responseStatusCode  Int?
+  responseHeaders     Json            @default("{}")
+  responseBody        Json            @default("{}")
+  responseSize        Int?
+  responseTimestamp   DateTime?
+  verdict             String?         // WA, TLE, MLE, AC, RE, CE
+  runtime             Int?            // ms from response body
+  memory              Float?          // MB from response body
+  totalTestcases      Int?
+  passedTestcases     Int?
+  failedTestcase      String?
+  serverProcessingMs  Int?            // server-side processing time
+  latencyMs           Int?            // total round-trip ms
+  retryCount          Int             @default(0)
+  pollingFrequency    Float?          // polls per second
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  submission          SubmissionEvent @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("network_evidence")
+}
+
+model CodeEvidence {
+  id            String          @id @default(cuid())
+  submissionId  String          @unique
+  previousCode  String?
+  currentCode   String?
+  diff          String?
+  changedLines  Int?
+  confidence    Float?
+  createdAt     DateTime        @default(now())
+  submission    SubmissionEvent @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("code_evidence")
+}
+
+model FailureExplanation {
+  id                           String          @id @default(cuid())
+  submissionId                 String          @unique
+  rootCause                    String
+  rootCauseCategory            String
+  confidence                   Float
+  reason                       String
+  logicBreakdown               String
+  learningConcept              String
+  recommendation               String
+  estimatedLearningTimeMinutes Int
+  evidenceItems                Json            @default("[]")
+  representativeTestCase       Json?
+  recurringPatterns            Json            @default("[]")
+  generatedAt                  DateTime        @default(now())
+  createdAt                    DateTime        @default(now())
+  updatedAt                    DateTime        @updatedAt
+  submission                   SubmissionEvent @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("failure_explanations")
 }
