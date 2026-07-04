@@ -1,229 +1,542 @@
 'use client';
+/**
+ * src/app/page.tsx
+ *
+ * Praxis Premium Landing Page Redesign (v2)
+ *
+ * Implements 8 storytelling sections detailing the Praxis diagnostic value proposition:
+ * Section 1: Hero (100vh + HeroCanvas)
+ * Section 2: Live Diagnosis Animation
+ * Section 3: LeetCode vs Praxis Comparison
+ * Section 4: Praxis Architecture (How Praxis Thinks)
+ * Section 5: Interactive Knowledge Graph (ReactFlow Explorer)
+ * Section 6: Learning Journey Progression
+ * Section 7: Animated Product Metrics
+ * Section 8: Final CTA
+ */
 
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { motion } from 'framer-motion';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from '@studio-freight/lenis';
+import { Menu, ArrowRight, ChevronRight, Terminal, Cpu, GitCompare, HelpCircle, Activity, Award, CheckCircle2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-const PHRASES = ["Into Insight.", "Into Growth.", "Into Mastery."];
+// Register GSAP plugins
+gsap.registerPlugin(ScrollTrigger);
 
-function TypewriterEffect() {
-  const [phraseIndex, setPhraseIndex] = useState(0);
-  const [charIndex, setCharIndex] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
+// ─── Dynamic Imports for Heavy Components ─────────────────────────────────────
+const HeroCanvas = dynamic(() => import('@/components/ui/HeroCanvas'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full min-h-[300px] md:min-h-[450px] flex items-center justify-center bg-surface/20 rounded-2xl border border-white/5">
+      <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+    </div>
+  ),
+});
 
-  useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    const currentPhrase = PHRASES[phraseIndex];
+const LiveDiagnosis = dynamic(() => import('@/components/ui/LiveDiagnosis'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[380px] bg-surface/20 rounded-2xl border border-white/5 animate-pulse" />
+  ),
+});
 
-    if (!isDeleting && charIndex < currentPhrase.length) {
-      timeout = setTimeout(() => setCharIndex(c => c + 1), 70);
-    } else if (isDeleting && charIndex > 0) {
-      timeout = setTimeout(() => setCharIndex(c => c - 1), 40);
-    } else if (!isDeleting && charIndex === currentPhrase.length) {
-      timeout = setTimeout(() => setIsDeleting(true), 2000);
-    } else if (isDeleting && charIndex === 0) {
-      setIsDeleting(false);
-      setPhraseIndex((p) => (p + 1) % PHRASES.length);
-    }
-    return () => clearTimeout(timeout);
-  }, [charIndex, isDeleting, phraseIndex]);
+const PlatformComparison = dynamic(() => import('@/components/ui/PlatformComparison'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[380px] bg-surface/20 rounded-2xl border border-white/5 animate-pulse" />
+  ),
+});
 
-  return (
-    <span style={{ position: 'relative', display: 'inline-block' }}>
-      <span style={{ visibility: 'hidden' }}>Into Mastery.</span>
-      <span style={{ position: 'absolute', left: '50%', top: 0, transform: 'translateX(-50%)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
-        <span style={{ color: '#ff5f52', textShadow: '0 0 20px rgba(255, 95, 82, 0.4)' }}>
-          {PHRASES[phraseIndex].substring(0, charIndex)}
-        </span>
-        <span 
-          style={{ 
-            display: 'inline-block',
-            width: '0.08em',
-            height: '0.9em',
-            backgroundColor: '#ff5f52',
-            marginLeft: '4px',
-            animation: 'blink 1s ease-in-out infinite'
-          }} 
-        />
-      </span>
-      <style>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
-      `}</style>
-    </span>
-  );
-}
+const PipelineGraph = dynamic(() => import('@/components/ui/PipelineGraph'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[400px] md:h-[550px] flex items-center justify-center bg-surface/20 rounded-2xl border border-white/5">
+      <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+    </div>
+  ),
+});
 
-import { Menu, X } from 'lucide-react';
+const AnimatedMetrics = dynamic(() => import('@/components/ui/AnimatedMetrics'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[150px] bg-surface/20 rounded-2xl border border-white/5 animate-pulse" />
+  ),
+});
+
+const MobileDrawer = dynamic(() => import('@/components/navigation/MobileDrawer'), {
+  ssr: false,
+});
+
+const NAV_LINKS = [
+  { label: 'Diagnosis Flow', href: '#diagnosis' },
+  { label: 'Comparison', href: '#comparison' },
+  { label: 'Architecture', href: '#architecture' },
+  { label: 'Knowledge Graph', href: '#graph' },
+];
 
 export default function Home() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const heroTextRef = useRef<HTMLHeadingElement>(null);
+  const heroBtnRef = useRef<HTMLDivElement>(null);
+  const heroCanvasContainerRef = useRef<HTMLDivElement>(null);
+  const architectureRef = useRef<HTMLDivElement>(null);
+  const journeyRef = useRef<HTMLDivElement>(null);
+
+  // Smooth Scroll & GSAP setup
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 1,
+      touchMultiplier: 2,
+    });
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    // Sync ScrollTrigger
+    lenis.on('scroll', ScrollTrigger.update);
+    ScrollTrigger.scrollerProxy(document.body, {
+      scrollTop(value) {
+        return arguments.length ? lenis.scrollTo(value!) : lenis.scroll;
+      },
+    });
+
+    const ctx = gsap.context(() => {
+      // Hero entrance
+      const heroLines = heroTextRef.current?.querySelectorAll('.hero-line');
+      if (heroLines) {
+        gsap.from(heroLines, {
+          y: 50,
+          opacity: 0,
+          duration: 1.2,
+          ease: 'power4.out',
+          stagger: 0.15,
+        });
+      }
+
+      if (heroBtnRef.current) {
+        gsap.from(heroBtnRef.current, {
+          opacity: 0,
+          y: 20,
+          duration: 1,
+          delay: 0.8,
+          ease: 'power3.out',
+        });
+      }
+
+      if (heroCanvasContainerRef.current) {
+        gsap.from(heroCanvasContainerRef.current, {
+          opacity: 0,
+          scale: 0.95,
+          duration: 1.5,
+          delay: 0.4,
+          ease: 'power3.out',
+        });
+      }
+
+      // Section 4: Architecture modules slide-in
+      if (architectureRef.current) {
+        const modules = architectureRef.current.querySelectorAll('.arch-card');
+        modules.forEach((mod, idx) => {
+          gsap.from(mod, {
+            scrollTrigger: {
+              trigger: mod,
+              start: 'top 85%',
+              end: 'bottom 60%',
+              toggleActions: 'play none none none',
+            },
+            opacity: 0,
+            y: 30,
+            duration: 0.8,
+            delay: idx * 0.15,
+            ease: 'power2.out',
+          });
+        });
+      }
+
+      // Section 6: Journey timeline slide-in
+      if (journeyRef.current) {
+        const cards = journeyRef.current.querySelectorAll('.journey-step');
+        cards.forEach((card, idx) => {
+          gsap.from(card, {
+            scrollTrigger: {
+              trigger: card,
+              start: 'top 85%',
+              end: 'bottom 65%',
+              toggleActions: 'play none none none',
+            },
+            opacity: 0,
+            x: idx % 2 === 0 ? -30 : 30,
+            duration: 0.8,
+            ease: 'power2.out',
+          });
+        });
+      }
+    });
+
+    return () => {
+      lenis.destroy();
+      ctx.revert();
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ overflowX: 'clip' }}>
-
-      {/* ─── Navigation ──────────────────────────────────────────────── */}
-      <nav className="border-b border-border sticky top-0 z-50 bg-background/90 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
-
-          {/* Logo */}
-          <div className="text-xl sm:text-2xl font-bold text-primary flex-shrink-0">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 selection:text-white font-sans antialiased overflow-x-hidden select-text">
+      
+      {/* ─── Navigation Header ────────────────────────────────────────── */}
+      <nav className="border-b border-white/5 sticky top-0 z-40 bg-background/85 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 xl:px-12 py-4 flex justify-between items-center">
+          <Link href="/" className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_rgba(255,95,82,0.6)]" />
             Praxis
+          </Link>
+
+          <div className="hidden md:flex items-center gap-8">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
 
-          {/* Desktop nav buttons */}
-          <div className="hidden sm:flex items-center space-x-3">
+          <div className="hidden md:flex items-center gap-4">
             <Link href="/login">
-              <Button variant="secondary" size="sm">Login</Button>
+              <Button variant="ghost" size="md">Login</Button>
             </Link>
             <Link href="/register">
-              <Button size="sm">Register</Button>
+              <Button size="md" className="shadow-lg shadow-primary/10">Get Started</Button>
             </Link>
           </div>
 
-          {/* Mobile hamburger */}
           <button
-            onClick={() => setMenuOpen(o => !o)}
-            className="sm:hidden flex items-center justify-center w-10 h-10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            style={{ minHeight: 'unset', minWidth: 'unset' }}
+            onClick={() => setDrawerOpen(true)}
+            className="md:hidden w-11 h-11 border border-border/40 rounded-xl flex items-center justify-center text-zinc-500 hover:text-white transition-colors"
+            aria-label="Open navigation drawer"
           >
-            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+            <Menu size={22} />
           </button>
         </div>
-
-        {/* Mobile dropdown menu */}
-        {menuOpen && (
-          <div
-            className="sm:hidden border-t border-border bg-surface/95 backdrop-blur-lg"
-            style={{ animation: 'menu-open 0.2s ease' }}
-          >
-            <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-3">
-              <Link href="/login" onClick={() => setMenuOpen(false)}>
-                <Button variant="secondary" className="w-full justify-center">Login</Button>
-              </Link>
-              <Link href="/register" onClick={() => setMenuOpen(false)}>
-                <Button className="w-full justify-center">Register</Button>
-              </Link>
-            </div>
-          </div>
-        )}
       </nav>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+      {/* Mobile Drawer */}
+      <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} navLinks={NAV_LINKS} />
 
-        {/* ─── Hero Section ─────────────────────────────────────────── */}
-        <section className="text-center mb-12 sm:mb-16">
-          <h1
-            className="font-bold mb-6 sm:mb-8 tracking-tight flex flex-col items-center justify-center gap-1 sm:gap-2"
-            style={{ fontSize: 'var(--text-hero)', lineHeight: 0.95 }}
-          >
-            <span style={{ color: '#FFFFFF' }}>Turn Practice</span>
-            <TypewriterEffect />
-          </h1>
+      {/* ─── Section 1: Premium Hero (100vh) ─────────────────────────── */}
+      <header className="relative w-full min-h-[calc(100vh-76px)] flex flex-col justify-center max-w-7xl mx-auto px-6 md:px-8 xl:px-12 py-12 md:py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          
+          {/* Hero Left Info */}
+          <div className="lg:col-span-7 select-text text-left">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] uppercase tracking-wider font-extrabold text-primary mb-6"
+            >
+              <Terminal size={12} className="animate-pulse" />
+              <span>Competitive Programming Growth Core</span>
+            </motion.div>
 
-          <p
-            className="text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 px-2"
-            style={{ fontSize: 'clamp(1rem, 2vw, 1.125rem)', lineHeight: 1.6 }}
-          >
-            Praxis is a personal learning intelligence system.
-            <br className="hidden sm:block" />
-            <br className="hidden sm:block" />
-            Track your practice journey, uncover recurring patterns, strengthen weak concepts, and build lasting mastery through consistent improvement.
+            <h1
+              ref={heroTextRef}
+              className="font-extrabold tracking-tight text-white mb-6 leading-[1.02] overflow-hidden"
+              style={{ fontSize: 'clamp(36px, 6.8vw, 92px)' }}
+            >
+              <span className="hero-line block">Master the Patterns.</span>
+              <span className="hero-line block text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">
+                Solve Anything.
+              </span>
+            </h1>
+
+            <p className="text-muted-foreground text-sm md:text-base xl:text-lg leading-relaxed max-w-lg mb-10">
+              Praxis explains <span className="text-white font-semibold">WHY</span> your code failed, not just <span className="text-white font-semibold">THAT</span> it failed. Target logical errors, identify boundary weaknesses, and conquer competitive coding.
+            </p>
+
+            <div ref={heroBtnRef} className="flex flex-col sm:flex-row items-center gap-4">
+              <Link href="/register" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto px-8 group">
+                  Create Free Account
+                  <ArrowRight size={15} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+              <a href="#diagnosis" className="w-full sm:w-auto">
+                <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
+                  View Live Demo
+                </Button>
+              </a>
+            </div>
+          </div>
+
+          {/* Hero Right 3D Visual */}
+          <div ref={heroCanvasContainerRef} className="lg:col-span-5 w-full aspect-square lg:aspect-auto h-full flex justify-center items-center">
+            <HeroCanvas />
+          </div>
+        </div>
+      </header>
+
+      {/* ─── Section 2: Live Diagnosis Animation ────────────────────── */}
+      <section id="diagnosis" className="py-20 md:py-32 border-t border-white/5 max-w-7xl mx-auto px-6 md:px-8 xl:px-12">
+        <div className="text-center mb-16 max-w-2xl mx-auto">
+          <span className="text-xs uppercase font-extrabold tracking-widest text-primary mb-3 block">
+            Inside the Engine
+          </span>
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
+            The Analysis Pipeline
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Observe the telemetry pipeline capture code edits, perform Bayesian categorization, and synthesize explanatory mastery recommendations.
+          </p>
+        </div>
+
+        <LiveDiagnosis />
+      </section>
+
+      {/* ─── Section 3: Why Existing Platforms Stop Too Early ───────── */}
+      <section id="comparison" className="py-20 md:py-32 border-t border-white/5 bg-surface/5 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,95,82,0.02)_0%,transparent_60%)] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-6 md:px-8 xl:px-12">
+          <div className="text-center mb-16 max-w-2xl mx-auto">
+            <span className="text-xs uppercase font-extrabold tracking-widest text-primary mb-3 block">
+              The Critical Difference
+            </span>
+            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
+              Stop Guessing, Start Mastering
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Traditional competitive programming judges leave you with ambiguous diagnostics. Praxis exposes the structural flaw.
+            </p>
+          </div>
+
+          <PlatformComparison />
+        </div>
+      </section>
+
+      {/* ─── Section 4: How Praxis Thinks (Architecture) ────────────── */}
+      <section id="architecture" ref={architectureRef} className="py-20 md:py-32 border-t border-white/5 max-w-7xl mx-auto px-6 md:px-8 xl:px-12">
+        <div className="text-left mb-16 max-w-xl">
+          <span className="text-xs uppercase font-extrabold tracking-widest text-primary mb-3 block">
+            Core Architecture
+          </span>
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
+            How Praxis Thinks
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Praxis connects telemetry, code metrics, and static analysis models in parallel to synthesize the diagnostic explanation.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Module 1: Ingestion */}
+          <div className="arch-card p-6 rounded-2xl bg-surface border border-white/5 flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4">
+                <Terminal size={18} className="text-blue-400" />
+              </div>
+              <h3 className="text-base font-bold text-white mb-2">1. Multichannel Telemetry</h3>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Captures network judge JSON logs, Myers code changes, and keystroke variables during practice.
+              </p>
+            </div>
+            <div className="text-[10px] text-zinc-500 font-mono mt-6 pt-4 border-t border-white/5">
+              Input: submission.raw
+            </div>
+          </div>
+
+          {/* Module 2: Analysis Core */}
+          <div className="arch-card p-6 rounded-2xl bg-surface border border-white/5 flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
+                <Activity size={18} className="text-amber-400" />
+              </div>
+              <h3 className="text-base font-bold text-white mb-2">2. Bayesian Classification</h3>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Applies PageRank weakness propagation and Bayesian inference to categorize the logic error.
+              </p>
+            </div>
+            <div className="text-[10px] text-zinc-500 font-mono mt-6 pt-4 border-t border-white/5">
+              Process: probability_engine
+            </div>
+          </div>
+
+          {/* Module 3: Synthesis */}
+          <div className="arch-card p-6 rounded-2xl bg-surface border border-white/5 flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
+                <Cpu size={18} className="text-purple-400" />
+              </div>
+              <h3 className="text-base font-bold text-white mb-2">3. LLM Diagnostic Synthesis</h3>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Hybrid RAG fetches related past failures; LLM generates a diagnostic card and a localized practice plan.
+              </p>
+            </div>
+            <div className="text-[10px] text-zinc-500 font-mono mt-6 pt-4 border-t border-white/5">
+              Output: failure_explanation.json
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Section 5: Interactive Knowledge Graph ─────────────────── */}
+      <section id="graph" className="py-20 md:py-32 border-t border-white/5 max-w-7xl mx-auto px-6 md:px-8 xl:px-12">
+        <div className="text-left mb-12 max-w-2xl">
+          <span className="text-xs uppercase font-extrabold tracking-widest text-primary mb-3 block">
+            Knowledge Map
+          </span>
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
+            Interactive Knowledge Graph
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Drag, zoom, and explore your personal concept node network. Click on nodes to inspect active weaknesses and recommended practice tasks.
+          </p>
+        </div>
+
+        {/* Fullscreen ReactFlow Explorer Container */}
+        <div className="w-full h-[450px] md:h-[600px] shadow-2xl shadow-black/45">
+          <PipelineGraph />
+        </div>
+      </section>
+
+      {/* ─── Section 6: Learning Journey ────────────────────────────── */}
+      <section ref={journeyRef} className="py-20 md:py-32 border-t border-white/5 bg-surface/5">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <span className="text-xs uppercase font-extrabold tracking-widest text-primary mb-3 block">
+              The Path to Mastery
+            </span>
+            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
+              Your Learning Journey
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              See how Praxis converts a single code crash into consistent algorithmic progression.
+            </p>
+          </div>
+
+          <div className="relative border-l-2 border-white/5 pl-8 md:pl-16 space-y-12 py-4">
+            {/* Step 1 */}
+            <div className="journey-step relative">
+              <span className="absolute -left-[41px] md:-left-[73px] top-1.5 w-6 h-6 rounded-full bg-red-500/10 border border-red-500/40 flex items-center justify-center text-xs font-bold text-red-400">
+                1
+              </span>
+              <h4 className="text-lg font-bold text-white mb-1.5">Attempt 1: Wrong Answer</h4>
+              <p className="text-muted-foreground text-xs leading-relaxed max-w-xl">
+                The code fails index boundaries on LeetCode test cases. Praxis intercepts the run, extracts output variables, and computes code line edits.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="journey-step relative">
+              <span className="absolute -left-[41px] md:-left-[73px] top-1.5 w-6 h-6 rounded-full bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-xs font-bold text-amber-400">
+                2
+              </span>
+              <h4 className="text-lg font-bold text-white mb-1.5">Boundary Weakness Diagnosed</h4>
+              <p className="text-muted-foreground text-xs leading-relaxed max-w-xl">
+                Inference models identify a pointer loop convergence bug (91% confidence). A representative adversarial case and study plan are immediately queued.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="journey-step relative">
+              <span className="absolute -left-[41px] md:-left-[73px] top-1.5 w-6 h-6 rounded-full bg-purple-500/10 border border-purple-500/40 flex items-center justify-center text-xs font-bold text-purple-400">
+                3
+              </span>
+              <h4 className="text-lg font-bold text-white mb-1.5">Concept Practice Problems</h4>
+              <p className="text-muted-foreground text-xs leading-relaxed max-w-xl">
+                The user completes targeted loop-pointer bounds drills to consolidate the structural pattern change.
+              </p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="journey-step relative">
+              <span className="absolute -left-[41px] md:-left-[73px] top-1.5 w-6 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center text-xs font-bold text-emerald-400">
+                4
+              </span>
+              <h4 className="text-lg font-bold text-white mb-1.5">Attempt 2: Accepted & Skill Improved</h4>
+              <p className="text-muted-foreground text-xs leading-relaxed max-w-xl">
+                The updated solution passes the test suite. The Two-Pointers concept level is incremented to Level 4 in the knowledge graph.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Section 7: Product Metrics ─────────────────────────────── */}
+      <section className="py-20 md:py-32 border-t border-white/5 max-w-7xl mx-auto px-6 md:px-8 xl:px-12">
+        <div className="text-center mb-16 max-w-2xl mx-auto">
+          <span className="text-xs uppercase font-extrabold tracking-widest text-primary mb-3 block">
+            System Reliability
+          </span>
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
+            Engineered For Accuracy
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Praxis utilizes multiple independent pipelines to ensure your learning diagnostics are statistically precise.
+          </p>
+        </div>
+
+        <AnimatedMetrics />
+      </section>
+
+      {/* ─── Section 8: Final CTA ────────────────────────────────────── */}
+      <section className="py-24 md:py-36 border-t border-white/5 bg-gradient-to-b from-transparent to-primary/5 relative overflow-hidden">
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-primary/10 rounded-full blur-[140px] pointer-events-none" />
+
+        <div className="max-w-4xl mx-auto px-6 text-center select-text relative z-10">
+          <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6 leading-[1.08]">
+            Ready to stop guessing?<br />
+            Start building your learning graph.
+          </h2>
+          <p className="text-muted-foreground text-sm md:text-base max-w-md mx-auto mb-10">
+            Failing is part of practice. Praxis ensures that every failing test case becomes a learning opportunity.
           </p>
 
-          {/* CTA buttons — stacked on mobile, inline on sm+ */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0">
-            <Link href="/register" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto px-8">
-                Start Practicing
-              </Button>
-            </Link>
-            <Link href="/login" className="w-full sm:w-auto">
-              <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
-                Continue Journey
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-sm mx-auto">
+            <Link href="/register" className="w-full">
+              <Button size="lg" className="w-full justify-center group">
+                Get Started Free
+                <ChevronRight size={15} className="ml-1.5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-10 sm:pb-16">
-        {/* ─── Philosophy Section ────────────────────────────────────── */}
-        <section className="text-center mb-12 sm:mb-20 max-w-3xl mx-auto px-4 bg-muted/30 py-10 rounded-2xl border border-border">
-          <h2 className="text-2xl font-bold mb-6 text-foreground">Learning Is Not About Winning</h2>
-          <div className="text-muted-foreground space-y-4" style={{ fontSize: 'clamp(0.875rem, 2vw, 1.0625rem)', lineHeight: 1.7 }}>
-            <p>Most platforms measure outcomes.<br/><strong className="text-primary">Praxis measures growth.</strong></p>
-            <p>Instead of focusing on pass or fail, success or failure, Praxis helps you understand the patterns behind your learning.</p>
-            <p className="font-medium text-foreground">
-              Every attempt becomes data.<br/>
-              Every challenge becomes feedback.<br/>
-              Every practice session becomes progress.
-            </p>
-          </div>
-        </section>
-
-        {/* ─── Feature Cards ────────────────────────────────────────── */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-12 sm:mb-16">
-          <div className="card">
-            <div className="text-2xl mb-3">⚡</div>
-            <h3 className="text-lg font-semibold mb-3">Intelligent Analysis</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Myers diff, structural code pattern analysis, and behavioral pattern recognition
-              identify why your solutions fail.
-            </p>
-          </div>
-
-          <div className="card">
-            <div className="text-2xl mb-3">🕸️</div>
-            <h3 className="text-lg font-semibold mb-3">Knowledge Graph</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Graph-powered failure relationships map systemic weaknesses across problem domains.
-            </p>
-          </div>
-
-          <div className="card sm:col-span-2 lg:col-span-1">
-            <div className="text-2xl mb-3">🎯</div>
-            <h3 className="text-lg font-semibold mb-3">Personalized Guidance</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              LLM-generated diagnoses with targeted learning strategies to improve faster.
-            </p>
-          </div>
-        </section>
-
-        {/* ─── CTA Section ─────────────────────────────────────────── */}
-        <section className="text-center py-8 sm:py-12">
-          <h2
-            className="font-bold mb-6 sm:mb-8"
-            style={{ fontSize: 'var(--text-h2)' }}
-          >
-            Ready to improve?
-          </h2>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0">
-            <Link href="/register" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto px-8">
-                Start Practicing
-              </Button>
+      {/* ─── Footer ───────────────────────────────────────────────────── */}
+      <footer className="border-t border-white/5 bg-background py-12">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 xl:px-12 flex flex-col sm:flex-row justify-between items-center gap-6">
+          <span className="text-xs font-semibold tracking-tight text-muted-foreground">
+            © {new Date().getFullYear()} Praxis. Built for algorithmic growth.
+          </span>
+          <div className="flex items-center gap-6">
+            <Link href="/login" className="text-xs text-muted-foreground hover:text-white transition-colors">
+              Platform Login
             </Link>
-            <Link href="/login" className="w-full sm:w-auto">
-              <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
-                Continue Journey
-              </Button>
+            <Link href="/register" className="text-xs text-muted-foreground hover:text-white transition-colors">
+              Register
             </Link>
+            <a href="#" className="text-xs text-muted-foreground hover:text-white transition-colors">
+              Privacy Policy
+            </a>
           </div>
-        </section>
-      </main>
-
-      {/* ─── Footer ────────────────────────────────────────────── */}
-      <footer className="border-t border-border py-8 mt-12 text-center text-muted-foreground bg-background/50">
-        <div className="max-w-4xl mx-auto px-4 italic" style={{ fontSize: '0.95rem' }}>
-          <p>The goal is not to be better than others.</p>
-          <p>The goal is to be better than yesterday.</p>
         </div>
       </footer>
+
     </div>
   );
 }

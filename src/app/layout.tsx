@@ -2,6 +2,9 @@
 import type { Metadata, Viewport } from 'next';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import '@/styles/globals.css';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
+import { cn } from '@/lib/utils';
 
 // ✅ SEPARATE viewport export (fixes the warnings)
 export const viewport: Viewport = {
@@ -19,8 +22,6 @@ export const metadata: Metadata = {
   description: 'AI-powered competitive programming practice and growth intelligence platform',
   keywords: ['competitive programming', 'leetcode', 'codeforces', 'algorithm', 'debugging', 'AI', 'practice'],
   authors: [{ name: 'Praxis' }],
-  // ❌ Remove: viewport: 'width=device-width, initial-scale=1',
-  // ❌ Remove: themeColor: '#131313',
 };
 
 export default function RootLayout({
@@ -29,9 +30,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={cn(GeistSans.variable, GeistMono.variable)}
+      suppressHydrationWarning
+    >
       <head />
-      <body>
+      <body className="font-sans antialiased">
         <QueryProvider>
           {children}
         </QueryProvider>
