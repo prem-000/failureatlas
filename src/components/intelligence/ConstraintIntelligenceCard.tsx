@@ -235,7 +235,7 @@ export function ConstraintIntelligenceCard({ data, difficulty = 'Medium', detect
               }} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[10px] mt-1">
               <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', padding: '8px 10px', borderRadius: 8 }}>
                 <span style={{ fontSize: 9, color: '#71717a', display: 'block', fontWeight: 600 }}>EST. OPERATIONS</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#e4e4e7' }}>
@@ -381,7 +381,7 @@ export function ConstraintIntelligenceCard({ data, difficulty = 'Medium', detect
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-[10px]">
               <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.03)' }}>
                 <span style={{ fontSize: 9, color: '#71717a', display: 'block', fontWeight: 600 }}>CURRENT COMPLEXITY</span>
                 <span style={{ fontSize: 14, fontWeight: 800, color: '#f4f4f5', fontFamily: 'monospace' }}>

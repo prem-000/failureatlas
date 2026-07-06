@@ -52,7 +52,7 @@ export function OptimizationReviewCard({ items }: Props) {
             </div>
 
             {/* Current → Alternative */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'center' }}>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-[10px] items-center">
               {/* Current */}
               <div style={{
                 background: '#1a0a0a', border: '1px solid #3f1515', borderRadius: 8,
@@ -63,7 +63,7 @@ export function OptimizationReviewCard({ items }: Props) {
               </div>
 
               {/* Arrow */}
-              <ArrowRight size={16} style={{ color: '#3b82f6', flexShrink: 0 }} />
+              <ArrowRight size={16} className="mx-auto rotate-90 md:rotate-0 my-1 md:my-0" style={{ color: '#3b82f6', flexShrink: 0 }} />
 
               {/* Alternative */}
               <div style={{

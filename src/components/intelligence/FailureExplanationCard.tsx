@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 /**
  * src/components/intelligence/FailureExplanationCard.tsx
  *
@@ -160,7 +160,7 @@ function TestCasePanel({ tc }: { tc: ExplanationTestCase }) {
         </div>
 
         {/* Expected vs Actual */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-[10px]">
           <div>
             <div style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Expected
@@ -352,15 +352,12 @@ export function FailureExplanationCard({ explanation, problemTitle }: FailureExp
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* ── Root Cause + Confidence ───────────────────────────── */}
           <div
+            className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-start"
             style={{
               padding: '16px',
               background: '#111',
               borderRadius: 12,
               border: `1px solid ${categoryColor}30`,
-              display: 'grid',
-              gridTemplateColumns: '1fr auto',
-              gap: 16,
-              alignItems: 'start',
             }}
           >
             <div>
@@ -390,7 +387,7 @@ export function FailureExplanationCard({ explanation, problemTitle }: FailureExp
               <ConfidenceBar value={explanation.confidence} />
             </div>
 
-            <div style={{ textAlign: 'right' }}>
+            <div className="text-left sm:text-right">
               <div style={{ fontSize: 10, color: '#52525b', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
                 Confidence
               </div>
@@ -445,7 +442,7 @@ export function FailureExplanationCard({ explanation, problemTitle }: FailureExp
           )}
 
           {/* ── Learning Concept + Recommendation ────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div style={{ background: '#111', borderRadius: 10, padding: '14px 16px', border: '1px solid #1f1f1f' }}>
               <div style={{ fontSize: 10, color: '#52525b', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                 Learning Concept

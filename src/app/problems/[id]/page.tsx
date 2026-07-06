@@ -579,10 +579,10 @@ export default function ProblemDetailPage() {
   const isLatestAccepted = latest.submission.status === 'Accepted';
   const latestEventId = latest.submission.eventId;
 
-  // ── Build accordion sections (mobile) ────────────────────────────────────────
+  // ── Build sections (mobile) ────────────────────────────────────────
   const mobileSections: AccordionSection[] = [];
 
-  // Success Intelligence (accepted only)
+  // 1. Success Intelligence (accepted only)
   if (isLatestAccepted) {
     mobileSections.push({
       id: 'success',
@@ -597,49 +597,44 @@ export default function ProblemDetailPage() {
     });
   }
 
-  // Attempt Timeline
-  mobileSections.push({
-    id: 'timeline',
-    label: 'Attempt Timeline',
-    icon: <Clock size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />,
-    accent: '#3b82f6',
-    content: <AttemptTimeline submissions={allData} />,
-  });
-
-  // Evidence (failed only)
-  if (!isLatestAccepted && allEvidences.length > 0) {
+  // 2. Primary Growth Area (failed only)
+  if (latestDiagnosis?.primaryWeakness && !isLatestAccepted) {
     mobileSections.push({
-      id: 'evidence',
-      label: 'Evidence Collected',
-      icon: <BookOpen size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />,
-      accent: '#f59e0b',
+      id: 'growth',
+      label: 'Primary Growth Area',
+      icon: <TrendingUp size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />,
+      accent: '#a855f7',
       content: (
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {allEvidences.slice(0, 8).map(ev => (
-            <div key={ev.id} style={{ background: '#141414', borderRadius: 10, padding: '10px 14px', border: '1px solid #1f1f1f' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
-                  color: EVIDENCE_TYPE_COLORS[ev.type] || '#71717a',
-                  background: `${EVIDENCE_TYPE_COLORS[ev.type] || '#71717a'}22`,
-                  letterSpacing: '0.06em',
-                }}>
-                  {ev.type.replace('_', ' ').toUpperCase()}
-                </span>
-                <span style={{ fontSize: 10, color: '#52525b' }}>{ev.source}</span>
-              </div>
-              <ShowMoreText text={ev.description} />
-              <div style={{ marginTop: 6 }}>
-                <ConfidenceBar value={ev.confidence} color={EVIDENCE_TYPE_COLORS[ev.type] || '#71717a'} />
-              </div>
-            </div>
-          ))}
+        <div style={{ padding: '16px 20px' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#d8b4fe', marginBottom: 6 }}>
+            {latestDiagnosis.primaryWeakness.name.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 10, color: '#ef4444', background: '#450a0a', borderRadius: 4, padding: '2px 7px', fontWeight: 700 }}>
+              {latestDiagnosis.primaryWeakness.severity?.toUpperCase()}
+            </span>
+          </div>
+          <ConfidenceBar value={latestDiagnosis.primaryWeakness.confidence} color="#a855f7" />
+          <button
+            onClick={() => openDrawer(
+              latestDiagnosis!.primaryWeakness!.type || latestDiagnosis!.primaryWeakness!.name,
+              latestDiagnosis!.primaryWeakness!.name
+            )}
+            style={{
+              marginTop: 14, width: '100%', padding: '10px 0',
+              background: '#a855f720', border: '1px solid #a855f740',
+              borderRadius: 10, color: '#d8b4fe', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', transition: 'background 0.15s',
+            }}
+          >
+            🧠 View Behavior Analysis →
+          </button>
         </div>
       ),
     });
   }
 
-  // Root Cause Analysis (failed only)
+  // 3. Root Cause Analysis (failed only)
   if (topHypotheses.length > 0 && !isLatestAccepted) {
     mobileSections.push({
       id: 'root-cause',
@@ -682,44 +677,40 @@ export default function ProblemDetailPage() {
     });
   }
 
-  // Primary Growth Area (failed only)
-  if (latestDiagnosis?.primaryWeakness && !isLatestAccepted) {
+  // 4. Evidence (failed only)
+  if (!isLatestAccepted && allEvidences.length > 0) {
     mobileSections.push({
-      id: 'growth',
-      label: 'Primary Growth Area',
-      icon: <TrendingUp size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />,
-      accent: '#a855f7',
+      id: 'evidence',
+      label: 'Evidence Collected',
+      icon: <BookOpen size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />,
+      accent: '#f59e0b',
       content: (
-        <div style={{ padding: '16px 20px' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#d8b4fe', marginBottom: 6 }}>
-            {latestDiagnosis.primaryWeakness.name.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, color: '#ef4444', background: '#450a0a', borderRadius: 4, padding: '2px 7px', fontWeight: 700 }}>
-              {latestDiagnosis.primaryWeakness.severity?.toUpperCase()}
-            </span>
-          </div>
-          <ConfidenceBar value={latestDiagnosis.primaryWeakness.confidence} color="#a855f7" />
-          <button
-            onClick={() => openDrawer(
-              latestDiagnosis!.primaryWeakness!.type || latestDiagnosis!.primaryWeakness!.name,
-              latestDiagnosis!.primaryWeakness!.name
-            )}
-            style={{
-              marginTop: 14, width: '100%', padding: '10px 0',
-              background: '#a855f720', border: '1px solid #a855f740',
-              borderRadius: 10, color: '#d8b4fe', fontSize: 13, fontWeight: 600,
-              cursor: 'pointer', transition: 'background 0.15s',
-            }}
-          >
-            🧠 View Behavior Analysis →
-          </button>
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {allEvidences.slice(0, 8).map(ev => (
+            <div key={ev.id} style={{ background: '#141414', borderRadius: 10, padding: '10px 14px', border: '1px solid #1f1f1f' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+                  color: EVIDENCE_TYPE_COLORS[ev.type] || '#71717a',
+                  background: `${EVIDENCE_TYPE_COLORS[ev.type] || '#71717a'}22`,
+                  letterSpacing: '0.06em',
+                }}>
+                  {ev.type.replace('_', ' ').toUpperCase()}
+                </span>
+                <span style={{ fontSize: 10, color: '#52525b' }}>{ev.source}</span>
+              </div>
+              <ShowMoreText text={ev.description} />
+              <div style={{ marginTop: 6 }}>
+                <ConfidenceBar value={ev.confidence} color={EVIDENCE_TYPE_COLORS[ev.type] || '#71717a'} />
+              </div>
+            </div>
+          ))}
         </div>
       ),
     });
   }
 
-  // Practice Recommendations (failed only)
+  // 5. Practice Recommendations (failed only)
   if (latestDiagnosis?.recommendations && latestDiagnosis.recommendations.length > 0 && !isLatestAccepted) {
     mobileSections.push({
       id: 'practice',
@@ -755,6 +746,15 @@ export default function ProblemDetailPage() {
       ),
     });
   }
+
+  // 6. Attempt Timeline (always, at the bottom)
+  mobileSections.push({
+    id: 'timeline',
+    label: 'Attempt Timeline',
+    icon: <Clock size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />,
+    accent: '#3b82f6',
+    content: <AttemptTimeline submissions={allData} />,
+  });
 
   // (sectionIds, activeSection, tabRefs, scrollToSection are all computed before early returns above)
 
@@ -794,7 +794,7 @@ export default function ProblemDetailPage() {
       <style>{`
         .problem-grid {
           display: grid;
-          grid-template-columns: 1fr 360px;
+          grid-template-columns: 1fr clamp(280px, 26vw, 380px);
           gap: 24px;
           padding: 24px 28px;
           align-items: start;
@@ -808,15 +808,24 @@ export default function ProblemDetailPage() {
             padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 130px) !important;
           }
         }
-        @media (max-width: 991px) and (min-width: 768px) {
+        @media (max-width: 1023px) and (min-width: 768px) {
           .problem-grid {
             grid-template-columns: 1fr !important;
             padding: 16px 20px !important;
+            gap: 16px !important;
           }
         }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: '100%', minHeight: '100vh', background: '#131313', overflowX: 'clip' }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '100%',
+        minHeight: '100vh',
+        background: '#131313',
+        overflowX: 'clip',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+      }}>
 
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div style={{ padding: 'clamp(14px, 4vw, 20px) clamp(14px, 4vw, 28px)', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>
@@ -854,7 +863,7 @@ export default function ProblemDetailPage() {
             <div className="problem-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12, color: '#71717a' }}>{allData.length} attempt{allData.length !== 1 ? 's' : ''}</span>
               {problem.url && (
-                <a href={problem.url} target="_blank" rel="noreferrer" style={{
+                <a href={problem.url} target="_blank" rel="noreferrer" className="hidden md:inline-flex" style={{
                   fontSize: 12, color: '#ff5f52', textDecoration: 'none', background: '#ff5f5215',
                   border: '1px solid #ff5f5230', borderRadius: 7, padding: '7px 14px', fontWeight: 600,
                 }}>
@@ -884,15 +893,21 @@ export default function ProblemDetailPage() {
 
         {/* ── Body ─────────────────────────────────────────────────────────── */}
         {isMobile ? (
-          /* ── MOBILE: Single column accordion ──────────────────────────── */
-          <div className="problem-grid">
-            <MobileAccordionList
-              sections={mobileSections}
-              defaultOpen={mobileSections[0]?.id}
-            />
+          /* ── MOBILE: Flat single-column layout ── */
+          <div className="problem-grid flex flex-col gap-4 w-full max-w-full">
+            {mobileSections.map((sec) => (
+              <div
+                key={sec.id}
+                id={`section-${sec.id}`}
+                className="analysis-section-anchor w-full max-w-full"
+              >
+                <SectionCard title={sec.label} accent={sec.accent}>
+                  <div style={{ padding: '0px' }}>{sec.content}</div>
+                </SectionCard>
+              </div>
+            ))}
           </div>
-        ) : (
-          /* ── DESKTOP: Original 2-column grid ──────────────────────────── */
+        ) : (          /* ── DESKTOP: Original 2-column grid ──────────────────────────── */
           <div className="problem-grid">
             {/* Left column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

@@ -422,8 +422,7 @@ a.compact,
 @media (max-width: 767px) {
   .analysis-sticky-nav {
     display: flex;
-    position: sticky;
-    top: 0;
+    position: static;
     z-index: 20;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -657,6 +656,13 @@ a.compact,
 /* ─── Mobile-only section anchor offset (accounts for sticky nav) */
 .analysis-section-anchor {
   scroll-margin-top: 56px; /* tab-bar (48px) + a little breathing room */
+}
+
+/* Ensure inner content in accordion cards never overflows horizontally */
+.analysis-accordion-card,
+.analysis-accordion-body {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* ─── On desktop, hide all mobile-only analysis UI ─────────── */

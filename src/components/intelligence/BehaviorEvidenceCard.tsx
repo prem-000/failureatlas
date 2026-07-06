@@ -47,9 +47,16 @@ export function BehaviorEvidenceCard({ insight }: Props) {
         <ConfidenceBar value={insight.confidence} color="#ff5f52" />
         <div style={{ marginTop: 8 }}>
           <ConfidenceBar value={insight.weightedScore} color="#f59e0b" />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-            <span style={{ fontSize: 10, color: '#52525b' }}>Weighted Score (70% recent · 30% historical)</span>
-            <span style={{ fontSize: 10, color: '#52525b' }}>{Math.round(insight.weightedScore * 100)}%</span>
+          <div
+            className="flex flex-row flex-wrap justify-between gap-x-2 gap-y-0.5"
+            style={{ marginTop: 4 }}
+          >
+            <span style={{ fontSize: 10, color: '#52525b', minWidth: 0, wordBreak: 'break-word' }}>
+              Weighted Score (70% recent · 30% historical)
+            </span>
+            <span style={{ fontSize: 10, color: '#52525b', flexShrink: 0 }}>
+              {Math.round(insight.weightedScore * 100)}%
+            </span>
           </div>
         </div>
       </div>

@@ -203,8 +203,8 @@ export default function PipelineGraph() {
   return (
     <div className="w-full h-full min-h-[420px] md:min-h-[550px] bg-background border border-white/5 rounded-2xl overflow-hidden relative flex flex-col md:flex-row">
       
-      {/* ReactFlow Canvas */}
-      <div className="flex-1 h-full relative">
+      {/* ReactFlow Canvas — flex-1 grows to fill; min height prevents collapse on mobile */}
+      <div className="flex-1 w-full min-h-[280px] md:h-full relative">
         <ReactFlow
           nodes={initialNodes}
           edges={initialEdges}

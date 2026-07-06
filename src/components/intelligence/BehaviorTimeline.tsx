@@ -121,23 +121,38 @@ export function BehaviorTimeline({ insight }: Props) {
         }
       `}</style>
       {/* Summary banner */}
-      <div style={{
-        background: '#1a1015', border: '1px solid #3f1515', borderRadius: 10,
-        padding: '12px 14px', marginBottom: 16, display: 'flex', gap: 16,
-      }}>
-        <div style={{ textAlign: 'center' }}>
+      <div
+        className="flex flex-col sm:flex-row gap-3 sm:gap-6 items-center sm:items-stretch"
+        style={{
+          background: '#1a1015', border: '1px solid #3f1515', borderRadius: 10,
+          padding: '12px 14px', marginBottom: 16,
+        }}
+      >
+        {/* Failures matched */}
+        <div style={{ textAlign: 'center', minWidth: 80, flexShrink: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#ff5f52' }}>{failures.length}</div>
           <div style={{ fontSize: 10, color: '#71717a' }}>Failures Matched</div>
         </div>
-        <div style={{ width: 1, background: '#2a2a2a' }} />
-        <div style={{ textAlign: 'center' }}>
+
+        {/* Divider — visible only on sm+ */}
+        <div className="hidden sm:block self-stretch" style={{ width: 1, background: '#2a2a2a' }} />
+
+        {/* Weighted rate */}
+        <div style={{ textAlign: 'center', minWidth: 80, flexShrink: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#f59e0b' }}>
             {Math.round(insight.weightedScore * 100)}%
           </div>
           <div style={{ fontSize: 10, color: '#71717a' }}>Weighted Rate</div>
         </div>
-        <div style={{ width: 1, background: '#2a2a2a' }} />
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+
+        {/* Divider — visible only on sm+ */}
+        <div className="hidden sm:block self-stretch" style={{ width: 1, background: '#2a2a2a' }} />
+
+        {/* Pattern description */}
+        <div
+          className="text-center sm:text-left w-full sm:w-auto"
+          style={{ flex: 1, display: 'flex', alignItems: 'center' }}
+        >
           <p style={{ fontSize: 11, color: '#a1a1aa', lineHeight: 1.4, margin: 0 }}>
             {insight.behavioralPatterns[0]}
           </p>

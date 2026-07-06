@@ -51,6 +51,15 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
   const [insight, setInsight] = useState<SuccessInsight | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const h = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', h);
+    return () => mq.removeEventListener('change', h);
+  }, []);
 
   const tabRefs = useRef<Record<Section, HTMLButtonElement | null>>({} as any);
 
@@ -130,7 +139,14 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
           <div style={{ fontSize: 10, fontWeight: 700, color: accent, letterSpacing: '0.08em', marginBottom: 2 }}>
             SUCCESS INTELLIGENCE
           </div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#f4f4f5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {/* Allow natural wrapping on all viewports — no clipping or nowrap */}
+          <div style={{
+            fontSize: 15,
+            fontWeight: 800,
+            color: '#f4f4f5',
+            wordBreak: 'break-word',
+            overflowWrap: 'anywhere',
+          }}>
             {insight.successLevelLabel} · {insight.patternDetected}
           </div>
           <div style={{ fontSize: 10, color: '#71717a', marginTop: 2 }}>
@@ -146,7 +162,8 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
         </div>
       </div>
 
-      {/* Section nav — sticky, horizontally scrollable with snap */}
+      {/* Section nav — sticky on md+ only; static/relative on mobile to avoid
+           collision with the accordion section sticky mini-header */}
       <div
         className="success-nav-container"
         style={{
@@ -159,9 +176,10 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
           scrollbarWidth: 'none' as any,
           WebkitOverflowScrolling: 'touch' as any,
           scrollSnapType: 'x mandatory',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
+          /* mobile: static so it scrolls with content and never overlaps sticky headers */
+          position: isMobile ? 'relative' : 'sticky',
+          top: isMobile ? 'auto' : 0,
+          zIndex: isMobile ? 1 : 10,
           padding: '0 4px',
         }}
       >
