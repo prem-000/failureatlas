@@ -432,10 +432,10 @@ a.compact,
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    background: rgba(19, 19, 19, 0.96);
+    background: rgba(19, 19, 19, 0.96) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid #1f1f1f;
+    border-bottom: 1px solid #1f1f1f !important;
     transition: box-shadow 0.2s ease;
     /* Ensure tab bar height is fixed so sticky-top calculations work */
     height: 48px;
@@ -458,7 +458,7 @@ a.compact,
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
-    color: #52525b;
+    color: #a1a1aa;
     transition: color 0.15s, border-color 0.2s;
     scroll-snap-align: start;
     display: flex;
@@ -675,4 +675,13 @@ a.compact,
   .floating-menu-btn {
     display: none !important;
   }
+}
+
+/* Utility to hide scrollbars */
+.scrollbar-none {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
 }

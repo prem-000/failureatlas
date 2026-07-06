@@ -349,21 +349,30 @@ export function AdversarialTestLabCard({ data }: Props) {
       </div>
 
       {/* ─── Intelligence Tab Selector ─── */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        background: '#111',
-        border: '1px solid #1f1f1f',
-        borderRadius: 8,
-        padding: 3,
-        gap: 4,
-      }}>
+      <div
+        className="scrollbar-none"
+        style={{
+          display: 'flex',
+          flexWrap: 'nowrap',
+          overflowX: 'auto',
+          width: '100%',
+          maxWidth: '100%',
+          background: '#111',
+          border: '1px solid #1f1f1f',
+          borderRadius: 8,
+          padding: 3,
+          gap: 4,
+          WebkitOverflowScrolling: 'touch' as any,
+        }}
+      >
         {/* Tab 1 */}
         <button
           onClick={() => setActiveTab('hidden')}
+          className="compact"
           style={{
-            flex: '1 1 auto',
+            flex: '1 0 auto',
             minWidth: 120,
+            whiteSpace: 'nowrap',
             padding: '8px 12px',
             background: activeTab === 'hidden' ? 'rgba(0, 240, 255, 0.08)' : 'transparent',
             border: activeTab === 'hidden' ? `1px solid ${colors.borderActiveCyan}` : '1px solid transparent',
@@ -386,9 +395,11 @@ export function AdversarialTestLabCard({ data }: Props) {
         {/* Tab 2 */}
         <button
           onClick={() => setActiveTab('break')}
+          className="compact"
           style={{
-            flex: '1 1 auto',
+            flex: '1 0 auto',
             minWidth: 120,
+            whiteSpace: 'nowrap',
             padding: '8px 12px',
             background: activeTab === 'break' ? 'rgba(249, 115, 22, 0.08)' : 'transparent',
             border: activeTab === 'break' ? `1px solid ${colors.borderActiveOrange}` : '1px solid transparent',
@@ -411,9 +422,11 @@ export function AdversarialTestLabCard({ data }: Props) {
         {/* Tab 3 */}
         <button
           onClick={() => setActiveTab('constraints')}
+          className="compact"
           style={{
-            flex: '1 1 auto',
+            flex: '1 0 auto',
             minWidth: 120,
+            whiteSpace: 'nowrap',
             padding: '8px 12px',
             background: activeTab === 'constraints' ? 'rgba(168, 85, 247, 0.08)' : 'transparent',
             border: activeTab === 'constraints' ? `1px solid ${colors.borderActivePurple}` : '1px solid transparent',
@@ -436,9 +449,11 @@ export function AdversarialTestLabCard({ data }: Props) {
         {/* Tab 4 */}
         <button
           onClick={() => setActiveTab('ai')}
+          className="compact"
           style={{
-            flex: '1 1 auto',
+            flex: '1 0 auto',
             minWidth: 120,
+            whiteSpace: 'nowrap',
             padding: '8px 12px',
             background: activeTab === 'ai' ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
             border: activeTab === 'ai' ? `1px solid ${colors.borderActiveBlue}` : '1px solid transparent',

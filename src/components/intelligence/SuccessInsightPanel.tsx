@@ -165,9 +165,11 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
       {/* Section nav — sticky on md+ only; static/relative on mobile to avoid
            collision with the accordion section sticky mini-header */}
       <div
-        className="success-nav-container"
+        className="success-nav-container scrollbar-none"
         style={{
           display: 'flex',
+          width: '100%',
+          maxWidth: '100%',
           overflowX: 'auto',
           gap: 0,
           background: '#111',
