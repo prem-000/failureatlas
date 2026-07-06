@@ -803,7 +803,7 @@ export default function ProblemDetailPage() {
           .problem-grid {
             grid-template-columns: 1fr !important;
             padding: 12px !important;
-            gap: 0 !important;
+            gap: 16px !important;
             /* Extra bottom padding: floating CTA (~52px) + menu btn (~44px) + tab bar bottom nav (~64px) + safe area + spacing */
             padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 130px) !important;
           }
