@@ -2,6 +2,8 @@ import type { SubmissionEvent, WeaknessType } from '@/types';
 import type { RetrievedFailure } from '../rag/retrieval';
 import type { WeaknessScore } from '../graph/pagerank';
 
+export const DIAGNOSIS_MODEL_VERSION = 'llama-3.1-8b-instant';
+
 export interface StructuredDiagnosis {
   primaryWeaknessId: WeaknessType;
   primaryWeaknessName: string;
@@ -156,7 +158,7 @@ JSON Schema:
         'Authorization': `Bearer ${groqApiKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: DIAGNOSIS_MODEL_VERSION,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.2,
         response_format: { type: 'json_object' }

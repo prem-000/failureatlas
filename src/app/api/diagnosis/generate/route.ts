@@ -3,7 +3,8 @@ import { prisma } from '@/lib/db/prisma';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
 import { computeWeaknessPageRank } from '@/lib/graph/pagerank';
 import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
-import { generateAIDiagnosis } from '@/lib/diagnosis/generator';
+import { generateAIDiagnosis, DIAGNOSIS_MODEL_VERSION } from '@/lib/diagnosis/generator';
+import { createFingerprint } from '@/lib/fingerprint/fingerprint';
 import type { SubmissionEvent } from '@/types';
 
 
@@ -41,9 +42,11 @@ export async function POST(request: NextRequest) {
     const userId = payload.userId;
 
     let userQuery = '';
+    let forceRegenerate = false;
     try {
       const body = await request.json();
       userQuery = typeof body?.query === 'string' ? body.query.trim() : '';
+      forceRegenerate = Boolean(body?.force || body?.regenerate);
     } catch {
       // empty body is fine
     }
@@ -135,12 +138,44 @@ export async function POST(request: NextRequest) {
       mappedCurrent.failedTestCase
     );
 
-    // Delete existing diagnosis for this submission event to ensure we always regenerate with Groq
-    await prisma.diagnosisResult.deleteMany({
-      where: { submissionId: latestFailure.id }
+    // Generate deterministic fingerprint
+    const { fingerprint, codeHash } = createFingerprint({
+      userId,
+      problemSlug: latestFailure.problem.slug,
+      language: latestFailure.language,
+      status: latestFailure.status,
+      code: latestFailure.code
     });
 
     let diagnosis: any = null;
+
+    if (!forceRegenerate) {
+      diagnosis = await prisma.diagnosisResult.findUnique({
+        where: { fingerprint },
+        include: {
+          primaryWeakness: true,
+          recommendations: { include: { strategy: true } }
+        }
+      });
+
+      if (diagnosis && diagnosis.modelVersion !== DIAGNOSIS_MODEL_VERSION) {
+        diagnosis = null;
+      }
+    }
+
+    // Cache hit: link to current submission if different, then skip LLM generation
+    if (diagnosis) {
+      if (diagnosis.submissionId !== latestFailure.id) {
+        diagnosis = await prisma.diagnosisResult.update({
+          where: { id: diagnosis.id },
+          data: { submissionId: latestFailure.id },
+          include: {
+            primaryWeakness: true,
+            recommendations: { include: { strategy: true } }
+          }
+        });
+      }
+    }
 
     const responseRecs: Array<{
       strategyId: string;
@@ -193,25 +228,54 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      const created = await prisma.diagnosisResult.upsert({
-        where: { submissionId: latestFailure.id },
-        update: {
-          primaryWeaknessId: primaryWeaknessNode.id,
-          progressMetrics: {
-            confidence: aiDiagnosis.confidence,
-            reasoningChain: aiDiagnosis.reasoningChain
-          }
-        },
-        create: {
-          userId,
-          submissionId: latestFailure.id,
-          primaryWeaknessId: primaryWeaknessNode.id,
-          progressMetrics: {
-            confidence: aiDiagnosis.confidence,
-            reasoningChain: aiDiagnosis.reasoningChain
-          }
-        }
+      let created;
+      const existingByFingerprint = await prisma.diagnosisResult.findUnique({
+        where: { fingerprint }
       });
+
+      if (existingByFingerprint) {
+        created = await prisma.diagnosisResult.update({
+          where: { fingerprint },
+          data: {
+            submissionId: latestFailure.id,
+            primaryWeaknessId: primaryWeaknessNode.id,
+            modelVersion: DIAGNOSIS_MODEL_VERSION,
+            diagnosisJson: aiDiagnosis as any,
+            progressMetrics: {
+              confidence: aiDiagnosis.confidence,
+              reasoningChain: aiDiagnosis.reasoningChain
+            }
+          }
+        });
+      } else {
+        created = await prisma.diagnosisResult.upsert({
+          where: { submissionId: latestFailure.id },
+          update: {
+            primaryWeaknessId: primaryWeaknessNode.id,
+            fingerprint,
+            codeHash,
+            modelVersion: DIAGNOSIS_MODEL_VERSION,
+            diagnosisJson: aiDiagnosis as any,
+            progressMetrics: {
+              confidence: aiDiagnosis.confidence,
+              reasoningChain: aiDiagnosis.reasoningChain
+            }
+          },
+          create: {
+            userId,
+            submissionId: latestFailure.id,
+            primaryWeaknessId: primaryWeaknessNode.id,
+            fingerprint,
+            codeHash,
+            modelVersion: DIAGNOSIS_MODEL_VERSION,
+            diagnosisJson: aiDiagnosis as any,
+            progressMetrics: {
+              confidence: aiDiagnosis.confidence,
+              reasoningChain: aiDiagnosis.reasoningChain
+            }
+          }
+        });
+      }
 
       diagnosis = await prisma.diagnosisResult.findUnique({
         where: { id: created.id },
@@ -219,6 +283,11 @@ export async function POST(request: NextRequest) {
           primaryWeakness: true,
           recommendations: { include: { strategy: true } },
         },
+      });
+
+      // Clear existing recommendations in case of overwrite
+      await prisma.learningRecommendation.deleteMany({
+        where: { diagnosisId: diagnosis.id }
       });
 
       for (const rec of aiDiagnosis.learningRecommendations) {

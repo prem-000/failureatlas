@@ -24,7 +24,8 @@ import { recordFailureEventInGraph } from '@/lib/graph/operations';
 import { computeWeaknessPageRank, type WeaknessScore } from '@/lib/graph/pagerank';
 import { saveTextEmbedding, buildFailureEmbeddingContent } from '@/lib/embeddings/pipeline';
 import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
-import { generateAIDiagnosis } from '@/lib/diagnosis/generator';
+import { generateAIDiagnosis, DIAGNOSIS_MODEL_VERSION } from '@/lib/diagnosis/generator';
+import { createFingerprint } from '@/lib/fingerprint/fingerprint';
 import { generateFailureExplanation, type ExplanationEngineInput } from '@/lib/explanation/engine';
 import { upsertCodeEvidence } from '@/lib/interceptor/uploader';
 import { isHighLatency } from '@/lib/interceptor/extractor';
@@ -485,60 +486,116 @@ async function runAnalysisPipeline(
 
   // ── RAG retrieval + AI diagnosis ──────────────────────────────────────────
   try {
-    const similarFailures = await retrieveSimilarFailures(
-      userId, subRecord.eventId,
-      mappedCurrent.problemTitle, mappedCurrent.problemDifficulty,
-      mappedCurrent.problemTopics, mappedCurrent.submissionStatus,
-      mappedCurrent.submissionCode, fields.failedTestCase
-    );
-
-    const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores);
-
-    const primaryWeaknessNode = await prisma.systemicWeakness.upsert({
-      where: { name: aiDiagnosis.primaryWeaknessId },
-      update: {},
-      create: {
-        name: aiDiagnosis.primaryWeaknessId,
-        type: aiDiagnosis.primaryWeaknessId,
-        severity: 'high',
-        confidence: aiDiagnosis.confidence / 100,
-      },
+    const { fingerprint, codeHash } = createFingerprint({
+      userId,
+      problemSlug: problem.slug,
+      language: fields.submissionLanguage,
+      status: fields.submissionStatus,
+      code: fields.submissionCode
     });
 
-    const diagnosis = await prisma.diagnosisResult.upsert({
-      where: { submissionId: subRecord.id },
-      update: {
-        primaryWeaknessId: primaryWeaknessNode.id,
-        progressMetrics: {
-          confidence: aiDiagnosis.confidence,
-          reasoningChain: aiDiagnosis.reasoningChain,
-        },
-      },
-      create: {
-        userId,
-        submissionId: subRecord.id,
-        primaryWeaknessId: primaryWeaknessNode.id,
-        progressMetrics: {
-          confidence: aiDiagnosis.confidence,
-          reasoningChain: aiDiagnosis.reasoningChain,
-        },
-      },
+    let cachedDiagnosis = await prisma.diagnosisResult.findUnique({
+      where: { fingerprint },
+      include: {
+        primaryWeakness: true,
+        recommendations: { include: { strategy: true } }
+      }
     });
 
-    for (const rec of aiDiagnosis.learningRecommendations) {
-      const strategy = await prisma.learningStrategy.create({
-        data: {
-          weaknessId: primaryWeaknessNode.id,
-          name: rec.name,
-          description: rec.description,
-          estimatedTime: rec.estimatedTime,
-          priority: rec.priority,
-          practiceProblems: rec.practiceProblems.map((p: any) => p.problemSlug ?? p),
+    if (cachedDiagnosis && cachedDiagnosis.modelVersion === DIAGNOSIS_MODEL_VERSION) {
+      console.log(`[CACHE HIT] Found existing diagnosis for fingerprint ${fingerprint}. Linking to submission ${subRecord.id}`);
+      // Link the existing diagnosis to this submission event by updating its submissionId
+      await prisma.diagnosisResult.update({
+        where: { id: cachedDiagnosis.id },
+        data: { submissionId: subRecord.id }
+      });
+    } else {
+      const similarFailures = await retrieveSimilarFailures(
+        userId, subRecord.eventId,
+        mappedCurrent.problemTitle, mappedCurrent.problemDifficulty,
+        mappedCurrent.problemTopics, mappedCurrent.submissionStatus,
+        mappedCurrent.submissionCode, fields.failedTestCase
+      );
+
+      const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores);
+
+      const primaryWeaknessNode = await prisma.systemicWeakness.upsert({
+        where: { name: aiDiagnosis.primaryWeaknessId },
+        update: {},
+        create: {
+          name: aiDiagnosis.primaryWeaknessId,
+          type: aiDiagnosis.primaryWeaknessId,
+          severity: 'high',
+          confidence: aiDiagnosis.confidence / 100,
         },
       });
-      await prisma.learningRecommendation.create({
-        data: { diagnosisId: diagnosis.id, strategyId: strategy.id, completed: false },
+
+      let diagnosis;
+      if (cachedDiagnosis) {
+        // Update existing record by fingerprint (different modelVersion case)
+        diagnosis = await prisma.diagnosisResult.update({
+          where: { fingerprint },
+          data: {
+            submissionId: subRecord.id,
+            primaryWeaknessId: primaryWeaknessNode.id,
+            modelVersion: DIAGNOSIS_MODEL_VERSION,
+            diagnosisJson: aiDiagnosis as any,
+            progressMetrics: {
+              confidence: aiDiagnosis.confidence,
+              reasoningChain: aiDiagnosis.reasoningChain,
+            },
+          }
+        });
+      } else {
+        diagnosis = await prisma.diagnosisResult.upsert({
+          where: { submissionId: subRecord.id },
+          update: {
+            primaryWeaknessId: primaryWeaknessNode.id,
+            fingerprint,
+            codeHash,
+            modelVersion: DIAGNOSIS_MODEL_VERSION,
+            diagnosisJson: aiDiagnosis as any,
+            progressMetrics: {
+              confidence: aiDiagnosis.confidence,
+              reasoningChain: aiDiagnosis.reasoningChain,
+            },
+          },
+          create: {
+            userId,
+            submissionId: subRecord.id,
+            primaryWeaknessId: primaryWeaknessNode.id,
+            fingerprint,
+            codeHash,
+            modelVersion: DIAGNOSIS_MODEL_VERSION,
+            diagnosisJson: aiDiagnosis as any,
+            progressMetrics: {
+              confidence: aiDiagnosis.confidence,
+              reasoningChain: aiDiagnosis.reasoningChain,
+            },
+          },
+        });
+      }
+
+      // Delete old recommendations if they exist
+      await prisma.learningRecommendation.deleteMany({
+        where: { diagnosisId: diagnosis.id }
       });
+
+      for (const rec of aiDiagnosis.learningRecommendations) {
+        const strategy = await prisma.learningStrategy.create({
+          data: {
+            weaknessId: primaryWeaknessNode.id,
+            name: rec.name,
+            description: rec.description,
+            estimatedTime: rec.estimatedTime,
+            priority: rec.priority,
+            practiceProblems: rec.practiceProblems.map((p: any) => p.problemSlug ?? p),
+          },
+        });
+        await prisma.learningRecommendation.create({
+          data: { diagnosisId: diagnosis.id, strategyId: strategy.id, completed: false },
+        });
+      }
     }
   } catch (e: any) {
     console.warn('⚠️ AI diagnosis failed (non-fatal):', e?.message);

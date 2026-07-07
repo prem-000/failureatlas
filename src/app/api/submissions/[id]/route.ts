@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
 import { myersDiff } from '@/lib/analysis/myers-diff';
+import { createFingerprint } from '@/lib/fingerprint/fingerprint';
 
 // GET /api/submissions/[id]
 // Returns full detail for a single submission including evidence, hypotheses, diagnosis,
@@ -79,7 +80,27 @@ export async function GET(
       codeDiff = myersDiff(previousSubmission.code, submission.code);
     }
 
-    const diagnosisResult = submission.diagnosis;
+    let diagnosisResult: any = submission.diagnosis;
+    if (!diagnosisResult) {
+      const { fingerprint } = createFingerprint({
+        userId,
+        problemSlug: submission.problem.slug,
+        language: submission.language,
+        status: submission.status,
+        code: submission.code
+      });
+      diagnosisResult = await prisma.diagnosisResult.findUnique({
+        where: { fingerprint },
+        include: {
+          primaryWeakness: {
+            include: { strategies: true },
+          },
+          recommendations: {
+            include: { strategy: true },
+          },
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -145,7 +166,7 @@ export async function GET(
                   }
                 : null,
               progressMetrics: diagnosisResult.progressMetrics,
-              recommendations: diagnosisResult.recommendations.map((r) => ({
+              recommendations: diagnosisResult.recommendations.map((r: any) => ({
                 id: r.id,
                 completed: r.completed,
                 strategy: r.strategy

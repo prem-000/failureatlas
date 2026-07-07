@@ -156,6 +156,13 @@ model DiagnosisResult {
   progressMetrics   Json                     @default("{}")
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
+  
+  // Cache Fields
+  fingerprint       String?                  @unique
+  codeHash          String?
+  modelVersion      String?
+  diagnosisJson     Json?
+
   primaryWeakness   SystemicWeakness         @relation("PrimaryWeakness", fields: [primaryWeaknessId], references: [id])
   submission        SubmissionEvent          @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -163,6 +170,7 @@ model DiagnosisResult {
 
   @@index([userId])
   @@index([submissionId])
+  @@index([codeHash])
   @@map("diagnosis_results")
 }
 
