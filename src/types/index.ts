@@ -315,6 +315,18 @@ export interface LearningStep {
   targetEdgeCase?: string;
 }
 
+export interface ReasoningPrescription {
+  failureReason: string;
+  inferredTestInput: string;
+  inferredTestExpected: string;
+  inferredTestPurpose: string;
+  inferredTestOutput: string;
+  explanation: string;
+  confidence: number;
+  evidence: string;
+  historicalSimilarityCount: number;
+}
+
 export interface BehaviorInsight {
   weaknessId: string;
   weaknessName: string;
@@ -328,6 +340,7 @@ export interface BehaviorInsight {
   rootBehaviorCause: string;     // concise behavioral diagnosis
   learningPrescription: LearningStep[];
   estimatedImpact: ImpactLevel;  // High/Medium/Low — never a percentage
+  reasoningPrescription?: ReasoningPrescription;
 }
 
 export interface AdversarialTestCase {

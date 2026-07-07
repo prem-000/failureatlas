@@ -27,6 +27,8 @@ export async function GET(
     }
     const userId = payload.userId;
     const { weaknessId } = await params;
+    const { searchParams } = new URL(request.url);
+    const submissionId = searchParams.get('submissionId') || undefined;
 
     if (!weaknessId) {
       return NextResponse.json(
@@ -35,7 +37,7 @@ export async function GET(
       );
     }
 
-    const insight = await generateBehaviorInsight(userId, weaknessId);
+    const insight = await generateBehaviorInsight(userId, weaknessId, submissionId);
 
     return NextResponse.json({ success: true, data: insight });
   } catch (error) {

@@ -8,7 +8,8 @@
  */
 
 import { prisma } from '@/lib/db/prisma';
-import type { BehaviorInsight, HistoricalFailure, LearningStep, ImpactLevel } from '@/types';
+import type { BehaviorInsight, HistoricalFailure, LearningStep, ImpactLevel, ReasoningPrescription } from '@/types';
+import { groqClient } from '../api/groq-client';
 
 // ─── Weakness → Checklist mapping ─────────────────────────────────────────────
 
@@ -115,9 +116,63 @@ function computeImpact(weightedScore: number): ImpactLevel {
 
 // ─── Main engine ──────────────────────────────────────────────────────────────
 
+async function generateReasoningPrescription(
+  weaknessName: string,
+  code: string,
+  problemTitle: string,
+  problemTopics: string[],
+  failedTest: string | null,
+  historicalSimilarityCount: number
+): Promise<ReasoningPrescription | undefined> {
+  const prompt = `You are a Senior Compiler Engineer, Code Quality Architect, and competitive programming expert.
+Analyze the user's buggy code for the problem "${problemTitle}" (Topics: ${problemTopics.join(', ')}).
+They failed due to a weakness in: "${weaknessName}".
+
+User's Code:
+\`\`\`
+${code}
+\`\`\`
+${failedTest ? `Observed Failed Test Case: ${failedTest}` : ''}
+
+Your task is to diagnose this failure under the "${weaknessName}" weakness type and output a valid JSON object matching the schema below.
+Provide a high-fidelity reasoning analysis of why the code fails, infer a likely hidden test case that exposes the bug, and provide code-level evidence.
+
+JSON Schema:
+{
+  "failureReason": "A 1-2 sentence explanation of why the user's specific solution fails under this weakness (e.g. 'Your solution fails because it assumes every element will have a matching pair.')",
+  "inferredTestInput": "A representative LeetCode test input that likely triggers this failure (e.g., 'nums = [5], target = 5')",
+  "inferredTestExpected": "The correct expected output for the inferred test case (e.g. 'false')",
+  "inferredTestPurpose": "Purpose of this test case (e.g. 'Checks if lookup element can pair with itself.')",
+  "inferredTestOutput": "What the user's buggy implementation would output (e.g. 'true' or 'Runtime Error')",
+  "explanation": "Clear execution explanation of the failure (e.g. 'Your hash lookup returns before checking whether the element can pair with itself.')",
+  "confidence": number (between 70 and 100),
+  "evidence": "Concrete code snippet or statement from the user's solution that causes this issue (e.g., 'if target - num in map')"
+}
+
+Return ONLY a raw JSON string. Do not wrap in markdown blocks like \`\`\`json.`;
+
+  try {
+    const response = await groqClient.getChatCompletion({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+    });
+
+    const parsed = JSON.parse(response.content.trim());
+    return {
+      ...parsed,
+      historicalSimilarityCount,
+    };
+  } catch (err) {
+    console.error('❌ Failed to generate reasoning prescription via Groq:', err);
+    return undefined;
+  }
+}
+
 export async function generateBehaviorInsight(
   userId: string,
-  weaknessId: string
+  weaknessId: string,
+  submissionId?: string
 ): Promise<BehaviorInsight> {
   const weaknessName = weaknessIdToName(weaknessId);
 
@@ -232,7 +287,33 @@ export async function generateBehaviorInsight(
     rootBehaviorCause = `${weaknessName} occasionally appears in your failures. Consider adding it to your pre-submission checklist to eliminate it entirely.`;
   }
 
-  // ── Prescription ───────────────────────────────────────────────────────────
+  // ── Prescription / Dynamic Reasoning ───────────────────────────────────────
+  let reasoningPrescription: ReasoningPrescription | undefined = undefined;
+
+  let targetSubmission = null;
+  if (submissionId) {
+    targetSubmission = await prisma.submissionEvent.findFirst({
+      where: { userId, OR: [{ id: submissionId }, { eventId: submissionId }] },
+      include: { problem: true }
+    });
+  }
+
+  // Fallback to latest matching failed submission if none specified
+  if (!targetSubmission && recentSubmissions.length > 0) {
+    targetSubmission = recentSubmissions[0];
+  }
+
+  if (targetSubmission) {
+    reasoningPrescription = await generateReasoningPrescription(
+      weaknessName,
+      targetSubmission.code,
+      targetSubmission.problem.title,
+      targetSubmission.problem.topics || [],
+      targetSubmission.failedTestCase || null,
+      historicalMatching
+    );
+  }
+
   const learningPrescription = WEAKNESS_PRESCRIPTIONS[weaknessId] || DEFAULT_PRESCRIPTION;
 
   return {
@@ -248,5 +329,6 @@ export async function generateBehaviorInsight(
     rootBehaviorCause,
     learningPrescription,
     estimatedImpact: computeImpact(weightedScore),
+    reasoningPrescription,
   };
 }
