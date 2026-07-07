@@ -151,7 +151,7 @@ function ConfidenceBar({ value, color = '#ff5f52' }: { value: number; color?: st
 
 function SectionCard({ title, accent = '#ff5f52', children }: { title: string; accent?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: '#191919', border: '1px solid #1f1f1f', borderRadius: 12, overflow: 'hidden', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+    <div style={{ background: '#191919', border: '1px solid #1f1f1f', borderRadius: 12, width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid #1f1f1f', display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 3, height: 16, background: accent, borderRadius: 2, flexShrink: 0 }} />
         <span style={{ fontSize: 13, fontWeight: 700, color: '#e4e4e7', letterSpacing: '-0.01em' }}>{title}</span>
