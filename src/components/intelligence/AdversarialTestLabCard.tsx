@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { AdversarialTestLab, AdversarialTestCase } from '@/types';
 import { Check, AlertTriangle, Cpu, HardDrive, ShieldCheck, Zap } from 'lucide-react';
 import { apiFetch } from '@/lib/api/client';
@@ -128,6 +128,30 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
   const [generatedTests, setGeneratedTests] = useState<any[]>([]);
   const [loadingGenerated, setLoadingGenerated] = useState(false);
   const [difficultyStage, setDifficultyStage] = useState(3);
+
+  const [isMobile, setIsMobile] = useState(false);
+  const tabRefs = useRef<Record<TabType, HTMLButtonElement | null>>({} as any);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const h = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', h);
+    return () => mq.removeEventListener('change', h);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      const activeBtn = tabRefs.current[activeTab];
+      if (activeBtn) {
+        activeBtn.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center',
+        });
+      }
+    }
+  }, [activeTab, isMobile]);
 
   const handleGenerateMore = async () => {
     setActiveTab('attack');
@@ -409,158 +433,95 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
       </div>
 
       {/* ─── Intelligence Tab Selector ─── */}
-      <div
-        className="scrollbar-none"
-        style={{
-          display: 'flex',
-          flexWrap: 'nowrap',
-          overflowX: 'auto',
-          width: '100%',
-          maxWidth: '100%',
-          background: '#111',
-          border: '1px solid #1f1f1f',
-          borderRadius: 8,
-          padding: 3,
-          gap: 4,
-          WebkitOverflowScrolling: 'touch' as any,
-        }}
-      >
-        {/* Tab 1 */}
-        <button
-          onClick={() => setActiveTab('hidden')}
-          className="compact"
-          style={{
-            flex: '1 0 auto',
-            minWidth: 120,
-            whiteSpace: 'nowrap',
-            padding: '8px 12px',
-            background: activeTab === 'hidden' ? 'rgba(0, 240, 255, 0.08)' : 'transparent',
-            border: activeTab === 'hidden' ? `1px solid ${colors.borderActiveCyan}` : '1px solid transparent',
-            borderRadius: 6,
-            color: activeTab === 'hidden' ? colors.cyan : '#71717a',
-            cursor: 'pointer',
-            fontSize: 11,
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            transition: 'all 0.2s',
-          }}
-        >
-          <NeuralProbeIcon size={14} style={{ color: activeTab === 'hidden' ? colors.cyan : '#71717a' }} />
-          <span>HIDDEN TESTS</span>
-        </button>
-
-        {/* Tab 2 */}
-        <button
-          onClick={() => setActiveTab('break')}
-          className="compact"
-          style={{
-            flex: '1 0 auto',
-            minWidth: 120,
-            whiteSpace: 'nowrap',
-            padding: '8px 12px',
-            background: activeTab === 'break' ? 'rgba(249, 115, 22, 0.08)' : 'transparent',
-            border: activeTab === 'break' ? `1px solid ${colors.borderActiveOrange}` : '1px solid transparent',
-            borderRadius: 6,
-            color: activeTab === 'break' ? colors.orange : '#71717a',
-            cursor: 'pointer',
-            fontSize: 11,
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            transition: 'all 0.2s',
-          }}
-        >
-          <FractureMatrixIcon size={14} style={{ color: activeTab === 'break' ? colors.orange : '#71717a' }} />
-          <span>BREAK SOLUTION</span>
-        </button>
-
-        {/* Tab 3 */}
-        <button
-          onClick={() => setActiveTab('constraints')}
-          className="compact"
-          style={{
-            flex: '1 0 auto',
-            minWidth: 120,
-            whiteSpace: 'nowrap',
-            padding: '8px 12px',
-            background: activeTab === 'constraints' ? 'rgba(168, 85, 247, 0.08)' : 'transparent',
-            border: activeTab === 'constraints' ? `1px solid ${colors.borderActivePurple}` : '1px solid transparent',
-            borderRadius: 6,
-            color: activeTab === 'constraints' ? colors.purple : '#71717a',
-            cursor: 'pointer',
-            fontSize: 11,
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            transition: 'all 0.2s',
-          }}
-        >
-          <BoundaryFieldIcon size={14} style={{ color: activeTab === 'constraints' ? colors.purple : '#71717a' }} />
-          <span>CONSTRAINT EXTREMES</span>
-        </button>
-
-        {/* Tab 4 */}
-        <button
-          onClick={() => setActiveTab('ai')}
-          className="compact"
-          style={{
-            flex: '1 0 auto',
-            minWidth: 120,
-            whiteSpace: 'nowrap',
-            padding: '8px 12px',
-            background: activeTab === 'ai' ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
-            border: activeTab === 'ai' ? `1px solid ${colors.borderActiveBlue}` : '1px solid transparent',
-            borderRadius: 6,
-            color: activeTab === 'ai' ? colors.blue : '#71717a',
-            cursor: 'pointer',
-            fontSize: 11,
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            transition: 'all 0.2s',
-          }}
-        >
-          <SyntheticCoreIcon size={14} style={{ color: activeTab === 'ai' ? colors.blue : '#71717a' }} />
-          <span>AI NOVEL CASES</span>
-        </button>
-
-        {/* Tab 5 (Attack Lab) */}
-        {(generatedTests.length > 0 || loadingGenerated) && (
+      <div className="secondary-nav-container">
+        <div className="secondary-nav-wrapper">
+          {/* Tab 1 */}
           <button
-            onClick={() => setActiveTab('attack')}
-            className="compact"
+            ref={el => { tabRefs.current['hidden'] = el; }}
+            onClick={() => setActiveTab('hidden')}
+            className={`secondary-nav-tab compact ${activeTab === 'hidden' ? 'active' : ''}`}
             style={{
-              flex: '1 0 auto',
-              minWidth: 120,
-              whiteSpace: 'nowrap',
-              padding: '8px 12px',
-              background: activeTab === 'attack' ? 'rgba(239, 68, 68, 0.08)' : 'transparent',
-              border: activeTab === 'attack' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid transparent',
-              borderRadius: 6,
-              color: activeTab === 'attack' ? '#ef4444' : '#71717a',
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              transition: 'all 0.2s',
-            }}
+              '--active-bg': 'rgba(0, 240, 255, 0.08)',
+              '--active-border': colors.borderActiveCyan,
+              '--active-color': colors.cyan,
+            } as React.CSSProperties}
           >
-            <span style={{ fontSize: 13, marginRight: 2 }}>💥</span>
-            <span>ATTACK LAB ({generatedTests.length})</span>
+            {!isMobile && <NeuralProbeIcon size={14} style={{ color: activeTab === 'hidden' ? colors.cyan : '#71717a' }} />}
+            <span>
+              {isMobile ? (activeTab === 'hidden' ? '← Hidden →' : 'Hidden') : 'HIDDEN TESTS'}
+            </span>
           </button>
-        )}
+
+          {/* Tab 2 */}
+          <button
+            ref={el => { tabRefs.current['break'] = el; }}
+            onClick={() => setActiveTab('break')}
+            className={`secondary-nav-tab compact ${activeTab === 'break' ? 'active' : ''}`}
+            style={{
+              '--active-bg': 'rgba(249, 115, 22, 0.08)',
+              '--active-border': colors.borderActiveOrange,
+              '--active-color': colors.orange,
+            } as React.CSSProperties}
+          >
+            {!isMobile && <FractureMatrixIcon size={14} style={{ color: activeTab === 'break' ? colors.orange : '#71717a' }} />}
+            <span>
+              {isMobile ? (activeTab === 'break' ? '← Break →' : 'Break') : 'BREAK SOLUTION'}
+            </span>
+          </button>
+
+          {/* Tab 3 */}
+          <button
+            ref={el => { tabRefs.current['constraints'] = el; }}
+            onClick={() => setActiveTab('constraints')}
+            className={`secondary-nav-tab compact ${activeTab === 'constraints' ? 'active' : ''}`}
+            style={{
+              '--active-bg': 'rgba(168, 85, 247, 0.08)',
+              '--active-border': colors.borderActivePurple,
+              '--active-color': colors.purple,
+            } as React.CSSProperties}
+          >
+            {!isMobile && <BoundaryFieldIcon size={14} style={{ color: activeTab === 'constraints' ? colors.purple : '#71717a' }} />}
+            <span>
+              {isMobile ? (activeTab === 'constraints' ? '← Constraints →' : 'Constraints') : 'CONSTRAINT EXTREMES'}
+            </span>
+          </button>
+
+          {/* Tab 4 */}
+          <button
+            ref={el => { tabRefs.current['ai'] = el; }}
+            onClick={() => setActiveTab('ai')}
+            className={`secondary-nav-tab compact ${activeTab === 'ai' ? 'active' : ''}`}
+            style={{
+              '--active-bg': 'rgba(59, 130, 246, 0.08)',
+              '--active-border': colors.borderActiveBlue,
+              '--active-color': colors.blue,
+            } as React.CSSProperties}
+          >
+            {!isMobile && <SyntheticCoreIcon size={14} style={{ color: activeTab === 'ai' ? colors.blue : '#71717a' }} />}
+            <span>
+              {isMobile ? (activeTab === 'ai' ? '← AI Cases →' : 'AI Cases') : 'AI NOVEL CASES'}
+            </span>
+          </button>
+
+          {/* Tab 5 (Attack Lab) */}
+          {(generatedTests.length > 0 || loadingGenerated) && (
+            <button
+              ref={el => { tabRefs.current['attack'] = el; }}
+              onClick={() => setActiveTab('attack')}
+              className={`secondary-nav-tab compact ${activeTab === 'attack' ? 'active' : ''}`}
+              style={{
+                '--active-bg': 'rgba(239, 68, 68, 0.08)',
+                '--active-border': 'rgba(239, 68, 68, 0.3)',
+                '--active-color': '#ef4444',
+              } as React.CSSProperties}
+            >
+              {!isMobile && <span style={{ fontSize: 13, marginRight: 2 }}>💥</span>}
+              <span>
+                {isMobile ? (activeTab === 'attack' ? `← Attack (${generatedTests.length}) →` : `Attack (${generatedTests.length})`) : `ATTACK LAB (${generatedTests.length})`}
+              </span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Control buttons */}
