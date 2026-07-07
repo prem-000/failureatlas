@@ -685,3 +685,235 @@ a.compact,
 .scrollbar-none::-webkit-scrollbar {
   display: none !important;
 }
+
+/* ==========================================================================
+   RESPONSIVE PRIMARY AND SECONDARY NAV TABS
+   ========================================================================== */
+
+/* --- Mobile view (320px - 767px): Swipeable Chips --- */
+.responsive-nav-container,
+.secondary-nav-container {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  background: #111111 !important;
+  border: 1px solid #1f1f1f !important;
+  border-top: none !important;
+  scrollbar-width: none !important; /* Hide scrollbar for Firefox */
+  -ms-overflow-style: none !important; /* Hide scrollbar for IE/Edge */
+  -webkit-overflow-scrolling: touch !important;
+  scroll-snap-type: x proximity !important;
+  padding: 8px 12px !important;
+  box-sizing: border-box !important;
+  border-radius: 0 !important;
+}
+
+.responsive-nav-container::-webkit-scrollbar,
+.secondary-nav-container::-webkit-scrollbar {
+  display: none !important;
+}
+
+.responsive-nav-wrapper,
+.secondary-nav-wrapper {
+  display: flex !important;
+  width: max-content !important;
+  white-space: nowrap !important;
+  gap: 8px !important;
+  padding: 0 4px !important;
+  align-items: center !important;
+}
+
+.responsive-nav-tab,
+.secondary-nav-tab {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 16px !important;
+  border-radius: 22px !important; /* Pill shaped */
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  scroll-snap-align: center !important;
+  transition: all 0.2s ease !important;
+  background: #161616 !important;
+  border: 1px solid #1f1f1f !important;
+  color: #71717a !important;
+}
+
+.responsive-nav-tab:hover,
+.secondary-nav-tab:hover {
+  background: #1e1e1e !important;
+  color: #a1a1aa !important;
+}
+
+.responsive-nav-tab.active,
+.secondary-nav-tab.active {
+  background: var(--active-bg, rgba(255, 95, 82, 0.1)) !important;
+  border-color: var(--active-border, #ff5f52) !important;
+  color: var(--active-color, #ff5f52) !important;
+}
+
+/* --- Tablet view (768px - 1023px): Horizontally Scrollable Desktop Style --- */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .responsive-nav-container {
+    padding: 0 !important;
+    overflow-x: auto !important;
+    scrollbar-width: thin !important;
+  }
+  .responsive-nav-container::-webkit-scrollbar {
+    display: block !important;
+    height: 4px !important;
+  }
+  .responsive-nav-container::-webkit-scrollbar-thumb {
+    background: #2a2a2a !important;
+    border-radius: 2px !important;
+  }
+  .responsive-nav-wrapper {
+    gap: 0 !important;
+    padding: 0 4px !important;
+  }
+  .responsive-nav-tab {
+    height: auto !important;
+    min-height: auto !important;
+    padding: 10px 12px !important;
+    border-radius: 0 !important;
+    background: none !important;
+    border: none !important;
+    font-size: 11px !important;
+    color: #52525b !important;
+    border-bottom: 2px solid transparent !important;
+  }
+  .responsive-nav-tab.active {
+    background: none !important;
+    border: none !important;
+    border-bottom: 2px solid var(--active-color, #ff5f52) !important;
+    color: var(--active-color, #ff5f52) !important;
+  }
+
+  /* Secondary navigation */
+  .secondary-nav-container {
+    display: flex !important;
+    overflow-x: auto !important;
+    background: #111111 !important;
+    border: 1px solid #1f1f1f !important;
+    border-radius: 8px !important;
+    padding: 3px !important;
+    scrollbar-width: thin !important;
+  }
+  .secondary-nav-container::-webkit-scrollbar {
+    display: block !important;
+    height: 4px !important;
+  }
+  .secondary-nav-container::-webkit-scrollbar-thumb {
+    background: #2a2a2a !important;
+    border-radius: 2px !important;
+  }
+  .secondary-nav-wrapper {
+    display: flex !important;
+    width: max-content !important;
+    gap: 4px !important;
+    padding: 0 !important;
+  }
+  .secondary-nav-tab {
+    flex: 1 0 auto !important;
+    min-width: 120px !important;
+    white-space: nowrap !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: #71717a !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+  .secondary-nav-tab.active {
+    background: var(--active-bg, rgba(0, 240, 255, 0.08)) !important;
+    border: 1px solid var(--active-border, rgba(0, 240, 255, 0.3)) !important;
+    color: var(--active-color, #00f0ff) !important;
+  }
+}
+
+/* --- Desktop view (>= 1024px): Standard static view --- */
+@media (min-width: 1024px) {
+  .responsive-nav-container {
+    padding: 0 !important;
+    overflow-x: hidden !important;
+  }
+  .responsive-nav-wrapper {
+    gap: 0 !important;
+    padding: 0 4px !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+  .responsive-nav-tab {
+    height: auto !important;
+    min-height: auto !important;
+    padding: 10px 12px !important;
+    border-radius: 0 !important;
+    background: none !important;
+    border: none !important;
+    font-size: 11px !important;
+    color: #52525b !important;
+    border-bottom: 2px solid transparent !important;
+  }
+  .responsive-nav-tab.active {
+    background: none !important;
+    border: none !important;
+    border-bottom: 2px solid var(--active-color, #ff5f52) !important;
+    color: var(--active-color, #ff5f52) !important;
+  }
+
+  /* Secondary navigation */
+  .secondary-nav-container {
+    display: flex !important;
+    overflow-x: hidden !important;
+    background: #111111 !important;
+    border: 1px solid #1f1f1f !important;
+    border-radius: 8px !important;
+    padding: 3px !important;
+  }
+  .secondary-nav-wrapper {
+    display: flex !important;
+    width: 100% !important;
+    gap: 4px !important;
+    padding: 0 !important;
+  }
+  .secondary-nav-tab {
+    flex: 1 0 auto !important;
+    min-width: 120px !important;
+    white-space: nowrap !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: #71717a !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+  .secondary-nav-tab.active {
+    background: var(--active-bg, rgba(0, 240, 255, 0.08)) !important;
+    border: 1px solid var(--active-border, rgba(0, 240, 255, 0.3)) !important;
+    color: var(--active-color, #00f0ff) !important;
+  }
+}

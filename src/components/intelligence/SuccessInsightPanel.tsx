@@ -13,13 +13,13 @@ import { Trophy, BrainCircuit, ShieldCheck, Zap, Network, Scale, Code2 } from 'l
 
 type Section = 'overview' | 'edge-cases' | 'optimization' | 'pattern' | 'risk' | 'quality';
 
-const SECTIONS: { id: Section; label: string }[] = [
-  { id: 'overview',     label: 'Why It Worked' },
-  { id: 'edge-cases',  label: 'Adversarial Test Lab' },
-  { id: 'optimization',label: 'Optimization' },
-  { id: 'pattern',     label: 'Pattern Mastery' },
-  { id: 'risk',        label: 'Constraint Intelligence' },
-  { id: 'quality',     label: 'Code Quality' },
+const SECTIONS: { id: Section; label: string; labelMobile: string }[] = [
+  { id: 'overview',     label: 'Why It Worked',            labelMobile: 'Why' },
+  { id: 'edge-cases',  label: 'Adversarial Test Lab',     labelMobile: 'Lab' },
+  { id: 'optimization',label: 'Optimization',            labelMobile: 'Optimize' },
+  { id: 'pattern',     label: 'Pattern Mastery',          labelMobile: 'Pattern' },
+  { id: 'risk',        label: 'Constraint Intelligence',  labelMobile: 'Constraints' },
+  { id: 'quality',     label: 'Code Quality',             labelMobile: 'Code' },
 ];
 
 const SECTION_ICONS: Record<Section, React.ComponentType<{ size?: number; style?: React.CSSProperties }>> = {
@@ -163,36 +163,8 @@ export function SuccessInsightPanel({ submissionId, problemTitle, problemSlug }:
       </div>
 
       {/* Section nav */}
-      <div
-        className="success-nav-container scrollbar-none overflow-x-auto w-full"
-        style={{
-          width: '100%',
-          maxWidth: '100%',
-          overflowX: 'auto',
-          background: '#111',
-          border: '1px solid #1f1f1f',
-          borderTop: 'none',
-          scrollbarWidth: 'none' as any,
-          WebkitOverflowScrolling: 'touch' as any,
-        }}
-      >
-        <style>{`
-          .success-nav-container::-webkit-scrollbar { display: none; }
-          .success-nav-tab-indicator {
-            animation: tab-indicator-slide 0.2s ease-out both;
-          }
-        `}</style>
-        <div
-          className="flex w-max whitespace-nowrap"
-          style={{
-            display: 'flex',
-            width: 'max-content',
-            whiteSpace: 'nowrap',
-            gap: 0,
-            padding: '0 4px',
-            scrollSnapType: 'x mandatory',
-          }}
-        >
+      <div className="responsive-nav-container">
+        <div className="responsive-nav-wrapper">
           {SECTIONS.map(sec => {
             const Icon = SECTION_ICONS[sec.id];
             const isActive = activeSection === sec.id;
@@ -201,29 +173,15 @@ export function SuccessInsightPanel({ submissionId, problemTitle, problemSlug }:
                 key={sec.id}
                 ref={el => { tabRefs.current[sec.id] = el; }}
                 onClick={() => setActiveSection(sec.id)}
-                className="compact flex-shrink-0"
+                className={`responsive-nav-tab compact flex-shrink-0 ${isActive ? 'active' : ''}`}
                 style={{
-                  flex: '0 0 auto',
-                  flexShrink: 0,
-                  padding: '10px 12px',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                  color: isActive ? accent : '#52525b',
-                  borderBottom: isActive ? `2px solid ${accent}` : '2px solid transparent',
-                  transition: 'color 0.15s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  scrollSnapAlign: 'start',
-                  minWidth: 'max-content',
-                }}
+                  '--active-color': accent,
+                  '--active-border': accent,
+                  '--active-bg': `${accent}15`,
+                } as React.CSSProperties}
               >
-                <Icon size={13} style={{ color: isActive ? accent : '#52525b', flexShrink: 0 }} />
-                {sec.label}
+                {!isMobile && <Icon size={13} style={{ color: isActive ? accent : '#52525b', flexShrink: 0 }} />}
+                {isMobile ? (isActive ? `← ${sec.labelMobile} →` : sec.labelMobile) : sec.label}
               </button>
             );
           })}
@@ -234,7 +192,7 @@ export function SuccessInsightPanel({ submissionId, problemTitle, problemSlug }:
       <div style={{
         background: '#161616', border: '1px solid #1f1f1f', borderTop: 'none',
         borderRadius: '0 0 14px 14px', padding: '16px',
-        width: '100%', maxWidth: '100%',
+        width: '100%', maxWidth: '100%', minWidth: 0,
         boxSizing: 'border-box',
       }}>
         {activeSection === 'overview' && <SuccessInsightCard insight={insight} />}
