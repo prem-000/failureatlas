@@ -129,29 +129,18 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
   const [loadingGenerated, setLoadingGenerated] = useState(false);
   const [difficultyStage, setDifficultyStage] = useState(3);
 
-  const [isMobile, setIsMobile] = useState(false);
   const tabRefs = useRef<Record<TabType, HTMLButtonElement | null>>({} as any);
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    setIsMobile(mq.matches);
-    const h = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', h);
-    return () => mq.removeEventListener('change', h);
-  }, []);
-
-  useEffect(() => {
-    if (isMobile) {
-      const activeBtn = tabRefs.current[activeTab];
-      if (activeBtn) {
-        activeBtn.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'center',
-        });
-      }
+    const activeBtn = tabRefs.current[activeTab];
+    if (activeBtn) {
+      activeBtn.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
     }
-  }, [activeTab, isMobile]);
+  }, [activeTab]);
 
   const handleGenerateMore = async () => {
     setActiveTab('attack');
@@ -249,36 +238,27 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
       <style>{`
         .coverage-intelligence-grid {
           display: grid;
-          grid-template-columns: repeat(5, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
           gap: 10px;
         }
         .test-cards-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
           gap: 24px;
+          width: 100%;
         }
         .risk-metrics-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
           gap: 10px;
         }
-        @media (max-width: 1024px) {
-          .coverage-intelligence-grid {
-            grid-template-columns: repeat(3, 1fr);
-          }
+        .test-card {
+          min-width: 0;
+          overflow-x: hidden;
+          flex-shrink: 1;
+          word-break: break-word;
         }
         @media (max-width: 767px) {
-          .coverage-intelligence-grid {
-            grid-template-columns: repeat(1, 1fr) !important;
-            padding: 8px !important;
-          }
-          .test-cards-grid {
-            grid-template-columns: repeat(1, 1fr) !important;
-            gap: 12px !important;
-          }
-          .risk-metrics-grid {
-            grid-template-columns: repeat(1, 1fr) !important;
-          }
           .test-card {
             flex-direction: column !important;
             gap: 12px !important;
@@ -446,9 +426,10 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
               '--active-color': colors.cyan,
             } as React.CSSProperties}
           >
-            {!isMobile && <NeuralProbeIcon size={14} style={{ color: activeTab === 'hidden' ? colors.cyan : '#71717a' }} />}
+            <NeuralProbeIcon size={14} className="hidden sm:inline-block" style={{ color: activeTab === 'hidden' ? colors.cyan : '#71717a', marginRight: 4 }} />
             <span>
-              {isMobile ? (activeTab === 'hidden' ? '← Hidden →' : 'Hidden') : 'HIDDEN TESTS'}
+              <span className="sm:hidden">{activeTab === 'hidden' ? '← Hidden →' : 'Hidden'}</span>
+              <span className="hidden sm:inline">HIDDEN TESTS</span>
             </span>
           </button>
 
@@ -463,9 +444,10 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
               '--active-color': colors.orange,
             } as React.CSSProperties}
           >
-            {!isMobile && <FractureMatrixIcon size={14} style={{ color: activeTab === 'break' ? colors.orange : '#71717a' }} />}
+            <FractureMatrixIcon size={14} className="hidden sm:inline-block" style={{ color: activeTab === 'break' ? colors.orange : '#71717a', marginRight: 4 }} />
             <span>
-              {isMobile ? (activeTab === 'break' ? '← Break →' : 'Break') : 'BREAK SOLUTION'}
+              <span className="sm:hidden">{activeTab === 'break' ? '← Break →' : 'Break'}</span>
+              <span className="hidden sm:inline">BREAK SOLUTION</span>
             </span>
           </button>
 
@@ -480,9 +462,10 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
               '--active-color': colors.purple,
             } as React.CSSProperties}
           >
-            {!isMobile && <BoundaryFieldIcon size={14} style={{ color: activeTab === 'constraints' ? colors.purple : '#71717a' }} />}
+            <BoundaryFieldIcon size={14} className="hidden sm:inline-block" style={{ color: activeTab === 'constraints' ? colors.purple : '#71717a', marginRight: 4 }} />
             <span>
-              {isMobile ? (activeTab === 'constraints' ? '← Constraints →' : 'Constraints') : 'CONSTRAINT EXTREMES'}
+              <span className="sm:hidden">{activeTab === 'constraints' ? '← Constraints →' : 'Constraints'}</span>
+              <span className="hidden sm:inline">CONSTRAINT EXTREMES</span>
             </span>
           </button>
 
@@ -497,9 +480,10 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
               '--active-color': colors.blue,
             } as React.CSSProperties}
           >
-            {!isMobile && <SyntheticCoreIcon size={14} style={{ color: activeTab === 'ai' ? colors.blue : '#71717a' }} />}
+            <SyntheticCoreIcon size={14} className="hidden sm:inline-block" style={{ color: activeTab === 'ai' ? colors.blue : '#71717a', marginRight: 4 }} />
             <span>
-              {isMobile ? (activeTab === 'ai' ? '← AI Cases →' : 'AI Cases') : 'AI NOVEL CASES'}
+              <span className="sm:hidden">{activeTab === 'ai' ? '← AI Cases →' : 'AI Cases'}</span>
+              <span className="hidden sm:inline">AI NOVEL CASES</span>
             </span>
           </button>
 
@@ -515,9 +499,10 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
                 '--active-color': '#ef4444',
               } as React.CSSProperties}
             >
-              {!isMobile && <span style={{ fontSize: 13, marginRight: 2 }}>💥</span>}
+              <span className="hidden sm:inline-block" style={{ fontSize: 13, marginRight: 4 }}>💥</span>
               <span>
-                {isMobile ? (activeTab === 'attack' ? `← Attack (${generatedTests.length}) →` : `Attack (${generatedTests.length})`) : `ATTACK LAB (${generatedTests.length})`}
+                <span className="sm:hidden">{activeTab === 'attack' ? `← Attack (${generatedTests.length}) →` : `Attack (${generatedTests.length})`}</span>
+                <span className="hidden sm:inline">{`ATTACK LAB (${generatedTests.length})`}</span>
               </span>
             </button>
           )}

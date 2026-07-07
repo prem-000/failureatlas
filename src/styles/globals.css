@@ -669,7 +669,7 @@ a.compact,
 }
 
 /* ─── On desktop, hide all mobile-only analysis UI ─────────── */
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .analysis-sticky-nav,
   .floating-open-problem,
   .floating-menu-btn {
@@ -690,7 +690,7 @@ a.compact,
    RESPONSIVE PRIMARY AND SECONDARY NAV TABS
    ========================================================================== */
 
-/* --- Mobile view (320px - 767px): Swipeable Chips --- */
+/* --- Mobile view (<640px): Swipeable Chips --- */
 .responsive-nav-container,
 .secondary-nav-container {
   display: flex !important;
@@ -698,9 +698,6 @@ a.compact,
   max-width: 100% !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
-  background: #111111 !important;
-  border: 1px solid #1f1f1f !important;
-  border-top: none !important;
   scrollbar-width: none !important; /* Hide scrollbar for Firefox */
   -ms-overflow-style: none !important; /* Hide scrollbar for IE/Edge */
   -webkit-overflow-scrolling: touch !important;
@@ -708,6 +705,9 @@ a.compact,
   padding: 8px 12px !important;
   box-sizing: border-box !important;
   border-radius: 0 !important;
+  background: #111111 !important;
+  border: 1px solid #1f1f1f !important;
+  border-top: none !important;
 }
 
 .responsive-nav-container::-webkit-scrollbar,
@@ -762,158 +762,76 @@ a.compact,
   color: var(--active-color, #ff5f52) !important;
 }
 
-/* --- Tablet view (768px - 1023px): Horizontally Scrollable Desktop Style --- */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .responsive-nav-container {
+/* --- Tablet and Desktop view (>= 640px) --- */
+@media (min-width: 640px) {
+  .responsive-nav-container,
+  .secondary-nav-container {
     padding: 0 !important;
     overflow-x: auto !important;
     scrollbar-width: thin !important;
-  }
-  .responsive-nav-container::-webkit-scrollbar {
-    display: block !important;
-    height: 4px !important;
-  }
-  .responsive-nav-container::-webkit-scrollbar-thumb {
-    background: #2a2a2a !important;
-    border-radius: 2px !important;
-  }
-  .responsive-nav-wrapper {
-    gap: 0 !important;
-    padding: 0 4px !important;
-  }
-  .responsive-nav-tab {
-    height: auto !important;
-    min-height: auto !important;
-    padding: 10px 12px !important;
+    background: none !important;
+    border: none !important;
+    border-bottom: 1px solid #1f1f1f !important;
     border-radius: 0 !important;
-    background: none !important;
-    border: none !important;
-    font-size: 11px !important;
-    color: #52525b !important;
-    border-bottom: 2px solid transparent !important;
+    width: 100% !important;
   }
-  .responsive-nav-tab.active {
-    background: none !important;
-    border: none !important;
-    border-bottom: 2px solid var(--active-color, #ff5f52) !important;
-    color: var(--active-color, #ff5f52) !important;
-  }
-
-  /* Secondary navigation */
-  .secondary-nav-container {
-    display: flex !important;
-    overflow-x: auto !important;
-    background: #111111 !important;
-    border: 1px solid #1f1f1f !important;
-    border-radius: 8px !important;
-    padding: 3px !important;
-    scrollbar-width: thin !important;
-  }
+  .responsive-nav-container::-webkit-scrollbar,
   .secondary-nav-container::-webkit-scrollbar {
     display: block !important;
-    height: 4px !important;
+    height: 3px !important;
   }
+  .responsive-nav-container::-webkit-scrollbar-thumb,
   .secondary-nav-container::-webkit-scrollbar-thumb {
     background: #2a2a2a !important;
-    border-radius: 2px !important;
+    border-radius: 1.5px !important;
   }
-  .secondary-nav-wrapper {
-    display: flex !important;
-    width: max-content !important;
-    gap: 4px !important;
-    padding: 0 !important;
+  
+  @media (min-width: 1024px) {
+    .responsive-nav-container,
+    .secondary-nav-container {
+      overflow-x: hidden !important;
+    }
+    .responsive-nav-container::-webkit-scrollbar,
+    .secondary-nav-container::-webkit-scrollbar {
+      display: none !important;
+    }
   }
-  .secondary-nav-tab {
-    flex: 1 0 auto !important;
-    min-width: 120px !important;
-    white-space: nowrap !important;
-    padding: 8px 12px !important;
-    border-radius: 6px !important;
-    font-size: 11px !important;
-    font-weight: 700 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    background: transparent !important;
-    border: 1px solid transparent !important;
-    color: #71717a !important;
-    height: auto !important;
-    min-height: auto !important;
-  }
-  .secondary-nav-tab.active {
-    background: var(--active-bg, rgba(0, 240, 255, 0.08)) !important;
-    border: 1px solid var(--active-border, rgba(0, 240, 255, 0.3)) !important;
-    color: var(--active-color, #00f0ff) !important;
-  }
-}
 
-/* --- Desktop view (>= 1024px): Standard static view --- */
-@media (min-width: 1024px) {
-  .responsive-nav-container {
-    padding: 0 !important;
-    overflow-x: hidden !important;
-  }
-  .responsive-nav-wrapper {
-    gap: 0 !important;
+  .responsive-nav-wrapper,
+  .secondary-nav-wrapper {
+    gap: 24px !important;
     padding: 0 4px !important;
     width: 100% !important;
     justify-content: flex-start !important;
   }
-  .responsive-nav-tab {
+  .responsive-nav-tab,
+  .secondary-nav-tab {
     height: auto !important;
     min-height: auto !important;
-    padding: 10px 12px !important;
+    padding: 12px 4px !important;
     border-radius: 0 !important;
     background: none !important;
     border: none !important;
-    font-size: 11px !important;
-    color: #52525b !important;
+    font-size: 13px !important;
+    font-weight: 500 !important; /* Medium font weight */
+    color: #71717a !important;   /* Muted text */
     border-bottom: 2px solid transparent !important;
   }
-  .responsive-nav-tab.active {
+  .responsive-nav-tab:hover,
+  .secondary-nav-tab:hover {
+    background: none !important;
+    color: #e4e4e7 !important;
+  }
+  .responsive-nav-tab.active,
+  .secondary-nav-tab.active {
     background: none !important;
     border: none !important;
-    border-bottom: 2px solid var(--active-color, #ff5f52) !important;
-    color: var(--active-color, #ff5f52) !important;
+    border-bottom: 2px solid #3b82f6 !important; /* 2px bottom border */
+    color: #3b82f6 !important;                     /* Blue text */
+    font-weight: 500 !important;
   }
-
-  /* Secondary navigation */
-  .secondary-nav-container {
-    display: flex !important;
-    overflow-x: hidden !important;
-    background: #111111 !important;
-    border: 1px solid #1f1f1f !important;
-    border-radius: 8px !important;
-    padding: 3px !important;
-  }
-  .secondary-nav-wrapper {
-    display: flex !important;
-    width: 100% !important;
-    gap: 4px !important;
-    padding: 0 !important;
-  }
-  .secondary-nav-tab {
-    flex: 1 0 auto !important;
-    min-width: 120px !important;
-    white-space: nowrap !important;
-    padding: 8px 12px !important;
-    border-radius: 6px !important;
-    font-size: 11px !important;
-    font-weight: 700 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    background: transparent !important;
-    border: 1px solid transparent !important;
-    color: #71717a !important;
-    height: auto !important;
-    min-height: auto !important;
-  }
-  .secondary-nav-tab.active {
-    background: var(--active-bg, rgba(0, 240, 255, 0.08)) !important;
-    border: 1px solid var(--active-border, rgba(0, 240, 255, 0.3)) !important;
-    color: var(--active-color, #00f0ff) !important;
+  .responsive-nav-tab.active svg,
+  .secondary-nav-tab.active svg {
+    color: #3b82f6 !important;
   }
 }

@@ -52,15 +52,6 @@ export function SuccessInsightPanel({ submissionId, problemTitle, problemSlug }:
   const [insight, setInsight] = useState<SuccessInsight | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    setIsMobile(mq.matches);
-    const h = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', h);
-    return () => mq.removeEventListener('change', h);
-  }, []);
 
   const tabRefs = useRef<Record<Section, HTMLButtonElement | null>>({} as any);
 
@@ -180,8 +171,11 @@ export function SuccessInsightPanel({ submissionId, problemTitle, problemSlug }:
                   '--active-bg': `${accent}15`,
                 } as React.CSSProperties}
               >
-                {!isMobile && <Icon size={13} style={{ color: isActive ? accent : '#52525b', flexShrink: 0 }} />}
-                {isMobile ? (isActive ? `← ${sec.labelMobile} →` : sec.labelMobile) : sec.label}
+                <span className="hidden sm:inline-block">
+                  <Icon size={13} style={{ color: isActive ? accent : '#52525b', flexShrink: 0 }} />
+                </span>
+                <span className="sm:hidden">{isActive ? `← ${sec.labelMobile} →` : sec.labelMobile}</span>
+                <span className="hidden sm:inline">{sec.label}</span>
               </button>
             );
           })}

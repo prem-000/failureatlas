@@ -23,16 +23,6 @@ export function BehaviorInsightPanel({ weaknessId, weaknessName, submissionId, i
   const [insight, setInsight] = useState<BehaviorInsight | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Detect mobile viewport
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
 
   const fetchInsight = useCallback(async () => {
     if (!weaknessId || !isOpen) return;
@@ -59,13 +49,12 @@ export function BehaviorInsightPanel({ weaknessId, weaknessName, submissionId, i
     }
   }, [isOpen, fetchInsight]);
 
-  // Close on Escape (desktop only – mobile sheet handles it internally)
+  // Close on Escape
   useEffect(() => {
-    if (isMobile) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     if (isOpen) window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isOpen, onClose, isMobile]);
+  }, [isOpen, onClose]);
 
   const TABS: { id: Tab; label: string; emoji: string }[] = [
     { id: 'evidence',     label: 'Evidence',     emoji: '🔍' },
@@ -144,45 +133,62 @@ export function BehaviorInsightPanel({ weaknessId, weaknessName, submissionId, i
     </div>
   );
 
-  // ── Mobile: bottom sheet ─────────────────────────────────────────
-  if (isMobile) {
-    return (
-      <MobileBottomSheet isOpen={isOpen} onClose={onClose} defaultHeight="tall" title="Behavior Intelligence">
-        {header}
-        {tabBar}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
-          {content}
-        </div>
-      </MobileBottomSheet>
-    );
-  }
-
-  // ── Desktop: side drawer ─────────────────────────────────────────
   return (
     <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40,
-          opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'auto' : 'none',
-          transition: 'opacity 0.25s ease',
-        }}
-      />
+      <style>{`
+        .bip-mobile-container {
+          display: block;
+        }
+        .bip-desktop-container {
+          display: none;
+        }
+        @media (min-width: 768px) {
+          .bip-mobile-container {
+            display: none !important;
+          }
+          .bip-desktop-container {
+            display: block !important;
+          }
+        }
+      `}</style>
 
-      {/* Drawer */}
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: 420, maxWidth: '100vw',
-        background: '#161616', borderLeft: '1px solid #1f1f1f', zIndex: 50,
-        display: 'flex', flexDirection: 'column',
-        transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.30s cubic-bezier(0.16,1,0.3,1)',
-        boxShadow: isOpen ? '-8px 0 40px rgba(0,0,0,0.6)' : 'none',
-      }}>
-        {header}
-        {tabBar}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px' }}>
-          {content}
+      {/* Mobile view */}
+      <div className="bip-mobile-container">
+        <MobileBottomSheet isOpen={isOpen} onClose={onClose} defaultHeight="tall" title="Behavior Intelligence">
+          {header}
+          {tabBar}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
+            {content}
+          </div>
+        </MobileBottomSheet>
+      </div>
+
+      {/* Desktop view */}
+      <div className="bip-desktop-container">
+        {/* Backdrop */}
+        <div
+          onClick={onClose}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40,
+            opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'auto' : 'none',
+            transition: 'opacity 0.25s ease',
+          }}
+        />
+
+        {/* Drawer */}
+        <div style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 420, maxWidth: '100vw',
+          background: '#161616', borderLeft: '1px solid #1f1f1f', zIndex: 50,
+          display: 'flex', flexDirection: 'column',
+          transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.30s cubic-bezier(0.16,1,0.3,1)',
+          boxShadow: isOpen ? '-8px 0 40px rgba(0,0,0,0.6)' : 'none',
+        }}>
+          {header}
+          {tabBar}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px' }}>
+            {content}
+          </div>
         </div>
       </div>
     </>

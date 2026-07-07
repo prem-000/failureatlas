@@ -27,14 +27,7 @@ interface Props {
 }
 
 export function ConstraintIntelligenceCard({ data, difficulty = 'Medium', detectedComplexity = 'O(n²)', problemTitle = '' }: Props) {
-  const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 600);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Safe fallback if data is missing
   const activeData: ConstraintIntelligence = data || {
@@ -86,8 +79,9 @@ export function ConstraintIntelligenceCard({ data, difficulty = 'Medium', detect
       <style>{`
         .ci-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
           gap: 16px;
+          width: 100%;
         }
         .ci-card {
           background: #141416;
@@ -98,6 +92,9 @@ export function ConstraintIntelligenceCard({ data, difficulty = 'Medium', detect
           overflow: hidden;
           box-shadow: 0 4px 20px rgba(0,0,0,0.3);
           backdrop-filter: blur(10px);
+          min-width: 0;
+          overflow-x: hidden;
+          word-break: break-word;
         }
         .ci-card-header {
           display: flex;
@@ -153,11 +150,6 @@ export function ConstraintIntelligenceCard({ data, difficulty = 'Medium', detect
           justify-content: space-between;
           align-items: center;
           margin-bottom: 8px;
-        }
-        @media (max-width: 768px) {
-          .ci-grid {
-            grid-template-columns: 1fr !important;
-          }
         }
       `}</style>
 
@@ -290,7 +282,7 @@ export function ConstraintIntelligenceCard({ data, difficulty = 'Medium', detect
             If This Problem Scaled
           </div>
 
-          {!isMobile ? (
+          <div className="hidden sm:block">
             <table className="ci-table">
               <thead>
                 <tr>
@@ -309,7 +301,7 @@ export function ConstraintIntelligenceCard({ data, difficulty = 'Medium', detect
                         gap: 6,
                         fontWeight: 700,
                         color: sim.status === '✅' ? '#22c55e' : sim.status === '⚠' ? '#f59e0b' : '#ef4444'
-                      }}>
+                       }}>
                         {sim.status} {sim.status === '✅' ? 'Safe' : sim.status === '⚠' ? 'Borderline' : 'TLE'}
                       </span>
                     </td>
@@ -317,22 +309,22 @@ export function ConstraintIntelligenceCard({ data, difficulty = 'Medium', detect
                 ))}
               </tbody>
             </table>
-          ) : (
-            <div>
-              {activeData.variantSimulator.map((sim, i) => (
-                <div key={i} className="ci-mob-row">
-                  <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12 }}>{sim.inputSize.toLocaleString()}</span>
-                  <span style={{
-                    fontWeight: 700,
-                    fontSize: 11,
-                    color: sim.status === '✅' ? '#22c55e' : sim.status === '⚠' ? '#f59e0b' : '#ef4444'
-                  }}>
-                    {sim.status} {sim.status === '✅' ? 'Safe' : sim.status === '⚠' ? 'Borderline' : 'TLE'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          </div>
+
+          <div className="block sm:hidden">
+            {activeData.variantSimulator.map((sim, i) => (
+              <div key={i} className="ci-mob-row">
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12 }}>{sim.inputSize.toLocaleString()}</span>
+                <span style={{
+                  fontWeight: 700,
+                  fontSize: 11,
+                  color: sim.status === '✅' ? '#22c55e' : sim.status === '⚠' ? '#f59e0b' : '#ef4444'
+                }}>
+                  {sim.status} {sim.status === '✅' ? 'Safe' : sim.status === '⚠' ? 'Borderline' : 'TLE'}
+                </span>
+              </div>
+            ))}
+          </div>
 
           <div style={{
             marginTop: 14,
