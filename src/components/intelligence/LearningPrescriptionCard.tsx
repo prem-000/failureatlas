@@ -15,6 +15,131 @@ interface Props {
 
 export function LearningPrescriptionCard({ insight }: Props) {
   const impactStyle = IMPACT_COLORS[insight.estimatedImpact] ?? IMPACT_COLORS['Medium'];
+  const rp = insight.reasoningPrescription;
+
+  if (rp) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Failure reason card */}
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.05)',
+          border: '1px solid rgba(239, 68, 68, 0.2)',
+          borderRadius: 12,
+          padding: '16px',
+        }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 16 }}>🎯</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#fca5a5', letterSpacing: '0.06em' }}>DIAGNOSTIC REASONING</span>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#fca5a5', lineHeight: 1.5 }}>
+            {rp.failureReason}
+          </div>
+        </div>
+
+        {/* Inferred Hidden Test */}
+        <div style={{
+          background: '#141414',
+          border: '1px solid #1f1f1f',
+          borderRadius: 12,
+          padding: '16px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#a1a1aa', letterSpacing: '0.04em' }}>INFERRED HIDDEN TEST CASE</span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 800,
+              padding: '2px 6px',
+              borderRadius: 4,
+              background: 'rgba(245, 158, 11, 0.1)',
+              color: '#f59e0b',
+              border: '1px solid rgba(245, 158, 11, 0.2)'
+            }}>{rp.inferredTestPurpose}</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: '#0d0d0d', padding: 12, borderRadius: 8, border: '1px solid #1a1a1a', marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 10, fontSize: 11 }}>
+              <span style={{ color: '#71717a', width: 65, flexShrink: 0, fontWeight: 600 }}>INPUT:</span>
+              <code style={{ color: '#f4f4f5', fontFamily: 'monospace', wordBreak: 'break-all' }}>{rp.inferredTestInput}</code>
+            </div>
+            <div style={{ display: 'flex', gap: 10, fontSize: 11 }}>
+              <span style={{ color: '#71717a', width: 65, flexShrink: 0, fontWeight: 600 }}>EXPECTED:</span>
+              <code style={{ color: '#10b981', fontFamily: 'monospace', wordBreak: 'break-all' }}>{rp.inferredTestExpected}</code>
+            </div>
+            <div style={{ display: 'flex', gap: 10, fontSize: 11 }}>
+              <span style={{ color: '#71717a', width: 65, flexShrink: 0, fontWeight: 600 }}>BUGGY:</span>
+              <code style={{ color: '#ef4444', fontFamily: 'monospace', wordBreak: 'break-all' }}>{rp.inferredTestOutput}</code>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.5 }}>
+            {rp.explanation}
+          </div>
+        </div>
+
+        {/* Evidence & Historical Similarity */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: 12,
+        }}>
+          {/* Evidence card */}
+          <div style={{
+            background: 'rgba(59, 130, 246, 0.05)',
+            border: '1px solid rgba(59, 130, 246, 0.15)',
+            borderRadius: 10,
+            padding: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4
+          }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#60a5fa', letterSpacing: '0.04em' }}>CODE EVIDENCE</span>
+            <code style={{ fontSize: 11, fontFamily: 'monospace', color: '#93c5fd', wordBreak: 'break-all' }}>{rp.evidence}</code>
+          </div>
+
+          {/* Historical Similarity */}
+          <div style={{
+            background: 'rgba(168, 85, 247, 0.05)',
+            border: '1px solid rgba(168, 85, 247, 0.15)',
+            borderRadius: 10,
+            padding: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4
+          }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#c084fc', letterSpacing: '0.04em' }}>HISTORICAL SIMILARITY</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#e9d5ff' }}>
+              {rp.historicalSimilarityCount} previous failures
+            </span>
+          </div>
+        </div>
+
+        {/* Confidence & Action */}
+        <div style={{
+          background: '#161616',
+          border: '1px solid #1f1f1f',
+          borderRadius: 12,
+          padding: '12px 16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <div style={{ fontSize: 9, color: '#71717a', fontWeight: 700, letterSpacing: '0.04em' }}>ANALYSIS CONFIDENCE</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#38bdf8', fontFamily: 'monospace' }}>{rp.confidence}%</div>
+          </div>
+          <span style={{
+            fontSize: 10,
+            fontWeight: 800,
+            padding: '4px 8px',
+            borderRadius: 6,
+            background: 'rgba(56, 189, 248, 0.1)',
+            color: '#38bdf8',
+            border: '1px solid rgba(56, 189, 248, 0.2)'
+          }}>REASONING-BASED</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

@@ -444,6 +444,7 @@ export default function ProblemDetailPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerWeaknessId, setDrawerWeaknessId] = useState('');
   const [drawerWeaknessName, setDrawerWeaknessName] = useState('');
+  const [drawerSubmissionId, setDrawerSubmissionId] = useState('');
 
   // Mobile UI state
   const [isMobile, setIsMobile] = useState(false);
@@ -451,9 +452,10 @@ export default function ProblemDetailPage() {
   const [showFloating, setShowFloating] = useState(false);  // > 300px → show floating menu btn
   const [menuSheetOpen, setMenuSheetOpen] = useState(false);
 
-  const openDrawer = (weaknessId: string, name: string) => {
+  const openDrawer = (weaknessId: string, name: string, submissionId?: string) => {
     setDrawerWeaknessId(weaknessId);
     setDrawerWeaknessName(name);
+    setDrawerSubmissionId(submissionId || submissions[0]?.eventId || '');
     setDrawerOpen(true);
   };
 
@@ -591,7 +593,7 @@ export default function ProblemDetailPage() {
       accent: '#22c55e',
       content: (
         <div style={{ padding: '0 0 4px' }}>
-          <SuccessInsightPanel submissionId={latestEventId} problemTitle={problem.title} />
+          <SuccessInsightPanel submissionId={latestEventId} problemTitle={problem.title} problemSlug={slug} />
         </div>
       ),
     });
@@ -912,7 +914,7 @@ export default function ProblemDetailPage() {
             {/* Left column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {isLatestAccepted && (
-                <SuccessInsightPanel submissionId={latestEventId} problemTitle={problem.title} />
+                <SuccessInsightPanel submissionId={latestEventId} problemTitle={problem.title} problemSlug={slug} />
               )}
               <SectionCard title="Attempt Timeline" accent="#3b82f6">
                 <AttemptTimeline submissions={allData} />
@@ -1088,6 +1090,7 @@ export default function ProblemDetailPage() {
       <BehaviorInsightPanel
         weaknessId={drawerWeaknessId}
         weaknessName={drawerWeaknessName}
+        submissionId={drawerSubmissionId}
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />

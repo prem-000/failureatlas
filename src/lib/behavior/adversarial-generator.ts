@@ -1,4 +1,5 @@
 import type { AdversarialTestLab, AdversarialTestCase, ConstraintMetrics, CoverageIntelligence } from '@/types';
+import { groqClient } from '../api/groq-client';
 
 // Pattern-specific fallback generators to ensure rich, realistic data even when Groq is unavailable
 function getFallbackAdversarialTestLab(
@@ -418,10 +419,10 @@ export async function generateAdversarialTestLab(
   code: string,
   complexity: { time: string; space: string }
 ): Promise<AdversarialTestLab> {
-  const groqApiKey = process.env.GROQ_API_KEY;
+  const hasKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_1;
 
-  if (!groqApiKey || groqApiKey === 'your_groq_key_here') {
-    console.log('⚠️ GROQ_API_KEY not configured. Falling back to pattern templates.');
+  if (!hasKey || hasKey === 'your_groq_key_here') {
+    console.log('⚠️ No GROQ API key configured. Falling back to pattern templates.');
     return getFallbackAdversarialTestLab(problemTitle, patternSlug, code);
   }
 
@@ -500,38 +501,22 @@ Generate a single, valid JSON object containing exactly the fields matching the 
 Return ONLY a raw JSON string. Do not wrap in markdown blocks like \`\`\`json. Output must be parseable via JSON.parse().`;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${groqApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2,
-        response_format: { type: 'json_object' },
-      }),
+    const response = await groqClient.getChatCompletion({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
     });
 
-    if (!response.ok) {
-      throw new Error(`Groq returned ${response.status}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (content) {
-      const parsed = JSON.parse(content.trim());
-      // Validate structure to make sure essential elements exist
-      if (
-        parsed.hiddenTests &&
-        parsed.breakMySolution &&
-        parsed.constraintExtremes &&
-        parsed.aiGeneratedCases &&
-        parsed.coverageIntelligence
-      ) {
-        return parsed as AdversarialTestLab;
-      }
+    const parsed = JSON.parse(response.content.trim());
+    // Validate structure to make sure essential elements exist
+    if (
+      parsed.hiddenTests &&
+      parsed.breakMySolution &&
+      parsed.constraintExtremes &&
+      parsed.aiGeneratedCases &&
+      parsed.coverageIntelligence
+    ) {
+      return parsed as AdversarialTestLab;
     }
     throw new Error('Groq response lacked required keys');
   } catch (error) {

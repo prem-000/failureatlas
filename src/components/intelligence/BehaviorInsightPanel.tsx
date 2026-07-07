@@ -13,11 +13,12 @@ type Tab = 'evidence' | 'timeline' | 'prescription';
 interface Props {
   weaknessId: string;
   weaknessName: string;
+  submissionId?: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function BehaviorInsightPanel({ weaknessId, weaknessName, isOpen, onClose }: Props) {
+export function BehaviorInsightPanel({ weaknessId, weaknessName, submissionId, isOpen, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('evidence');
   const [insight, setInsight] = useState<BehaviorInsight | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,9 +39,10 @@ export function BehaviorInsightPanel({ weaknessId, weaknessName, isOpen, onClose
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch<{ success: boolean; data: BehaviorInsight }>(
-        `/api/behavior-insights/${encodeURIComponent(weaknessId)}`
-      );
+      const url = `/api/behavior-insights/${encodeURIComponent(weaknessId)}${
+        submissionId ? `?submissionId=${encodeURIComponent(submissionId)}` : ''
+      }`;
+      const res = await apiFetch<{ success: boolean; data: BehaviorInsight }>(url);
       if (res.data) setInsight(res.data);
       else throw new Error('No data returned');
     } catch (e: any) {
@@ -48,7 +50,7 @@ export function BehaviorInsightPanel({ weaknessId, weaknessName, isOpen, onClose
     } finally {
       setLoading(false);
     }
-  }, [weaknessId, isOpen]);
+  }, [weaknessId, isOpen, submissionId]);
 
   useEffect(() => {
     if (isOpen) {

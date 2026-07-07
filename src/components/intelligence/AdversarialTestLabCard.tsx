@@ -3,12 +3,15 @@
 import React, { useState } from 'react';
 import type { AdversarialTestLab, AdversarialTestCase } from '@/types';
 import { Check, AlertTriangle, Cpu, HardDrive, ShieldCheck, Zap } from 'lucide-react';
+import { apiFetch } from '@/lib/api/client';
 
 interface Props {
   data: AdversarialTestLab;
+  problemSlug?: string;
+  submissionId?: string;
 }
 
-type TabType = 'hidden' | 'break' | 'constraints' | 'ai';
+type TabType = 'hidden' | 'break' | 'constraints' | 'ai' | 'attack';
 
 // ─── Geometric SVG Icon Components ──────────────────────────────────────────
 
@@ -120,8 +123,65 @@ function SyntheticCoreIcon({ className, size = 14, style }: { className?: string
   );
 }
 
-export function AdversarialTestLabCard({ data }: Props) {
+export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('hidden');
+  const [generatedTests, setGeneratedTests] = useState<any[]>([]);
+  const [loadingGenerated, setLoadingGenerated] = useState(false);
+  const [difficultyStage, setDifficultyStage] = useState(3);
+
+  const handleGenerateMore = async () => {
+    setActiveTab('attack');
+    setLoadingGenerated(true);
+    try {
+      const res = await apiFetch<{ success: boolean; data: { tests: any[]; difficultyStage: number } }>(
+        '/api/behavior-insights/generate-tests',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            problemSlug,
+            submissionId,
+            difficultyStage
+          })
+        }
+      );
+      if (res.data?.tests) {
+        setGeneratedTests(res.data.tests);
+        setDifficultyStage(res.data.difficultyStage);
+      }
+    } catch (err) {
+      console.error('Failed to generate tests:', err);
+    } finally {
+      setLoadingGenerated(false);
+    }
+  };
+
+  const handleGenerateHarder = async () => {
+    const nextStage = difficultyStage >= 5 ? 1 : difficultyStage + 1;
+    setDifficultyStage(nextStage);
+    setActiveTab('attack');
+    setLoadingGenerated(true);
+    try {
+      const res = await apiFetch<{ success: boolean; data: { tests: any[]; difficultyStage: number } }>(
+        '/api/behavior-insights/generate-tests',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            problemSlug,
+            submissionId,
+            difficultyStage: nextStage
+          })
+        }
+      );
+      if (res.data?.tests) {
+        setGeneratedTests(res.data.tests);
+        setDifficultyStage(res.data.difficultyStage);
+      }
+    } catch (err) {
+      console.error('Failed to generate harder tests:', err);
+    } finally {
+      setLoadingGenerated(false);
+    }
+  };
 
   const {
     hiddenTests = [],
@@ -472,6 +532,98 @@ export function AdversarialTestLabCard({ data }: Props) {
           <SyntheticCoreIcon size={14} style={{ color: activeTab === 'ai' ? colors.blue : '#71717a' }} />
           <span>AI NOVEL CASES</span>
         </button>
+
+        {/* Tab 5 (Attack Lab) */}
+        {(generatedTests.length > 0 || loadingGenerated) && (
+          <button
+            onClick={() => setActiveTab('attack')}
+            className="compact"
+            style={{
+              flex: '1 0 auto',
+              minWidth: 120,
+              whiteSpace: 'nowrap',
+              padding: '8px 12px',
+              background: activeTab === 'attack' ? 'rgba(239, 68, 68, 0.08)' : 'transparent',
+              border: activeTab === 'attack' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid transparent',
+              borderRadius: 6,
+              color: activeTab === 'attack' ? '#ef4444' : '#71717a',
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 0.2s',
+            }}
+          >
+            <span style={{ fontSize: 13, marginRight: 2 }}>💥</span>
+            <span>ATTACK LAB ({generatedTests.length})</span>
+          </button>
+        )}
+      </div>
+
+      {/* Control buttons */}
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 12,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 14px',
+        background: '#111',
+        border: '1px solid #1f1f1f',
+        borderRadius: 8,
+        marginTop: -8,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#71717a', fontWeight: 600 }}>
+          <span>TARGET STAGE:</span>
+          <span style={{
+            fontSize: 10,
+            fontWeight: 800,
+            padding: '2px 6px',
+            borderRadius: 4,
+            background: 'rgba(56, 189, 248, 0.1)',
+            color: '#38bdf8',
+            border: '1px solid rgba(56, 189, 248, 0.2)'
+          }}>STAGE {difficultyStage} ({['Basic', 'Edge', 'Adversarial', 'Worst Case', 'Constraint Max'][difficultyStage - 1]})</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            onClick={handleGenerateHarder}
+            disabled={loadingGenerated}
+            className="compact"
+            style={{
+              background: 'none',
+              border: '1px solid rgba(192, 132, 252, 0.3)',
+              borderRadius: 6,
+              color: '#c084fc',
+              fontSize: 11,
+              fontWeight: 700,
+              padding: '6px 12px',
+              cursor: 'pointer',
+            }}
+          >
+            ⚡ Generate Harder Tests
+          </button>
+          <button
+            onClick={handleGenerateMore}
+            disabled={loadingGenerated}
+            className="compact"
+            style={{
+              background: '#ff5f5215',
+              border: '1px solid #ff5f5240',
+              borderRadius: 6,
+              color: '#ff5f52',
+              fontSize: 11,
+              fontWeight: 700,
+              padding: '6px 12px',
+              cursor: 'pointer',
+            }}
+          >
+            💥 Generate More Tests
+          </button>
+        </div>
       </div>
 
       {/* ─── Tab Contents (High-Density Info Cards) ─── */}
@@ -974,6 +1126,97 @@ export function AdversarialTestLabCard({ data }: Props) {
                       color: colors.blue,
                     }}>
                       {test.riskScore}/100
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )
+        )}
+
+        {/* 5. Attack Lab Content */}
+        {activeTab === 'attack' && (
+          loadingGenerated ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', padding: '32px 0', width: '100%' }}>
+              <div style={{
+                width: 24,
+                height: 24,
+                border: '3px solid #2a2a2a',
+                borderTopColor: colors.red,
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+              }} />
+              <span style={{ color: '#71717a', fontSize: 12 }}>Synthesizing 20 adversarial tests at Stage {difficultyStage}…</span>
+              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+            </div>
+          ) : generatedTests.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', color: '#52525b', fontSize: 13, width: '100%' }}>
+              Click "Generate More Tests" to synthesize 20 custom test cases.
+            </div>
+          ) : (
+            generatedTests.map((test, idx) => (
+              <div key={idx} className="test-card" style={{
+                background: colors.bgDark,
+                border: `1px solid ${colors.borderGlass}`,
+                borderRadius: 10,
+                padding: '14px 18px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 16,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: colors.orange,
+                      background: 'rgba(249, 115, 22, 0.08)',
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      fontFamily: 'monospace',
+                    }}>
+                      CASE-{idx + 1}
+                    </span>
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      background: 'rgba(245, 158, 11, 0.1)',
+                      color: '#f59e0b',
+                      border: '1px solid rgba(245, 158, 11, 0.2)',
+                    }}>
+                      {test.category}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#e4e4e7' }}>{test.purpose}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 11 }}>
+                      <span style={{ color: '#71717a', width: 75, flexShrink: 0, fontWeight: 600 }}>INPUT:</span>
+                      <code style={{ color: '#f4f4f5', fontFamily: 'monospace', wordBreak: 'break-all' }}>{test.input}</code>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 11 }}>
+                      <span style={{ color: '#71717a', width: 75, flexShrink: 0, fontWeight: 600 }}>EXPECTED:</span>
+                      <code style={{ color: colors.green, fontFamily: 'monospace', wordBreak: 'break-all' }}>{test.expected}</code>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#a1a1aa', borderLeft: `2px solid ${colors.orange}`, paddingLeft: 8, marginTop: 4 }}>
+                      {test.reason}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                    <span style={{ fontSize: 9, color: '#71717a', fontWeight: 700 }}>BUG PROBABILITY</span>
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: 800,
+                      fontFamily: 'monospace',
+                      color: test.probability >= 70 ? colors.red : test.probability >= 40 ? colors.orange : colors.green,
+                    }}>
+                      {test.probability}%
                     </span>
                   </div>
                 </div>

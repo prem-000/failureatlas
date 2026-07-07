@@ -44,9 +44,10 @@ const LEVEL_ACCENT: Record<number, string> = {
 interface Props {
   submissionId: string; // eventId
   problemTitle: string;
+  problemSlug?: string;
 }
 
-export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
+export function SuccessInsightPanel({ submissionId, problemTitle, problemSlug }: Props) {
   const [activeSection, setActiveSection] = useState<Section>('overview');
   const [insight, setInsight] = useState<SuccessInsight | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,7 +128,7 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
   const gradient = LEVEL_GRADIENT[insight.successLevel];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%', maxWidth: '100%' }}>
       {/* Header banner */}
       <div style={{
         background: gradient, border: `1px solid ${accent}33`,
@@ -139,7 +140,6 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
           <div style={{ fontSize: 10, fontWeight: 700, color: accent, letterSpacing: '0.08em', marginBottom: 2 }}>
             SUCCESS INTELLIGENCE
           </div>
-          {/* Allow natural wrapping on all viewports — no clipping or nowrap */}
           <div style={{
             fontSize: 15,
             fontWeight: 800,
@@ -162,27 +162,18 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
         </div>
       </div>
 
-      {/* Section nav — sticky on md+ only; static/relative on mobile to avoid
-           collision with the accordion section sticky mini-header */}
+      {/* Section nav */}
       <div
-        className="success-nav-container scrollbar-none"
+        className="success-nav-container scrollbar-none overflow-x-auto w-full"
         style={{
-          display: 'flex',
           width: '100%',
           maxWidth: '100%',
           overflowX: 'auto',
-          gap: 0,
           background: '#111',
           border: '1px solid #1f1f1f',
           borderTop: 'none',
           scrollbarWidth: 'none' as any,
           WebkitOverflowScrolling: 'touch' as any,
-          scrollSnapType: 'x mandatory',
-          /* mobile: static so it scrolls with content and never overlaps sticky headers */
-          position: isMobile ? 'relative' : 'sticky',
-          top: isMobile ? 'auto' : 0,
-          zIndex: isMobile ? 1 : 10,
-          padding: '0 4px',
         }}
       >
         <style>{`
@@ -191,50 +182,69 @@ export function SuccessInsightPanel({ submissionId, problemTitle }: Props) {
             animation: tab-indicator-slide 0.2s ease-out both;
           }
         `}</style>
-        {SECTIONS.map(sec => {
-          const Icon = SECTION_ICONS[sec.id];
-          const isActive = activeSection === sec.id;
-          return (
-            <button
-              key={sec.id}
-              ref={el => { tabRefs.current[sec.id] = el; }}
-              onClick={() => setActiveSection(sec.id)}
-              className="compact"
-              style={{
-                flex: '0 0 auto',
-                padding: '10px 12px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 11,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                color: isActive ? accent : '#52525b',
-                borderBottom: isActive ? `2px solid ${accent}` : '2px solid transparent',
-                transition: 'color 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                scrollSnapAlign: 'start',
-                minWidth: 'max-content',
-              }}
-            >
-              <Icon size={13} style={{ color: isActive ? accent : '#52525b', flexShrink: 0 }} />
-              {sec.label}
-            </button>
-          );
-        })}
+        <div
+          className="flex w-max whitespace-nowrap"
+          style={{
+            display: 'flex',
+            width: 'max-content',
+            whiteSpace: 'nowrap',
+            gap: 0,
+            padding: '0 4px',
+            scrollSnapType: 'x mandatory',
+          }}
+        >
+          {SECTIONS.map(sec => {
+            const Icon = SECTION_ICONS[sec.id];
+            const isActive = activeSection === sec.id;
+            return (
+              <button
+                key={sec.id}
+                ref={el => { tabRefs.current[sec.id] = el; }}
+                onClick={() => setActiveSection(sec.id)}
+                className="compact flex-shrink-0"
+                style={{
+                  flex: '0 0 auto',
+                  flexShrink: 0,
+                  padding: '10px 12px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  color: isActive ? accent : '#52525b',
+                  borderBottom: isActive ? `2px solid ${accent}` : '2px solid transparent',
+                  transition: 'color 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  scrollSnapAlign: 'start',
+                  minWidth: 'max-content',
+                }}
+              >
+                <Icon size={13} style={{ color: isActive ? accent : '#52525b', flexShrink: 0 }} />
+                {sec.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Section content */}
       <div style={{
         background: '#161616', border: '1px solid #1f1f1f', borderTop: 'none',
         borderRadius: '0 0 14px 14px', padding: '16px',
-        width: '100%', maxWidth: '100%', overflow: 'hidden',
+        width: '100%', maxWidth: '100%',
         boxSizing: 'border-box',
       }}>
         {activeSection === 'overview' && <SuccessInsightCard insight={insight} />}
-        {activeSection === 'edge-cases' && <AdversarialTestLabCard data={insight.adversarialTestLab} />}
+        {activeSection === 'edge-cases' && (
+          <AdversarialTestLabCard
+            data={insight.adversarialTestLab}
+            problemSlug={problemSlug}
+            submissionId={submissionId}
+          />
+        )}
         {activeSection === 'optimization' && <OptimizationReviewCard items={insight.optimizationReview} />}
         {activeSection === 'pattern' && <PatternIntelligenceCard intelligence={insight.patternIntelligence} />}
         {activeSection === 'risk' && (
