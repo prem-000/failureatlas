@@ -105,7 +105,6 @@ export async function GET(request: NextRequest) {
 
 // ─── POST /api/submissions ────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
-  console.log("[TRACE] Submission received");
   const auth = await resolveUserId(request);
   if (!auth.userId) return unauthorizedResponse(auth.error || 'Authentication required.');
   const userId = auth.userId;
@@ -187,7 +186,6 @@ export async function POST(request: NextRequest) {
       },
     });
     if (recentDupe) {
-      console.log(`⚠️ Content-level duplicate blocked for user=${userId} problem=${problemSlug} (existing id=${recentDupe.id})`);
       return NextResponse.json(
         { success: true, submissionId: recentDupe.id, analysisQueued: false, message: 'Duplicate submission detected within 60s.' },
         { status: 200, headers: corsHeaders }
@@ -216,8 +214,6 @@ export async function POST(request: NextRequest) {
         rapidSubmission: rapidSubmission || false,
       },
     });
-
-    console.log(`✅ Submission saved: ${subRecord.id} (user=${userId}, problem=${problemSlug})`);
 
     // ── Return 200 immediately — analysis runs async ──────────────────────────
     // The extension gets a success response right away. If the pipeline crashes
@@ -268,7 +264,6 @@ async function runAnalysisPipeline(
     rapidSubmission?: boolean;
   }
 ) {
-  console.log("[TRACE] Generating diagnosis");
   const toSubmissionEvent = (s: any): SubmissionEvent => ({
     eventId: s.eventId,
     sessionId: s.sessionId,
@@ -545,8 +540,6 @@ async function runAnalysisPipeline(
         data: { diagnosisId: diagnosis.id, strategyId: strategy.id, completed: false },
       });
     }
-
-    console.log(`✅ Analysis complete for submission ${subRecord.id}`);
   } catch (e: any) {
     console.warn('⚠️ AI diagnosis failed (non-fatal):', e?.message);
   }
@@ -651,8 +644,6 @@ async function runAnalysisPipeline(
           generatedAt: new Date(explanation.generatedAt),
         },
       });
-
-      console.log(`✅ Failure explanation generated for submission ${subRecord.id}`);
     } catch (e: any) {
       console.warn('⚠️ Failure explanation generation failed (non-fatal):', e?.message);
     }

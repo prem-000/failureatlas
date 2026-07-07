@@ -55,8 +55,6 @@ class MultiKeyGroqClient {
         cooldownUntil: 0,
       });
     }
-
-    console.log(`[GroqClient] Initialized with ${this.keys.length} API keys.`);
   }
 
   private loadConfig() {
@@ -81,10 +79,6 @@ class MultiKeyGroqClient {
     if (modelEnv) {
       this.defaultModel = modelEnv;
     }
-
-    console.log(
-      `[GroqClient] Config: strategy=${this.strategy}, maxRetries=${this.maxRetries}, timeoutMs=${this.timeoutMs}, defaultModel=${this.defaultModel}`
-    );
   }
 
   /**
@@ -96,7 +90,6 @@ class MultiKeyGroqClient {
       if (!key.isHealthy && key.cooldownUntil <= now) {
         key.isHealthy = true;
         key.cooldownUntil = 0;
-        console.log(`[GroqClient] Key recovered from cooldown: ${key.name}`);
       }
     }
   }
@@ -163,8 +156,6 @@ class MultiKeyGroqClient {
       if (!activeKey) {
         throw new Error('[GroqClient] No API keys configured or available.');
       }
-
-      console.log(`[GroqClient] Requesting chat completion using: ${activeKey.name} (Attempt ${attempt + 1}/${this.maxRetries + 1})`);
 
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), this.timeoutMs);

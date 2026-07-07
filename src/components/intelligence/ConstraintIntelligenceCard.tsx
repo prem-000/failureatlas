@@ -1,14 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import type { ConstraintIntelligence } from '@/types';
 import {
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
   Activity,
   Cpu,
-  TrendingUp,
   Zap,
   BookOpen,
   Sparkles,

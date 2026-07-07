@@ -20,7 +20,6 @@ export async function OPTIONS(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  console.log("[TRACE] Route /api/diagnosis/generate reached");
   try {
     // 1. Authenticate user
     const authHeader = request.headers.get('authorization');
@@ -40,7 +39,6 @@ export async function POST(request: NextRequest) {
       );
     }
     const userId = payload.userId;
-    console.log(`[TRACE] User ID extracted: ${userId}`);
 
     let userQuery = '';
     try {
@@ -51,7 +49,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Fetch the user's most recent failure event
-    console.log("[TRACE] Fetching latest failure from Prisma...");
     const latestFailure = await prisma.submissionEvent.findFirst({
       where: {
         userId,
@@ -99,8 +96,6 @@ export async function POST(request: NextRequest) {
         }
       });
     }
-
-    console.log(`[TRACE] Latest failure found: id=${latestFailure.id}`);
 
     // Map latest failure to type SubmissionEvent
     const mappedCurrent: SubmissionEvent = {
@@ -187,7 +182,6 @@ export async function POST(request: NextRequest) {
       aiDiagnosisReasoning = aiDiagnosis.reasoningChain;
 
       // 6. Save primary weakness in Prisma PostgreSQL
-      console.log("[TRACE] Saving diagnosis to Prisma...");
       const primaryWeaknessNode = await prisma.systemicWeakness.upsert({
         where: { name: aiDiagnosis.primaryWeaknessId },
         update: {},
@@ -218,7 +212,6 @@ export async function POST(request: NextRequest) {
           }
         }
       });
-      console.log(`[TRACE] Diagnosis saved/updated: id=${created.id}`);
 
       diagnosis = await prisma.diagnosisResult.findUnique({
         where: { id: created.id },
@@ -363,7 +356,6 @@ export async function POST(request: NextRequest) {
       frequency: ws.frequency
     }));
 
-    console.log("[TRACE] Returning diagnosis response");
     return NextResponse.json({
       success: true,
       data: {

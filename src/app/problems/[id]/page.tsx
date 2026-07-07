@@ -13,11 +13,6 @@ import { MobileBottomSheet } from '@/components/ui/MobileBottomSheet';
 import {
   ChevronRight,
   Menu,
-  Clock,
-  AlertTriangle,
-  TrendingUp,
-  BookOpen,
-  Trophy,
   ExternalLink,
 } from 'lucide-react';
 

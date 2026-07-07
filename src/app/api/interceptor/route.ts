@@ -32,8 +32,6 @@ export async function OPTIONS(_request: NextRequest) {
 
 // ── POST /api/interceptor/event ───────────────────────────────────────────────
 export async function POST(request: NextRequest) {
-  console.log('[Interceptor] Event received');
-
   // ── Auth ──────────────────────────────────────────────────────────────────
   const auth = await resolveUserId(request);
   if (!auth.userId) return unauthorizedResponse(auth.error || 'Authentication required.');
@@ -109,8 +107,6 @@ export async function POST(request: NextRequest) {
       console.warn('[Interceptor] Network-enriched analysis failed (non-fatal):', err?.message);
     });
   }
-
-  console.log(`[Interceptor] ✅ ${action} submission ${submissionId}`);
 
   return NextResponse.json(
     {
