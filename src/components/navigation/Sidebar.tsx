@@ -11,6 +11,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useState } from 'react';
+import { Logo } from '@/components/ui/logo';
 
 const NAV_ITEMS = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -217,11 +218,11 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           href="/dashboard"
           title="Praxis"
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 14,
-            background: 'linear-gradient(135deg, #ff5f52 0%, #d32f2f 100%)',
-            boxShadow: '0 4px 14px rgba(255,95,82,0.4)',
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -230,9 +231,11 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
             flexShrink: 0,
             minHeight: 'unset',
             minWidth: 'unset',
+            transition: 'all 0.2s ease',
           }}
+          className="hover:bg-brand/10 hover:border-brand/20 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
         >
-          <span style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>F</span>
+          <Logo variant="mark" size="lg" className="text-brand" animation="idle" aria-hidden="true" />
         </Link>
 
         {/* Main nav items */}

@@ -24,6 +24,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from '@studio-freight/lenis';
 import { Menu, ArrowRight, ChevronRight, Terminal, Cpu, GitCompare, HelpCircle, Activity, Award, CheckCircle2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Logo } from '@/components/ui/logo';
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
@@ -198,9 +199,8 @@ export default function Home() {
       {/* ─── Navigation Header ────────────────────────────────────────── */}
       <nav className="border-b border-white/5 sticky top-0 z-40 bg-background/85 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 md:px-8 xl:px-12 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_rgba(255,95,82,0.6)]" />
-            Praxis
+          <Link href="/" className="flex items-center" style={{ minWidth: 44, minHeight: 44 }}>
+            <Logo variant="wordmark" size="sm" className="text-brand" />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">

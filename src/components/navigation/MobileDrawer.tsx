@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Logo } from '@/components/ui/logo';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -54,7 +55,7 @@ export default function MobileDrawer({ isOpen, onClose, navLinks }: MobileDrawer
           >
             {/* Header */}
             <div className="flex justify-between items-center mb-10">
-              <span className="text-xl font-bold text-foreground">Praxis</span>
+              <Logo variant="wordmark" size="sm" className="text-brand" />
               <button
                 onClick={onClose}
                 className="w-11 h-11 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"

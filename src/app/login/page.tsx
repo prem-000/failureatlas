@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { Logo } from '@/components/ui/logo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -128,13 +129,9 @@ export default function LoginPage() {
         <div className="form-card" style={{ width: '100%', maxWidth: 420 }}>
           {/* Brand */}
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div style={{
-              width: 52, height: 52, borderRadius: 14,
-              background: 'linear-gradient(135deg, #ff5f52, #ff8a80)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 22, fontWeight: 700, color: '#fff',
-              margin: '0 auto 16px', boxShadow: '0 8px 32px rgba(255,95,82,0.3)',
-            }}>F</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <Logo variant="mark" size={64} className="text-brand" animation="idle" />
+            </div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
               Welcome back to Praxis
             </h1>

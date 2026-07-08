@@ -27,6 +27,7 @@
   --color-muted-foreground: #a1a1aa;
   --color-border: #3f3f46;
   --color-primary: #ff5f52;
+  --color-brand: #FF6A3D;
   --color-primary-foreground: #ffffff;
   --color-success: #22c55e;
   --color-warning: #f59e0b;
@@ -468,8 +469,8 @@ a.compact,
     -webkit-tap-highlight-color: transparent;
   }
   .analysis-nav-tab.active {
-    color: #ff5f52;
-    border-bottom-color: #ff5f52;
+    color: var(--color-brand);
+    border-bottom-color: var(--color-brand);
   }
 }
 
@@ -550,10 +551,10 @@ a.compact,
     left: 12px;
     right: 12px;
     z-index: 30;
-    background: #ff5f52;
+    background: var(--color-brand);
     border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(255, 95, 82, 0.4);
+    box-shadow: 0 8px 32px rgba(255, 106, 61, 0.4);
     animation: floating-cta-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   .floating-open-problem a,
@@ -644,7 +645,7 @@ a.compact,
 .show-more-btn {
   background: none;
   border: none;
-  color: #ff5f52;
+  color: var(--color-brand);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -757,9 +758,9 @@ a.compact,
 
 .responsive-nav-tab.active,
 .secondary-nav-tab.active {
-  background: var(--active-bg, rgba(255, 95, 82, 0.1)) !important;
-  border-color: var(--active-border, #ff5f52) !important;
-  color: var(--active-color, #ff5f52) !important;
+  background: var(--active-bg, rgba(255, 106, 61, 0.1)) !important;
+  border-color: var(--active-border, var(--color-brand)) !important;
+  color: var(--active-color, var(--color-brand)) !important;
 }
 
 /* --- Tablet and Desktop view (>= 640px) --- */

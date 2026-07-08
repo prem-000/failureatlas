@@ -5,7 +5,7 @@
   --color-muted: #27272a;
   --color-muted-foreground: #a1a1aa;
   --color-border: #3f3f46;
-  --color-primary: #ff5f52;
+  --color-primary: #FF6A3D;
   --color-primary-foreground: #ffffff;
   --color-success: #22c55e;
   --color-warning: #f59e0b;
@@ -66,8 +66,8 @@ body {
 }
 
 .logo {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   color: var(--color-primary);
   animation: float-logo 3s ease-in-out infinite;
 }

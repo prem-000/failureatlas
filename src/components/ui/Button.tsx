@@ -16,9 +16,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: [
-    'bg-primary text-white border-transparent',
+    'bg-brand text-white border-transparent',
     'hover:opacity-90 active:opacity-80',
-    'shadow-sm shadow-primary/20',
+    'shadow-sm shadow-brand/20',
   ].join(' '),
   secondary: [
     'bg-surface text-foreground border-border',
@@ -34,8 +34,8 @@ const variantStyles: Record<ButtonVariant, string> = {
     'shadow-sm shadow-error/20',
   ].join(' '),
   outline: [
-    'bg-transparent text-primary border-primary',
-    'hover:bg-primary/10',
+    'bg-transparent text-brand border-brand',
+    'hover:bg-brand/10',
   ].join(' '),
 };
 
@@ -63,7 +63,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     'inline-flex items-center justify-center',
     'font-medium rounded-lg border',
     'transition-all duration-150 ease-in-out',
-    'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     'disabled:opacity-50 disabled:pointer-events-none',
     'cursor-pointer',
   ].join(' ');

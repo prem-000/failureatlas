@@ -16,6 +16,7 @@ const config: Config = {
         'muted-foreground': 'var(--color-muted-foreground)',
         border: 'var(--color-border)',
         primary: 'var(--color-primary)',
+        brand: 'var(--color-brand)',
         'primary-foreground': 'var(--color-primary-foreground)',
         success: 'var(--color-success)',
         warning: 'var(--color-warning)',
@@ -43,10 +44,10 @@ const config: Config = {
       keyframes: {
         'root-cause-pulse': {
           '0%, 100%': {
-            boxShadow: '0 0 0 0 rgba(255, 95, 82, 0.7)',
+            boxShadow: '0 0 0 0 rgba(255, 106, 61, 0.7)',
           },
           '50%': {
-            boxShadow: '0 0 0 10px rgba(255, 95, 82, 0)',
+            boxShadow: '0 0 0 10px rgba(255, 106, 61, 0)',
           },
         },
         'fade-in': {

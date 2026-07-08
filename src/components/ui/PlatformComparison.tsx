@@ -82,13 +82,13 @@ export default function PlatformComparison() {
         {/* Praxis Side (Premium AI-powered Diagnostics) */}
         <div
           className={`rounded-2xl border bg-gradient-to-b from-[#141414] to-[#111111] p-6 flex flex-col justify-between transition-all duration-300 min-h-[380px] ${
-            activeTab === 'praxis' ? 'ring-2 ring-primary/20 border-primary/30 shadow-2xl' : 'border-border/30 opacity-40 md:opacity-100'
+            activeTab === 'praxis' ? 'ring-2 ring-brand/20 border-brand/30 shadow-2xl' : 'border-border/30 opacity-40 md:opacity-100'
           } ${activeTab !== 'praxis' ? 'hidden md:flex' : 'flex'}`}
         >
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_8px_#ff5f52]" />
-              <span className="text-xs font-bold text-primary uppercase tracking-widest">Praxis Intelligence</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-brand shadow-[0_0_8px_#FF6A3D]" />
+              <span className="text-xs font-bold text-brand uppercase tracking-widest">Praxis Intelligence</span>
             </div>
 
             <h3 className="text-xl font-bold text-white mb-2">Deep Logic Diagnosis</h3>
@@ -99,9 +99,9 @@ export default function PlatformComparison() {
             {/* Praxis Explanation UI */}
             <div className="space-y-3 font-mono text-xs">
               {/* Diagnosis Badge */}
-              <div className="bg-[#18181b] border border-primary/20 rounded-xl p-4">
+              <div className="bg-[#18181b] border border-brand/20 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-primary font-bold uppercase tracking-wider text-[10px]">Diagnosis: Boundary Condition</span>
+                  <span className="text-brand font-bold uppercase tracking-wider text-[10px]">Diagnosis: Boundary Condition</span>
                   <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">✓ 91% Confidence</span>
                 </div>
                 <p className="text-[11px] font-sans text-zinc-300 leading-normal">
