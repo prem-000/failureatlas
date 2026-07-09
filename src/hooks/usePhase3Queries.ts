@@ -82,7 +82,9 @@ export function useGraphSubgraph(limit = 300) {
   return useQuery({
     queryKey: ['graph', 'subgraph', limit],
     queryFn: () =>
-      apiFetch<SubgraphData>(`/api/graph/subgraph?limit=${limit}`),
+      apiFetch<{ success: boolean; data: SubgraphData }>(
+        `/api/graph/subgraph?limit=${limit}`
+      ).then((r) => r.data),
   });
 }
 

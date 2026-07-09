@@ -33,9 +33,12 @@ export async function GET(request: NextRequest) {
     if (!health.isConnected) {
       logger.warn('⚠️ Database not connected — returning empty graph');
       return NextResponse.json({
-        nodes: [],
-        edges: [],
-        stats: { problems: 0, failures: 0, weaknesses: 0, strategies: 0 },
+        success: true,
+        data: {
+          nodes: [],
+          edges: [],
+          stats: { problems: 0, failures: 0, weaknesses: 0, strategies: 0 },
+        }
       });
     }
 
@@ -48,19 +51,18 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      nodes: graphData.nodes,
-      edges: graphData.edges,
-      stats: {
-        problems: graphData.stats.problems,
-        failures: graphData.stats.failures,
-        weaknesses: graphData.stats.weaknesses,
-        strategies: graphData.stats.strategies,
-      },
+      success: true,
+      data: {
+        nodes: graphData.nodes,
+        edges: graphData.edges,
+        stats: graphData.stats,
+      }
     });
   } catch (error) {
     logger.error('❌ Error fetching graph subgraph:', error);
     return NextResponse.json(
       {
+        success: false,
         code: 'INTERNAL_ERROR',
         message: error instanceof Error ? error.message : 'Failed to fetch graph subgraph',
       },
