@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
+import { EyebrowRig, EyebrowRigRef } from './RobotHeadModel/EyebrowRig';
 
 interface RobotHeadModelProps {
   reducedMotion: boolean;
@@ -14,6 +15,7 @@ export default function RobotHeadModel({ reducedMotion, clickTimeRef }: RobotHea
   const headGroupRef = useRef<THREE.Group>(null);
   const neckRef = useRef<THREE.Mesh>(null);
   const rimMaterialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const eyebrowRigRef = useRef<EyebrowRigRef>(null);
 
   useFrame((state, delta) => {
     if (!headGroupRef.current) return;
@@ -184,6 +186,9 @@ export default function RobotHeadModel({ reducedMotion, clickTimeRef }: RobotHea
             roughness={0.15}
           />
         </mesh>
+
+        {/* Eyebrow Rig */}
+        <EyebrowRig ref={eyebrowRigRef} />
       </group>
     </group>
   );
