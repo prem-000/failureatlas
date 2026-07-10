@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUserFailureSubgraph, getGraphHealth } from '@/lib/graph/operations';
 import { logger } from '@/lib/logger';
+import { getGraphCache, setGraphCache } from '@/lib/cache/graph';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +26,16 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '300', 10), 1000);
+
+    // Check Redis Cache
+    const cached = await getGraphCache(session.id);
+    if (cached) {
+      logger.info('🎯 Graph subgraph Cache Hit', { userId: session.id });
+      return NextResponse.json({
+        success: true,
+        data: cached
+      });
+    }
 
     logger.info('📊 Fetching graph subgraph', { userId: session.id, limit });
 
@@ -50,13 +61,18 @@ export async function GET(request: NextRequest) {
       edgeCount: graphData.stats.edgeCount,
     });
 
+    const responsePayload = {
+      nodes: graphData.nodes,
+      edges: graphData.edges,
+      stats: graphData.stats,
+    };
+
+    // Cache the DTO payload
+    await setGraphCache(session.id, responsePayload);
+
     return NextResponse.json({
       success: true,
-      data: {
-        nodes: graphData.nodes,
-        edges: graphData.edges,
-        stats: graphData.stats,
-      }
+      data: responsePayload,
     });
   } catch (error) {
     logger.error('❌ Error fetching graph subgraph:', error);

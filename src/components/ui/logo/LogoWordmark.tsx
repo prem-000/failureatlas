@@ -1,7 +1,6 @@
 import React from 'react';
 import { LogoBaseProps } from './logo.types';
 import { LogoMark } from './LogoMark';
-import { getLogoSize } from './logo.constants';
 
 interface LogoWordmarkProps extends LogoBaseProps {
   'aria-label'?: string;

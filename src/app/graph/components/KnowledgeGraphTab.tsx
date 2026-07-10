@@ -278,7 +278,7 @@ function KnowledgeGraphContent() {
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a0c', zIndex: 10 }}>
             <Loader2 size={32} style={{ color: '#a855f7', animation: 'spin 1s linear infinite', marginBottom: 16 }} />
             <div style={{ color: '#d4d4d8', fontSize: 16, fontWeight: 700 }}>Generating Knowledge Graph</div>
-            <div style={{ color: '#71717a', fontSize: 12, marginTop: 8 }}>AI is analyzing concepts for "{query}"...</div>
+            <div style={{ color: '#71717a', fontSize: 12, marginTop: 8 }}>AI is analyzing concepts for &quot;{query}&quot;...</div>
           </div>
         ) : (
           <>

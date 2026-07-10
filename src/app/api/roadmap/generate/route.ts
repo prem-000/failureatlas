@@ -11,6 +11,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
 import { logger } from '@/lib/logger';
+import { delRoadmapCache } from '@/lib/cache/roadmap';
+import { getProblemCache, setProblemCache } from '@/lib/cache/problem';
 
 async function callGroq(prompt: string): Promise<string> {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -170,9 +172,16 @@ CRITICAL EDGE RULES:
     }
 
     // 6. Build full nodes
-    const finalNodes = graphData.nodes.map((nodeInfo: any) => {
-      const dbProb = activeCandidates.find((p: any) => p.slug === nodeInfo.slug) || 
-                     candidateProblems.find((p: any) => p.slug === nodeInfo.slug);
+    const finalNodes = (await Promise.all(graphData.nodes.map(async (nodeInfo: any) => {
+      let dbProb = await getProblemCache(nodeInfo.slug);
+      if (!dbProb) {
+        const foundProb = activeCandidates.find((p: any) => p.slug === nodeInfo.slug) || 
+                          candidateProblems.find((p: any) => p.slug === nodeInfo.slug);
+        if (foundProb) {
+          await setProblemCache(nodeInfo.slug, foundProb);
+          dbProb = await getProblemCache(nodeInfo.slug); // load clean DTO
+        }
+      }
       
       if (!dbProb) return null;
 
@@ -202,9 +211,12 @@ CRITICAL EDGE RULES:
         userAttempts: userSub?.attempts,
         userStatus: userSub?.lastStatus,
       };
-    }).filter(Boolean);
+    }))).filter(Boolean);
 
     logger.info('✅ Dynamic Roadmap generated', { count: finalNodes.length, topic, level });
+
+    // Invalidate Cache
+    await delRoadmapCache(userId);
 
     return NextResponse.json({
       success: true,

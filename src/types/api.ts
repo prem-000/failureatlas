@@ -6,7 +6,6 @@ import type {
   GraphFilters,
   User,
   AuthToken,
-  ApiResponse,
   PaginationInfo,
 } from './index';
 

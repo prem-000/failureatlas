@@ -37,8 +37,9 @@ export default function LiveDiagnosis() {
       shortDesc: 'Extension captures the raw execution telemetry.',
       icon: <Terminal size={16} className="text-blue-400" />,
       terminalHeader: 'Telemetry Interceptor v1.0.4',
-      terminalBody: (        <div className="font-mono text-xs text-blue-300/90 space-y-2">
-          <p className="text-zinc-500">// Intercepting submission data from network response...</p>
+      terminalBody: (
+        <div className="font-mono text-xs text-blue-300/90 space-y-2">
+          <p className="text-zinc-500">{"// Intercepting submission data from network response..."}</p>
           <p className="text-zinc-300">HTTP POST leetcode.com/submissions/detail/1409210981/check/</p>
           <p className="text-emerald-400">{"-> [Status 200] Telemetry capture complete."}</p>
           <p className="text-zinc-400">Language: Python3 | Problem: 3Sum (slug: 3sum)</p>
@@ -67,7 +68,7 @@ export default function LiveDiagnosis() {
           </div>
           <p className="text-zinc-400">Passed Test Cases: <span className="text-white font-bold">22/46</span></p>
           <p className="text-zinc-400">Runtime: <span className="text-white">72ms</span> | Memory: <span className="text-white">18.4MB</span></p>
-          <p className="text-zinc-500">// Traditional platforms stop here. Ingestion continuing...</p>
+          <p className="text-zinc-500">{"// Traditional platforms stop here. Ingestion continuing..."}</p>
         </div>
       ),
     },
@@ -79,7 +80,7 @@ export default function LiveDiagnosis() {
       terminalHeader: 'Network Payload Decryption',
       terminalBody: (
         <div className="font-mono text-xs text-amber-300/90 space-y-2">
-          <p className="text-zinc-500">// Extracting evidence headers from JSON stream...</p>
+          <p className="text-zinc-500">{"// Extracting evidence headers from JSON stream..."}</p>
           <div className="bg-zinc-900/60 p-3 rounded-lg border border-white/5 space-y-1">
             <p className="text-zinc-400">Failed Input: <span className="text-white">[0, 0, 0, 0]</span></p>
             <p className="text-zinc-400">Expected Output: <span className="text-emerald-400">[[0, 0, 0]]</span></p>
@@ -97,7 +98,7 @@ export default function LiveDiagnosis() {
       terminalHeader: 'Myers Diff Engine v1.2',
       terminalBody: (
         <div className="font-mono text-xs text-purple-300/90 space-y-2">
-          <p className="text-zinc-500">// Comparing edits against previous failed attempt...</p>
+          <p className="text-zinc-500">{"// Comparing edits against previous failed attempt..."}</p>
           <div className="bg-zinc-900/60 p-2.5 rounded-lg border border-white/5 overflow-x-auto text-[10px] space-y-0.5">
             <p className="text-red-400 bg-red-950/20 px-1.5 py-0.5 rounded">{"- while left < right:"}</p>
             <p className="text-emerald-400 bg-emerald-950/20 px-1.5 py-0.5 rounded">{"+ while left < right and nums[left] == nums[left-1]:"}</p>
@@ -115,13 +116,13 @@ export default function LiveDiagnosis() {
       terminalHeader: 'Behavior Analysis Engine',
       terminalBody: (
         <div className="font-mono text-xs text-emerald-300/90 space-y-2">
-          <p className="text-zinc-500">// Evaluating user interaction telemetry...</p>
+          <p className="text-zinc-500">{"// Evaluating user interaction telemetry..."}</p>
           <ul className="space-y-1 bg-zinc-900/60 p-3 rounded-lg border border-white/5 list-disc pl-4 text-zinc-300">
             <li>Time since last attempt: <span className="text-white">42s (Rapid Resubmission)</span></li>
             <li>Code lines edited: <span className="text-white">1 line (Trial-and-error patch)</span></li>
             <li>Keystrokes detected: <span className="text-white">12</span></li>
           </ul>
-          <p className="text-zinc-400">Action: Tagging as "high risk of repetitive pattern".</p>
+          <p className="text-zinc-400">Action: Tagging as &quot;high risk of repetitive pattern&quot;.</p>
         </div>
       ),
     },
@@ -133,7 +134,7 @@ export default function LiveDiagnosis() {
       terminalHeader: 'Bayesian Inference Core',
       terminalBody: (
         <div className="font-mono text-xs text-pink-300/90 space-y-2">
-          <p className="text-zinc-500">// Computing posterior probability weights...</p>
+          <p className="text-zinc-500">{"// Computing posterior probability weights..."}</p>
           <div className="space-y-2 bg-zinc-900/60 p-3 rounded-lg border border-white/5">
             <div>
               <div className="flex justify-between text-[10px] text-zinc-400 mb-1">

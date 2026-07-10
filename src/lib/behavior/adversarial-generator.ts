@@ -1,4 +1,4 @@
-import type { AdversarialTestLab, AdversarialTestCase, ConstraintMetrics, CoverageIntelligence } from '@/types';
+import type { AdversarialTestLab } from '@/types';
 import { groqClient } from '../api/groq-client';
 
 // Pattern-specific fallback generators to ensure rich, realistic data even when Groq is unavailable

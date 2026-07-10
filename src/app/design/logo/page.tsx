@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Play, RotateCcw, Info } from 'lucide-react';
-import { Logo, LogoSize, LogoVariant, LogoAnimationMode } from '@/components/ui/logo';
+import { ArrowLeft, Play, Info } from 'lucide-react';
+import { Logo, LogoAnimationMode } from '@/components/ui/logo';
 import { Button } from '@/components/ui/Button';
 
 export default function LogoShowcase() {

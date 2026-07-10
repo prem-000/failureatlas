@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BookOpen, AlertTriangle, Clock, Bookmark, FileText, ChevronDown, ChevronRight, Copy, Check } from 'lucide-react';
+import { BookOpen, AlertTriangle, Clock, Bookmark, FileText, Copy, Check } from 'lucide-react';
 import { useGraphWeaknesses, useGraphFailures } from '@/hooks/usePhase3Queries';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -457,7 +457,7 @@ Practice problems targeting ${top.name.toLowerCase()} to reduce PageRank score.`
       {section === 'bookmarks' && (
         <div className="ws-content custom-scrollbar">
           <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#f4f4f5', marginBottom: 4 }}>Bookmarks</h2>
-          <p style={{ fontSize: '12px', color: '#71717a', marginBottom: 20 }}>Problems and resources you've saved.</p>
+          <p style={{ fontSize: '12px', color: '#71717a', marginBottom: 20 }}>Problems and resources you&apos;ve saved.</p>
           {bookmarks.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#52525b', fontSize: 13, marginTop: 40 }}>
               <Bookmark size={32} style={{ marginBottom: 10, opacity: 0.3 }} />

@@ -22,7 +22,7 @@ import { motion } from 'framer-motion';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from '@studio-freight/lenis';
-import { Menu, ArrowRight, ChevronRight, Terminal, Cpu, GitCompare, HelpCircle, Activity, Award, CheckCircle2, Star } from 'lucide-react';
+import { Menu, ArrowRight, ChevronRight, Terminal, Cpu, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/logo';
 

@@ -5,7 +5,7 @@
  * Groq is used only AFTER this module to explain the facts.
  */
 
-import type { OptimizationItem, ImpactLevel, MLFeatures } from '@/types';
+import type { OptimizationItem, MLFeatures } from '@/types';
 
 // ─── Pattern Detection ────────────────────────────────────────────────────────
 

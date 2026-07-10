@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Bug, Zap, RefreshCw, ChevronDown, ChevronRight,
+  Bug, Zap, RefreshCw, ChevronRight,
   AlertTriangle, CheckCircle, XCircle, Terminal, Brain,
-  Lightbulb, Activity, Target, Shuffle, Clock, Code2
+  Lightbulb, Activity, Target, Shuffle, Clock
 } from 'lucide-react';
 import { useFailureReplay } from '@/hooks/useFailureReplay';
 import { ReplayBottomSheet } from './ReplayBottomSheet';

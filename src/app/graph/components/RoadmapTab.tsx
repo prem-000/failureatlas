@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import ReactFlow, {
   Background, Controls, Node, Edge,
   useNodesState, useEdgesState, BackgroundVariant,
@@ -8,7 +8,7 @@ import ReactFlow, {
   MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Sparkles, RefreshCw, ChevronDown, ArrowRight, Loader2, AlertCircle, Maximize2, Minimize2, Target } from 'lucide-react';
+import { Sparkles, ChevronDown, ArrowRight, Loader2, AlertCircle, Maximize2, Minimize2, Target } from 'lucide-react';
 import { RoadmapNode } from './RoadmapNode';
 import { ProblemDrawer } from './ProblemDrawer';
 import { SearchBar } from './SearchBar';

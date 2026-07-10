@@ -18,6 +18,11 @@ import { prisma } from '@/lib/db/prisma';
 import { resolveUserId, unauthorizedResponse } from '@/lib/auth/resolve-user';
 import { myersDiff, computeDiffConfidence } from '@/lib/analysis/myers-diff';
 import { structuralCodePatternAnalysis } from '@/lib/analysis/ast-diff';
+import { delDashboardCache } from '@/lib/cache/dashboard';
+import { delGraphCache } from '@/lib/cache/graph';
+import { delRoadmapCache } from '@/lib/cache/roadmap';
+import { getAnalysisCache, setAnalysisCache } from '@/lib/cache/analysis';
+import { setProblemCache } from '@/lib/cache/problem';
 import { parseBehavioralSignals } from '@/lib/analysis/behavioral';
 import { runBayesianInference, BayesianEvidence } from '@/lib/inference/bayesian';
 import { recordFailureEventInGraph } from '@/lib/graph/operations';
@@ -173,6 +178,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Cache problem metadata
+    await setProblemCache(problem.slug, problem);
+
     // ── Deduplicate by content: same user+problem+code+status within 60s ─────
     // Catches cases where the extension fires two separate eventIds for one
     // physical LeetCode submission (e.g. two DOM mutation detections).
@@ -215,6 +223,13 @@ export async function POST(request: NextRequest) {
         rapidSubmission: rapidSubmission || false,
       },
     });
+
+    // Invalidate Caches
+    await delDashboardCache(userId);
+    await delGraphCache(userId);
+    if (submissionStatus === 'Accepted') {
+      await delRoadmapCache(userId);
+    }
 
     // ── Return 200 immediately — analysis runs async ──────────────────────────
     // The extension gets a success response right away. If the pipeline crashes
@@ -494,21 +509,33 @@ async function runAnalysisPipeline(
       code: fields.submissionCode
     });
 
-    let cachedDiagnosis = await prisma.diagnosisResult.findUnique({
-      where: { fingerprint },
-      include: {
-        primaryWeakness: true,
-        recommendations: { include: { strategy: true } }
+    // Check Redis first for analysis cache
+    let cachedDiagnosis: any = await getAnalysisCache(fingerprint);
+    if (!cachedDiagnosis) {
+      cachedDiagnosis = await prisma.diagnosisResult.findUnique({
+        where: { fingerprint },
+        include: {
+          primaryWeakness: true,
+          recommendations: { include: { strategy: true } }
+        }
+      });
+      if (cachedDiagnosis) {
+        await setAnalysisCache(fingerprint, cachedDiagnosis);
       }
-    });
+    }
 
     if (cachedDiagnosis && cachedDiagnosis.modelVersion === DIAGNOSIS_MODEL_VERSION) {
       console.log(`[CACHE HIT] Found existing diagnosis for fingerprint ${fingerprint}. Linking to submission ${subRecord.id}`);
       // Link the existing diagnosis to this submission event by updating its submissionId
-      await prisma.diagnosisResult.update({
+      const updated = await prisma.diagnosisResult.update({
         where: { id: cachedDiagnosis.id },
-        data: { submissionId: subRecord.id }
+        data: { submissionId: subRecord.id },
+        include: {
+          primaryWeakness: true,
+          recommendations: { include: { strategy: true } }
+        }
       });
+      await setAnalysisCache(fingerprint, updated);
     } else {
       const similarFailures = await retrieveSimilarFailures(
         userId, subRecord.eventId,
@@ -596,6 +623,21 @@ async function runAnalysisPipeline(
           data: { diagnosisId: diagnosis.id, strategyId: strategy.id, completed: false },
         });
       }
+
+      // Cache the complete diagnosis result
+      const fullDiagnosis = await prisma.diagnosisResult.findUnique({
+        where: { id: diagnosis.id },
+        include: {
+          primaryWeakness: true,
+          recommendations: { include: { strategy: true } }
+        }
+      });
+      if (fullDiagnosis) {
+        await setAnalysisCache(fingerprint, fullDiagnosis);
+      }
+      
+      // Invalidate roadmap cache due to weakness graph changes
+      await delRoadmapCache(userId);
     }
   } catch (e: any) {
     console.warn('⚠️ AI diagnosis failed (non-fatal):', e?.message);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
+import { getUserCache, setUserCache, delUserCache } from '@/lib/cache/user';
 
 
 export async function OPTIONS(request: NextRequest) {
@@ -36,6 +37,37 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = payload.userId;
+
+    // Check Redis Cache
+    const cached = await getUserCache(userId);
+    if (cached) {
+      // Query PostgreSQL ONLY for sensitive/credentials fields
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, provider: true },
+      });
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: { code: 'NOT_FOUND', message: 'User not found' } },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({
+        success: true,
+        data: {
+          user: {
+            id: cached.user.id,
+            email: user.email,
+            name: cached.user.name,
+            image: cached.user.image,
+            provider: user.provider,
+            createdAt: cached.user.createdAt,
+            apiKey: cached.user.apiKey,
+          },
+          stats: cached.stats,
+        },
+      });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -147,6 +179,36 @@ export async function GET(request: NextRequest) {
       await prisma.user.update({ where: { id: userId }, data: { apiKey } });
     }
 
+    const responsePayload = {
+      user: {
+        id: user.id,
+        name: user.name,
+        image: user.image,
+        createdAt: user.createdAt.toISOString(),
+        apiKey,
+      },
+      stats: {
+        lastSubmissionAt,
+        totalSubmissions,
+        acceptedSubmissions,
+        acceptanceRate: parseFloat(acceptanceRate.toFixed(1)),
+        uniqueProblems: uniqueProblems.length,
+        languageDistribution,
+        difficultyDistribution,
+        activityTimeline,
+        topWeaknesses: topWeaknesses.map((w) => ({
+          name: w.name,
+          severity: w.severity,
+          frequency: w.frequency,
+          pageRankScore: w.pageRankScore,
+          lastOccurrence: w.lastOccurrence.toISOString(),
+        })),
+      },
+    };
+
+    // Save to user cache
+    await setUserCache(userId, responsePayload);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -159,23 +221,7 @@ export async function GET(request: NextRequest) {
           createdAt: user.createdAt.toISOString(),
           apiKey,
         },
-        stats: {
-          lastSubmissionAt,
-          totalSubmissions,
-          acceptedSubmissions,
-          acceptanceRate: parseFloat(acceptanceRate.toFixed(1)),
-          uniqueProblems: uniqueProblems.length,
-          languageDistribution,
-          difficultyDistribution,
-          activityTimeline,
-          topWeaknesses: topWeaknesses.map((w) => ({
-            name: w.name,
-            severity: w.severity,
-            frequency: w.frequency,
-            pageRankScore: w.pageRankScore,
-            lastOccurrence: w.lastOccurrence.toISOString(),
-          })),
-        },
+        stats: responsePayload.stats,
       },
     });
   } catch (error) {
@@ -218,6 +264,9 @@ export async function PATCH(request: NextRequest) {
       },
       select: { id: true, email: true, name: true },
     });
+
+    // Invalidate Cache
+    await delUserCache(userId);
 
     return NextResponse.json({ success: true, data: { user: updated } });
   } catch (error) {

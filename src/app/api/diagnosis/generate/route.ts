@@ -6,6 +6,10 @@ import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
 import { generateAIDiagnosis, DIAGNOSIS_MODEL_VERSION } from '@/lib/diagnosis/generator';
 import { createFingerprint } from '@/lib/fingerprint/fingerprint';
 import type { SubmissionEvent } from '@/types';
+import { getAnalysisCache, setAnalysisCache, delAnalysisCache } from '@/lib/cache/analysis';
+import { acquireLock, releaseLock } from '@/lib/lock';
+import { rateLimit } from '@/lib/rate-limit';
+import { delRoadmapCache } from '@/lib/cache/roadmap';
 
 
 export async function OPTIONS(request: NextRequest) {
@@ -40,6 +44,15 @@ export async function POST(request: NextRequest) {
       );
     }
     const userId = payload.userId;
+
+    // Rate limiting: 10 requests per hour per user
+    const rateLimitResult = await rateLimit(userId, 10, 3600);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: 'TOO_MANY_REQUESTS', message: 'Analysis rate limit exceeded. Try again later.' } },
+        { status: 429 }
+      );
+    }
 
     let userQuery = '';
     let forceRegenerate = false;
@@ -148,8 +161,27 @@ export async function POST(request: NextRequest) {
     });
 
     let diagnosis: any = null;
+    const responseRecs: Array<{
+      strategyId: string;
+      name: string;
+      description: string;
+      estimatedTime: number;
+      priority: string | number;
+      practiceProblems: unknown[];
+    }> = [];
+    let aiDiagnosisPrimaryName = "";
+    let aiDiagnosisConfidence = 85;
+    let aiDiagnosisReasoning = "Identified gap area.";
 
-    if (!forceRegenerate) {
+    if (forceRegenerate) {
+      await delAnalysisCache(fingerprint);
+    } else {
+      // Check Redis Cache first
+      const cached = await getAnalysisCache(fingerprint);
+      if (cached) {
+        return NextResponse.json(cached);
+      }
+
       diagnosis = await prisma.diagnosisResult.findUnique({
         where: { fingerprint },
         include: {
@@ -160,6 +192,152 @@ export async function POST(request: NextRequest) {
 
       if (diagnosis && diagnosis.modelVersion !== DIAGNOSIS_MODEL_VERSION) {
         diagnosis = null;
+      }
+    }
+
+    // If still no diagnosis, acquire a lock and check DB again/generate AI
+    if (!diagnosis) {
+      const lockKey = `analysis:${fingerprint}`;
+      const acquired = await acquireLock(lockKey, 35000);
+      if (!acquired) {
+        // Lock not acquired, another request is generating AI for this fingerprint.
+        // Wait and check the database again.
+        let retries = 5;
+        while (retries > 0 && !diagnosis) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          diagnosis = await prisma.diagnosisResult.findUnique({
+            where: { fingerprint },
+            include: {
+              primaryWeakness: true,
+              recommendations: { include: { strategy: true } }
+            }
+          });
+          retries--;
+        }
+        if (diagnosis && diagnosis.modelVersion !== DIAGNOSIS_MODEL_VERSION) {
+          diagnosis = null;
+        }
+      }
+
+      if (!diagnosis) {
+        try {
+          // 5. Generate AI Diagnosis (pass userQuery so Groq can answer it directly)
+          const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores, userQuery || undefined);
+          aiDiagnosisPrimaryName = aiDiagnosis.primaryWeaknessName;
+          aiDiagnosisConfidence = aiDiagnosis.confidence;
+          aiDiagnosisReasoning = aiDiagnosis.reasoningChain;
+
+          // 6. Save primary weakness in Prisma PostgreSQL
+          const primaryWeaknessNode = await prisma.systemicWeakness.upsert({
+            where: { name: aiDiagnosis.primaryWeaknessId },
+            update: {},
+            create: {
+              name: aiDiagnosis.primaryWeaknessId,
+              type: aiDiagnosis.primaryWeaknessId,
+              severity: 'high',
+              confidence: aiDiagnosis.confidence / 100
+            }
+          });
+
+          let created;
+          const existingByFingerprint = await prisma.diagnosisResult.findUnique({
+            where: { fingerprint }
+          });
+
+          if (existingByFingerprint) {
+            created = await prisma.diagnosisResult.update({
+              where: { fingerprint },
+              data: {
+                submissionId: latestFailure.id,
+                primaryWeaknessId: primaryWeaknessNode.id,
+                modelVersion: DIAGNOSIS_MODEL_VERSION,
+                diagnosisJson: aiDiagnosis as any,
+                progressMetrics: {
+                  confidence: aiDiagnosis.confidence,
+                  reasoningChain: aiDiagnosis.reasoningChain
+                }
+              }
+            });
+          } else {
+            created = await prisma.diagnosisResult.upsert({
+              where: { submissionId: latestFailure.id },
+              update: {
+                primaryWeaknessId: primaryWeaknessNode.id,
+                fingerprint,
+                codeHash,
+                modelVersion: DIAGNOSIS_MODEL_VERSION,
+                diagnosisJson: aiDiagnosis as any,
+                progressMetrics: {
+                  confidence: aiDiagnosis.confidence,
+                  reasoningChain: aiDiagnosis.reasoningChain
+                }
+              },
+              create: {
+                userId,
+                submissionId: latestFailure.id,
+                primaryWeaknessId: primaryWeaknessNode.id,
+                fingerprint,
+                codeHash,
+                modelVersion: DIAGNOSIS_MODEL_VERSION,
+                diagnosisJson: aiDiagnosis as any,
+                progressMetrics: {
+                  confidence: aiDiagnosis.confidence,
+                  reasoningChain: aiDiagnosis.reasoningChain
+                }
+              }
+            });
+          }
+
+          diagnosis = await prisma.diagnosisResult.findUnique({
+            where: { id: created.id },
+            include: {
+              primaryWeakness: true,
+              recommendations: { include: { strategy: true } },
+            },
+          });
+
+          // Clear existing recommendations in case of overwrite
+          await prisma.learningRecommendation.deleteMany({
+            where: { diagnosisId: diagnosis.id }
+          });
+
+          for (const rec of aiDiagnosis.learningRecommendations) {
+            const strategy = await prisma.learningStrategy.create({
+              data: {
+                weaknessId: primaryWeaknessNode.id,
+                name: rec.name,
+                description: rec.description,
+                estimatedTime: rec.estimatedTime,
+                priority: rec.priority,
+                practiceProblems: rec.practiceProblems.map(p => p.problemSlug)
+              }
+            });
+
+            await prisma.learningRecommendation.create({
+              data: {
+                diagnosisId: created.id,
+                strategyId: strategy.id,
+                completed: false
+              }
+            });
+
+            responseRecs.push({
+              strategyId: strategy.id,
+              name: rec.name,
+              description: rec.description,
+              estimatedTime: Math.round((rec.estimatedTime / 60) * 10) / 10,
+              priority: rec.priority,
+              practiceProblems: rec.practiceProblems.map(p => ({
+                problemSlug: p.problemSlug,
+                title: p.title,
+                difficulty: p.difficulty,
+                reasoning: `Recommended to practice the pattern: ${rec.name}`
+              }))
+            });
+          }
+        } finally {
+          await releaseLock(lockKey);
+        }
       }
     }
 
@@ -177,17 +355,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const responseRecs: Array<{
-      strategyId: string;
-      name: string;
-      description: string;
-      estimatedTime: number;
-      priority: string | number;
-      practiceProblems: unknown[];
-    }> = [];
-    let aiDiagnosisPrimaryName = "";
-    let aiDiagnosisConfidence = 85;
-    let aiDiagnosisReasoning = "Identified gap area.";
+
 
     if (diagnosis) {
       aiDiagnosisPrimaryName = diagnosis.primaryWeakness.name;
@@ -206,121 +374,6 @@ export async function POST(request: NextRequest) {
             title: slug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
             difficulty: 'Medium' as const,
             reasoning: `Recommended to practice the pattern: ${rec.strategy.name}`
-          }))
-        });
-      }
-    } else {
-      // 5. Generate AI Diagnosis (pass userQuery so Groq can answer it directly)
-      const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores, userQuery || undefined);
-      aiDiagnosisPrimaryName = aiDiagnosis.primaryWeaknessName;
-      aiDiagnosisConfidence = aiDiagnosis.confidence;
-      aiDiagnosisReasoning = aiDiagnosis.reasoningChain;
-
-      // 6. Save primary weakness in Prisma PostgreSQL
-      const primaryWeaknessNode = await prisma.systemicWeakness.upsert({
-        where: { name: aiDiagnosis.primaryWeaknessId },
-        update: {},
-        create: {
-          name: aiDiagnosis.primaryWeaknessId,
-          type: aiDiagnosis.primaryWeaknessId,
-          severity: 'high',
-          confidence: aiDiagnosis.confidence / 100
-        }
-      });
-
-      let created;
-      const existingByFingerprint = await prisma.diagnosisResult.findUnique({
-        where: { fingerprint }
-      });
-
-      if (existingByFingerprint) {
-        created = await prisma.diagnosisResult.update({
-          where: { fingerprint },
-          data: {
-            submissionId: latestFailure.id,
-            primaryWeaknessId: primaryWeaknessNode.id,
-            modelVersion: DIAGNOSIS_MODEL_VERSION,
-            diagnosisJson: aiDiagnosis as any,
-            progressMetrics: {
-              confidence: aiDiagnosis.confidence,
-              reasoningChain: aiDiagnosis.reasoningChain
-            }
-          }
-        });
-      } else {
-        created = await prisma.diagnosisResult.upsert({
-          where: { submissionId: latestFailure.id },
-          update: {
-            primaryWeaknessId: primaryWeaknessNode.id,
-            fingerprint,
-            codeHash,
-            modelVersion: DIAGNOSIS_MODEL_VERSION,
-            diagnosisJson: aiDiagnosis as any,
-            progressMetrics: {
-              confidence: aiDiagnosis.confidence,
-              reasoningChain: aiDiagnosis.reasoningChain
-            }
-          },
-          create: {
-            userId,
-            submissionId: latestFailure.id,
-            primaryWeaknessId: primaryWeaknessNode.id,
-            fingerprint,
-            codeHash,
-            modelVersion: DIAGNOSIS_MODEL_VERSION,
-            diagnosisJson: aiDiagnosis as any,
-            progressMetrics: {
-              confidence: aiDiagnosis.confidence,
-              reasoningChain: aiDiagnosis.reasoningChain
-            }
-          }
-        });
-      }
-
-      diagnosis = await prisma.diagnosisResult.findUnique({
-        where: { id: created.id },
-        include: {
-          primaryWeakness: true,
-          recommendations: { include: { strategy: true } },
-        },
-      });
-
-      // Clear existing recommendations in case of overwrite
-      await prisma.learningRecommendation.deleteMany({
-        where: { diagnosisId: diagnosis.id }
-      });
-
-      for (const rec of aiDiagnosis.learningRecommendations) {
-        const strategy = await prisma.learningStrategy.create({
-          data: {
-            weaknessId: primaryWeaknessNode.id,
-            name: rec.name,
-            description: rec.description,
-            estimatedTime: rec.estimatedTime,
-            priority: rec.priority,
-            practiceProblems: rec.practiceProblems.map(p => p.problemSlug)
-          }
-        });
-
-        await prisma.learningRecommendation.create({
-          data: {
-            diagnosisId: created.id,
-            strategyId: strategy.id,
-            completed: false
-          }
-        });
-
-        responseRecs.push({
-          strategyId: strategy.id,
-          name: rec.name,
-          description: rec.description,
-          estimatedTime: Math.round((rec.estimatedTime / 60) * 10) / 10, // convert minutes to hours for API spec
-          priority: rec.priority,
-          practiceProblems: rec.practiceProblems.map(p => ({
-            problemSlug: p.problemSlug,
-            title: p.title,
-            difficulty: p.difficulty,
-            reasoning: `Recommended to practice the pattern: ${rec.name}`
           }))
         });
       }
@@ -425,7 +478,7 @@ export async function POST(request: NextRequest) {
       frequency: ws.frequency
     }));
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       data: {
         analysis,
@@ -434,7 +487,6 @@ export async function POST(request: NextRequest) {
         reasoningChain,
         similarFailures: similarForUi,
         recommendations: uiRecommendations,
-        // Used by the UI to trigger FailureExplanation generation
         latestSubmissionId: latestFailure.eventId,
       },
       diagnosis: {
@@ -459,7 +511,14 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-    });
+    };
+
+    // Save to Redis Cache
+    await setAnalysisCache(fingerprint, responsePayload);
+    // Invalidate roadmap cache due to weakness graph changes
+    await delRoadmapCache(userId);
+
+    return NextResponse.json(responsePayload);
 
   } catch (error) {
     console.error('❌ POST generate diagnosis error:', error);

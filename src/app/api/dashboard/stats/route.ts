@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
+import { getDashboardCache, setDashboardCache } from '@/lib/cache/dashboard';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +16,15 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = payload.userId;
+
+    // Check Redis Cache
+    const cached = await getDashboardCache(userId);
+    if (cached) {
+      return NextResponse.json({
+        success: true,
+        data: cached
+      });
+    }
 
     // Fetch all counts in parallel
     const [totalSubmissions, acceptedSubmissions, weaknesses, recentSubmissions] = await Promise.all([
@@ -32,26 +42,31 @@ export async function GET(request: NextRequest) {
     const acceptanceRate =
       totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
 
+    const responsePayload = {
+      stats: {
+        totalSubmissions,
+        acceptedSubmissions,
+        weaknesses,
+        acceptanceRate,
+      },
+      recentSubmissions: recentSubmissions.map((s) => ({
+        id: s.id,
+        problemTitle: s.problem?.title ?? 'Unknown Problem',
+        problemSlug: s.problem?.slug ?? '',
+        difficulty: s.problem?.difficulty ?? 'Unknown',
+        status: s.status,
+        language: s.language,
+        timestamp: s.timestamp.toISOString(),
+        attemptNumber: s.attemptNumber,
+      })),
+    };
+
+    // Save to Cache
+    await setDashboardCache(userId, responsePayload);
+
     return NextResponse.json({
       success: true,
-      data: {
-        stats: {
-          totalSubmissions,
-          acceptedSubmissions,
-          weaknesses,
-          acceptanceRate,
-        },
-        recentSubmissions: recentSubmissions.map((s) => ({
-          id: s.id,
-          problemTitle: s.problem?.title ?? 'Unknown Problem',
-          problemSlug: s.problem?.slug ?? '',
-          difficulty: s.problem?.difficulty ?? 'Unknown',
-          status: s.status,
-          language: s.language,
-          timestamp: s.timestamp,
-          attemptNumber: s.attemptNumber,
-        })),
-      },
+      data: responsePayload,
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);

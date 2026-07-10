@@ -1,4 +1,4 @@
-import type { CodeSignal, BehavioralSignal, RootCauseType, RootCauseHypothesis, SubmissionStatus } from '@/types';
+import type { RootCauseType, RootCauseHypothesis, SubmissionStatus } from '@/types';
 
 export interface BayesianEvidence {
   hasBoundaryDiff: boolean;

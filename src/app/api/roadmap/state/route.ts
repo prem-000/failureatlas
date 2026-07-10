@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
 import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/logger';
+import { getRoadmapCache, setRoadmapCache, delRoadmapCache } from '@/lib/cache/roadmap';
 
 async function authenticate(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get('authorization');
@@ -30,9 +31,19 @@ export async function GET(request: NextRequest) {
 
     const topic = new URL(request.url).searchParams.get('topic') || 'binary-search';
 
+    // Check Redis Cache
+    const cached = await getRoadmapCache(userId, topic);
+    if (cached) {
+      return NextResponse.json({ success: true, state: cached });
+    }
+
     const state = await prisma.roadmapState.findUnique({
       where: { userId_topic: { userId, topic } },
     });
+
+    if (state) {
+      await setRoadmapCache(userId, topic, state);
+    }
 
     return NextResponse.json({ success: true, state: state || null });
   } catch (error) {
@@ -72,6 +83,9 @@ export async function POST(request: NextRequest) {
       update: { currentLevel: currentLevel ?? 1, levels: (levels ?? []) as any },
       create: { userId, topic, currentLevel: currentLevel ?? 1, levels: (levels ?? []) as any },
     });
+
+    // Invalidate Cache
+    await delRoadmapCache(userId);
 
     return NextResponse.json({ success: true, state });
   } catch (error) {

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
 import { myersDiff } from '@/lib/analysis/myers-diff';
 import { createFingerprint } from '@/lib/fingerprint/fingerprint';
+import { getAnalysisCache, setAnalysisCache } from '@/lib/cache/analysis';
 
 // GET /api/submissions/[id]
 // Returns full detail for a single submission including evidence, hypotheses, diagnosis,
@@ -89,17 +90,26 @@ export async function GET(
         status: submission.status,
         code: submission.code
       });
-      diagnosisResult = await prisma.diagnosisResult.findUnique({
-        where: { fingerprint },
-        include: {
-          primaryWeakness: {
-            include: { strategies: true },
+
+      // Check Redis Cache
+      diagnosisResult = await getAnalysisCache(fingerprint);
+
+      if (!diagnosisResult) {
+        diagnosisResult = await prisma.diagnosisResult.findUnique({
+          where: { fingerprint },
+          include: {
+            primaryWeakness: {
+              include: { strategies: true },
+            },
+            recommendations: {
+              include: { strategy: true },
+            },
           },
-          recommendations: {
-            include: { strategy: true },
-          },
-        },
-      });
+        });
+        if (diagnosisResult) {
+          await setAnalysisCache(fingerprint, diagnosisResult);
+        }
+      }
     }
 
     return NextResponse.json({

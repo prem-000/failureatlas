@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { X, AlertTriangle, Zap, BookOpen, TrendingDown, Clock, CheckCircle, Activity } from 'lucide-react';
-import type { FailureData, WeaknessData } from '@/hooks/usePhase3Queries';
+import { X, AlertTriangle, Zap, BookOpen, Clock, CheckCircle, Activity } from 'lucide-react';
+import type { FailureData } from '@/hooks/usePhase3Queries';
 import type { Node, Edge } from 'reactflow';
 
 interface WeaknessDrawerProps {

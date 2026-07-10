@@ -17,7 +17,7 @@ import ReactFlow, {
   MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { X, Award, AlertCircle, FileCode, CheckCircle2 } from 'lucide-react';
+import { X, Award, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 // ─── Custom Interactive Node ─────────────────────────────────────────────────
 function KnowledgeNode({ data }: { data: { label: string; topic: string; level: number; status: 'mastered' | 'warning' | 'critical' } }) {

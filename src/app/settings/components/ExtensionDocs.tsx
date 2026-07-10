@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
-  Search, CheckCircle2, Circle, Download, ExternalLink, 
-  ChevronRight, AlertCircle, Info, Lock, Key, Shield, ShieldAlert,
-  Terminal, Puzzle, LayoutGrid, CheckSquare, Settings2, Code, Zap,
+  Search, CheckCircle2, Circle, Download, AlertCircle, Info, Key, Shield, ShieldAlert,
+  Terminal, Puzzle, LayoutGrid, CheckSquare, Code, Zap,
   Check, Copy, ChevronDown, ChevronUp
 } from 'lucide-react';
 
@@ -513,7 +512,7 @@ export function ExtensionDocs() {
             
             <Accordion title="Permission issue">
               <p><strong>Cause:</strong> LeetCode access was denied during installation.</p>
-              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Open extension details in Chrome and ensure "Site access" is granted for leetcode.com.</p>
+              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Open extension details in Chrome and ensure &quot;Site access&quot; is granted for leetcode.com.</p>
             </Accordion>
           </div>
         </DocSection>
@@ -527,7 +526,7 @@ export function ExtensionDocs() {
               Yes, the extension is fully compatible with LeetCode contests and will track your practice sessions in real-time.
             </Accordion>
             <Accordion title="Can I disable tracking temporarily?">
-              Yes. You can click the extension icon and click "Disconnect" to pause tracking at any time, or toggle it off in chrome://extensions.
+              Yes. You can click the extension icon and click &quot;Disconnect&quot; to pause tracking at any time, or toggle it off in chrome://extensions.
             </Accordion>
             <Accordion title="Does it support Microsoft Edge?">
               Yes. Since Microsoft Edge is built on Chromium, you can install the extension exactly the same way using Developer Mode.
@@ -543,10 +542,10 @@ export function ExtensionDocs() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: 16 }}>
             <Callout type="info" title="storage">
-              Required to securely store your API key locally in the browser so you don't have to enter it every time.
+              Required to securely store your API key locally in the browser so you don&apos;t have to enter it every time.
             </Callout>
             <Callout type="info" title="activeTab & scripting">
-              Required to detect when you are on a LeetCode problem page and to inject the script that listens for the "Submit" button click.
+              Required to detect when you are on a LeetCode problem page and to inject the script that listens for the &quot;Submit&quot; button click.
             </Callout>
             <Callout type="info" title="webNavigation">
               Required to re-initialize the monitoring script when LeetCode performs a client-side navigation (SPA routing) without a full page reload.

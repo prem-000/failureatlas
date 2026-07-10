@@ -19,6 +19,8 @@ if (!process.env.NEXTAUTH_URL) {
   process.env.NEXTAUTH_URL = 'http://localhost:3000';
 }
 
+import withBundleAnalyzer from '@next/bundle-analyzer';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -33,4 +35,6 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default process.env.ANALYZE === 'true'
+  ? withBundleAnalyzer({ enabled: true })(nextConfig)
+  : nextConfig;

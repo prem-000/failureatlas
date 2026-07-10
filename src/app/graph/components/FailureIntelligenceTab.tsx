@@ -8,7 +8,7 @@ import ReactFlow, {
   MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { BrainCircuit, Layers, GitFork, Loader2, Maximize2, Minimize2, Target } from 'lucide-react';
+import { BrainCircuit, Layers, Loader2, Maximize2, Minimize2, Target } from 'lucide-react';
 import { FailureNode } from './FailureNode';
 import { WeaknessDrawer } from './WeaknessDrawer';
 import { SearchBar } from './SearchBar';

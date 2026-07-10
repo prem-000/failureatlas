@@ -7,8 +7,7 @@
  */
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ShieldAlert, CheckCircle2, ChevronRight, FileCode, Play, AlertCircle, HelpCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function PlatformComparison() {
   const [activeTab, setActiveTab] = useState<'leetcode' | 'praxis'>('praxis');

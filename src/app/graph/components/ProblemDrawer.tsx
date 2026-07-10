@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, CheckCircle, XCircle, AlertTriangle, Clock, Code2, Lightbulb, ChevronRight, ExternalLink } from 'lucide-react';
+import { X, AlertTriangle, Lightbulb, ChevronRight, ExternalLink } from 'lucide-react';
 import type { RoadmapProblem } from '@/hooks/usePhase3Queries';
 import type { FailureData } from '@/hooks/usePhase3Queries';
 

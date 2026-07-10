@@ -4,40 +4,14 @@ import { useUpdateProfile, useUserProfile, useUserPreferences, useUpdateUserPref
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { ExtensionDocs } from './components/ExtensionDocs';
+import { SectionCard } from '@/components/ui/SectionCard';
+import { StatTile } from './components/StatTile';
+import { MiniBar } from './components/MiniBar';
+import { ActivityHeatmap } from './components/ActivityHeatmap';
+import { ApiKeyField } from './components/ApiKeyField';
 
 type UserProfile = ProfileData['user'];
 type Stats = ProfileData['stats'];
-
-// ─── Sub-components ────────────────────────────────────────────────────────────
-function SectionCard({ title, accent = '#ff5f52', children }: { title: string; accent?: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: '#191919', border: '1px solid #1f1f1f', borderRadius: 12, overflow: 'hidden' }}>
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid #1f1f1f', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 3, height: 16, background: accent, borderRadius: 2 }} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#e4e4e7' }}>{title}</span>
-      </div>
-      <div>{children}</div>
-    </div>
-  );
-}
-
-function StatTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: 10, padding: '16px 20px' }}>
-      <div style={{ fontSize: 10, color: '#52525b', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: '#ff5f52', letterSpacing: '-0.03em' }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: '#52525b', marginTop: 4 }}>{sub}</div>}
-    </div>
-  );
-}
-
-function MiniBar({ value, max, color }: { value: number; max: number; color: string }) {
-  return (
-    <div style={{ height: 6, background: '#2a2a2a', borderRadius: 3, overflow: 'hidden', flex: 1 }}>
-      <div style={{ width: `${max > 0 ? (value / max) * 100 : 0}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.6s' }} />
-    </div>
-  );
-}
 
 const LANGUAGE_COLORS: Record<string, string> = {
   python: '#3b82f6', python3: '#3b82f6',
@@ -48,135 +22,6 @@ const LANGUAGE_COLORS: Record<string, string> = {
 };
 const DIFFICULTY_COLORS: Record<string, string> = { Easy: '#22c55e', Medium: '#f59e0b', Hard: '#ef4444' };
 
-// ─── Activity Heatmap ──────────────────────────────────────────────────────────
-function ActivityHeatmap({ data }: { data: Array<{ date: string; count: number }> }) {
-  const max = Math.max(...data.map(d => d.count), 1);
-  const days: string[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    days.push(d.toISOString().split('T')[0]);
-  }
-  const countMap = new Map(data.map(d => [d.date, d.count]));
-
-  return (
-    <div style={{ padding: '16px 20px' }}>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        {days.map(day => {
-          const count = countMap.get(day) || 0;
-          const intensity = count > 0 ? Math.max(0.2, count / max) : 0;
-          return (
-            <div
-              key={day}
-              title={`${day}: ${count} submission${count !== 1 ? 's' : ''}`}
-              style={{
-                width: 20, height: 20, borderRadius: 4,
-                background: count > 0 ? `rgba(255,95,82,${intensity})` : '#1a1a1a',
-                border: '1px solid #1f1f1f',
-                cursor: 'default',
-                transition: 'background 0.2s',
-              }}
-            />
-          );
-        })}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-        <span style={{ fontSize: 10, color: '#3f3f46' }}>30 days ago</span>
-        <span style={{ fontSize: 10, color: '#3f3f46' }}>Today</span>
-      </div>
-    </div>
-  );
-}
-
-// ─── API Key Field — with Regenerate button ────────────────────────────────────
-function ApiKeyField({ apiKey, onRegenerate }: { apiKey: string | null; onRegenerate: () => void }) {
-  const [revealed, setRevealed] = useState(false);
-  const [copied, setCopied]     = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
-
-  const copy = async () => {
-    if (!apiKey) return;
-    await navigator.clipboard.writeText(apiKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleRegenerateClick = () => {
-    if (!confirming) {
-      // First click: show confirmation state
-      setConfirming(true);
-      // Auto-cancel after 5 seconds
-      setTimeout(() => setConfirming(false), 5000);
-      return;
-    }
-    // Second click: actually regenerate
-    setConfirming(false);
-    setRegenerating(true);
-    onRegenerate();
-    setTimeout(() => setRegenerating(false), 2000);
-  };
-
-  const masked = apiKey ? `${apiKey.slice(0, 8)}${'•'.repeat(24)}` : 'No API key generated';
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Key display row */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{
-          flex: 1, background: '#111111', border: '1px solid #2a2a2a', borderRadius: 8,
-          padding: '10px 14px', fontFamily: 'monospace', fontSize: 12, color: '#a1a1aa',
-          letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {revealed ? apiKey || 'None' : masked}
-        </div>
-        <button
-          onClick={() => setRevealed(r => !r)}
-          title={revealed ? 'Hide key' : 'Reveal key'}
-          style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '9px 14px', color: '#71717a', cursor: 'pointer', fontSize: 13 }}
-        >
-          {revealed ? '🙈' : '👁'}
-        </button>
-        <button
-          onClick={copy}
-          disabled={!apiKey}
-          style={{
-            background: copied ? '#052e16' : '#1a1a1a',
-            border: `1px solid ${copied ? '#166534' : '#2a2a2a'}`,
-            borderRadius: 7, padding: '9px 14px',
-            color: copied ? '#22c55e' : '#71717a',
-            cursor: 'pointer', fontSize: 12, transition: 'all 0.2s',
-          }}
-        >
-          {copied ? '✓ Copied' : 'Copy'}
-        </button>
-      </div>
-
-      {/* Regenerate button row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          onClick={handleRegenerateClick}
-          disabled={regenerating}
-          style={{
-            background: confirming ? '#450a0a' : '#1a1a1a',
-            border: `1px solid ${confirming ? '#991b1b' : '#2a2a2a'}`,
-            borderRadius: 7, padding: '8px 16px',
-            color: confirming ? '#ef4444' : '#71717a',
-            cursor: 'pointer', fontSize: 12, fontWeight: 600,
-            transition: 'all 0.2s',
-          }}
-        >
-          {regenerating ? '⟳ Regenerating…' : confirming ? '⚠ Click again to confirm' : '↺ Regenerate Key'}
-        </button>
-        {confirming && (
-          <span style={{ fontSize: 11, color: '#ef4444' }}>
-            Your current key will stop working immediately.
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── Profile Editor ────────────────────────────────────────────────────────────
 function ProfileEditor({ user }: { user: UserProfile }) {
