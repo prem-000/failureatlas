@@ -30,7 +30,7 @@ import { Logo } from '@/components/ui/logo';
 gsap.registerPlugin(ScrollTrigger);
 
 // ─── Dynamic Imports for Heavy Components ─────────────────────────────────────
-const HeroCanvas = dynamic(() => import('@/components/ui/HeroCanvas'), {
+const RobotMascot = dynamic(() => import('@/components/hero/RobotMascot'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full min-h-[300px] md:min-h-[450px] flex items-center justify-center bg-surface/20 rounded-2xl border border-white/5">
@@ -285,7 +285,7 @@ export default function Home() {
 
           {/* Hero Right 3D Visual */}
           <div ref={heroCanvasContainerRef} className="lg:col-span-5 w-full aspect-square lg:aspect-auto h-full flex justify-center items-center">
-            <HeroCanvas />
+            <RobotMascot />
           </div>
         </div>
       </header>
