@@ -1,8 +1,8 @@
 'use client';
 
-import { BrainCircuit, Map, GitFork, BookOpen, Bug, type LucideIcon } from 'lucide-react';
+import { Map, GitFork, Bug, type LucideIcon } from 'lucide-react';
 
-export type TabId = 'roadmap' | 'knowledge' | 'intelligence' | 'workspace' | 'replay';
+export type TabId = 'roadmap' | 'knowledge' | 'replay';
 
 interface Tab {
   id: TabId;
@@ -14,11 +14,9 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { id: 'roadmap',      label: 'Roadmap',              icon: Map,          description: 'Adaptive LeetCode practice plan' },
-  { id: 'knowledge',    label: 'Knowledge Graph',       icon: GitFork,      description: 'Concept relationships' },
-  { id: 'intelligence', label: 'Learning Intelligence', icon: BrainCircuit, description: 'Weakness story explorer', badge: 'Core' },
-  { id: 'workspace',    label: 'Workspace',             icon: BookOpen,     description: 'Notes, cheat sheets, journal' },
-  { id: 'replay',       label: 'Failure Replay',        icon: Bug,          description: 'Counter-example discovery engine', badge: 'New', badgeColor: '#ef4444' },
+  { id: 'roadmap',   label: 'Roadmap',        icon: Map,     description: 'Adaptive LeetCode practice plan' },
+  { id: 'knowledge', label: 'Knowledge Graph', icon: GitFork, description: 'Concept relationships' },
+  { id: 'replay',    label: 'Failure Replay',  icon: Bug,     description: 'Counter-example discovery engine', badge: 'New', badgeColor: '#ef4444' },
 ];
 
 interface TabBarProps {
@@ -142,7 +140,6 @@ export function TabBar({ activeTab, onChange }: TabBarProps) {
         }
         @media (max-width: 767px) {
           .tab-btn { padding: 5px 10px; font-size: 12px; }
-          .tab-tagline { display: none !important; }
         }
       `}</style>
 
@@ -171,23 +168,6 @@ export function TabBar({ activeTab, onChange }: TabBarProps) {
             </button>
           );
         })}
-      </div>
-
-      {/* Tagline */}
-      <div className="tab-tagline" style={{
-        fontSize: '11px',
-        color: '#3f3f46',
-        fontWeight: 600,
-        letterSpacing: '0.06em',
-        textTransform: 'uppercase',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        flexShrink: 0,
-        paddingLeft: 12,
-      }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e', display: 'inline-block' }} />
-        Learning Intelligence OS
       </div>
     </header>
   );

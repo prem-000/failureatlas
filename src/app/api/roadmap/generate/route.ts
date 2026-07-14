@@ -150,6 +150,8 @@ CRITICAL EDGE RULES:
         weaknessTarget: parsed.weaknessTarget || ''
       };
     } catch (e) {
+      console.error("RAW ROADMAP GENERATION RESPONSE:");
+      console.error(JSON.stringify(raw));
       logger.error('Groq roadmap parsing failed', { error: e });
       throw new Error('Failed to parse graph output');
     }

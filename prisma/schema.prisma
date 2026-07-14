@@ -25,6 +25,7 @@ model User {
   roadmapStates RoadmapState[]
   preferences   UserPreferences?
   dailyMissions DailyMission[]
+  learningSheets LearningSheet[]
 
   @@map("users")
 }
@@ -411,4 +412,29 @@ model FailureExplanation {
 
   @@index([submissionId])
   @@map("failure_explanations")
+}
+
+// ─── Learning Sheets (Gemini-powered structured content) ──────────────────────
+
+model LearningSheet {
+  id          String   @id @default(cuid())
+  userId      String?                  // Nullable: global sheets are null, user bookmarked sheets have their userId
+  topic       String
+  slug        String   @unique
+  category    String
+  difficulty  String
+  language    String   @default("English")
+  version     Int      @default(1)
+  json        Json
+  hash        String
+  generatedBy String   // e.g. "gemini-2.5-flash"
+  bookmarked  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topic, difficulty, language, version])
+  @@index([category])
+  @@index([slug])
+  @@map("learning_sheets")
 }

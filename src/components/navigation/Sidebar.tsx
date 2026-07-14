@@ -9,6 +9,7 @@ import {
   Stethoscope,
   Settings,
   LogOut,
+  BookOpen,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Logo } from '@/components/ui/logo';
@@ -18,8 +19,10 @@ const NAV_ITEMS = [
   { href: '/problems',  icon: ListChecks,      label: 'Problems'   },
   { href: '/graph',     icon: GitFork,          label: 'Graph'      },
   { href: '/diagnosis', icon: Stethoscope,      label: 'Diagnosis'  },
+  { href: '/workspace', icon: BookOpen,         label: 'Workspace'  },
   { href: '/settings',  icon: Settings,         label: 'Settings'   },
 ];
+
 
 interface SidebarProps {
   user?: { name?: string | null; email: string; image?: string | null };

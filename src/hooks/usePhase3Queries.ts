@@ -1,6 +1,4 @@
-'use client';
-
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api/client';
 
 // ─── Profile ───────────────────────────────────────────────────────────────────
@@ -52,58 +50,6 @@ export function useUpdateProfile() {
   });
 }
 
-// ─── Graph ─────────────────────────────────────────────────────────────────────
-export interface SubgraphData {
-  nodes: Array<{
-    id: string;
-    type: string;
-    position: { x: number; y: number };
-    data: { label: string; nodeType: string; properties: Record<string, unknown> };
-  }>;
-  edges: Array<{
-    id: string;
-    source: string;
-    target: string;
-    label?: string;
-    type?: string;
-    animated?: boolean;
-    data?: Record<string, unknown>;
-    style?: Record<string, unknown>;
-  }>;
-  stats: {
-    problems: number;
-    failures: number;
-    weaknesses: number;
-    strategies: number;
-  };
-}
-
-export function useGraphSubgraph(limit = 300) {
-  return useQuery({
-    queryKey: ['graph', 'subgraph', limit],
-    queryFn: () =>
-      apiFetch<{ success: boolean; data: SubgraphData }>(
-        `/api/graph/subgraph?limit=${limit}`
-      ).then((r) => r.data),
-  });
-}
-
-// ─── Weaknesses ────────────────────────────────────────────────────────────────
-export interface WeaknessData {
-  id: string;
-  name: string;
-  pageRankScore: number;
-  frequency: number;
-  description: string;
-}
-
-export function useGraphWeaknesses(limit = 10) {
-  return useQuery({
-    queryKey: ['graph', 'weaknesses', limit],
-    queryFn: () =>
-      apiFetch<WeaknessData[]>(`/api/graph/weaknesses?limit=${limit}`),
-  });
-}
 
 // ─── Failures ──────────────────────────────────────────────────────────────────
 export interface FailureData {
@@ -315,18 +261,57 @@ export function useDynamicKnowledgeGraph(query: string) {
   });
 }
 
-export function useDynamicCheatSheet(topic: string) {
+
+
+export function useLearningSheet(topic: string, difficulty: string, force: boolean = false) {
   return useQuery({
-    queryKey: ['cheatsheet', 'dynamic', topic],
+    queryKey: ['learning-sheet', topic, difficulty, force],
     enabled: !!topic,
     queryFn: () =>
-      apiFetch<{ success: boolean; data: { template: string; mistakes: string[]; complexity: any; keyInsights: string[] } }>('/api/cheatsheet/generate', {
+      apiFetch<{ success: boolean; data: any }>(`/api/learning-sheet/generate${force ? '?force=true' : ''}`, {
         method: 'POST',
-        body: JSON.stringify({ topic }),
+        body: JSON.stringify({ topic, difficulty }),
       }).then((r) => r.data),
-    staleTime: 5 * 60 * 1000,
+    staleTime: force ? 0 : Infinity, // If forcing, bypass react-query cache and fetch fresh
   });
 }
+
+export function useLearningSheetList(category?: string) {
+  return useQuery({
+    queryKey: ['learning-sheets', category],
+    queryFn: () =>
+      apiFetch<{ success: boolean; data: any[] }>(
+        `/api/learning-sheet${category ? `?category=${category}` : ''}`
+      ).then((r) => r.data),
+    staleTime: 30000,
+  });
+}
+
+export function useBookmarkedLearningSheets() {
+  return useQuery({
+    queryKey: ['learning-sheets', 'bookmarked'],
+    queryFn: () =>
+      apiFetch<{ success: boolean; data: any[] }>('/api/learning-sheet?bookmarked=true').then((r) => r.data),
+  });
+}
+
+export function useToggleBookmark() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ topic, difficulty, bookmarked }: { topic: string; difficulty: string; bookmarked: boolean }) =>
+      apiFetch<{ success: boolean; bookmarked: boolean }>('/api/learning-sheet/bookmark', {
+        method: 'POST',
+        body: JSON.stringify({ topic, difficulty, bookmarked }),
+      }),
+    onSuccess: (data, variables) => {
+      // Invalidate specific learning sheet cache
+      queryClient.invalidateQueries({ queryKey: ['learning-sheet', variables.topic, variables.difficulty] });
+      // Invalidate bookmarked sheets list
+      queryClient.invalidateQueries({ queryKey: ['learning-sheets', 'bookmarked'] });
+    },
+  });
+}
+
 
 // ─── Daily Coach Preferences ───────────────────────────────────────────────────
 

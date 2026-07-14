@@ -88,6 +88,8 @@ Respond with ONLY valid JSON in this exact format:
     try {
       graphData = JSON.parse(raw);
     } catch (e) {
+      console.error("RAW KNOWLEDGE GENERATION RESPONSE:");
+      console.error(JSON.stringify(raw));
       logger.error('Failed to parse Groq knowledge response', { raw });
       throw new Error('Failed to parse AI response');
     }

@@ -22,22 +22,12 @@ import { motion } from 'framer-motion';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from '@studio-freight/lenis';
-import { Menu, ArrowRight, ChevronRight, Terminal, Cpu, Activity } from 'lucide-react';
+import { Menu, ChevronRight, Terminal, Cpu, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/logo';
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
-
-// ─── Dynamic Imports for Heavy Components ─────────────────────────────────────
-const RobotMascot = dynamic(() => import('@/components/hero/RobotMascot'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full min-h-[300px] md:min-h-[450px] flex items-center justify-center bg-surface/20 rounded-2xl border border-white/5">
-      <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-    </div>
-  ),
-});
 
 const LiveDiagnosis = dynamic(() => import('@/components/ui/LiveDiagnosis'), {
   ssr: false,
@@ -83,8 +73,6 @@ const NAV_LINKS = [
 export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const heroTextRef = useRef<HTMLHeadingElement>(null);
-  const heroBtnRef = useRef<HTMLDivElement>(null);
-  const heroCanvasContainerRef = useRef<HTMLDivElement>(null);
   const architectureRef = useRef<HTMLDivElement>(null);
   const journeyRef = useRef<HTMLDivElement>(null);
 
@@ -124,26 +112,6 @@ export default function Home() {
           duration: 1.2,
           ease: 'power4.out',
           stagger: 0.15,
-        });
-      }
-
-      if (heroBtnRef.current) {
-        gsap.from(heroBtnRef.current, {
-          opacity: 0,
-          y: 20,
-          duration: 1,
-          delay: 0.8,
-          ease: 'power3.out',
-        });
-      }
-
-      if (heroCanvasContainerRef.current) {
-        gsap.from(heroCanvasContainerRef.current, {
-          opacity: 0,
-          scale: 0.95,
-          duration: 1.5,
-          delay: 0.4,
-          ease: 'power3.out',
         });
       }
 
@@ -238,56 +206,33 @@ export default function Home() {
       <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} navLinks={NAV_LINKS} />
 
       {/* ─── Section 1: Premium Hero (100vh) ─────────────────────────── */}
-      <header className="relative w-full min-h-[calc(100vh-76px)] flex flex-col justify-center max-w-7xl mx-auto px-6 md:px-8 xl:px-12 py-12 md:py-24">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
-          {/* Hero Left Info */}
-          <div className="lg:col-span-7 select-text text-left">
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] uppercase tracking-wider font-extrabold text-primary mb-6"
-            >
-              <Terminal size={12} className="animate-pulse" />
-              <span>Competitive Programming Growth Core</span>
-            </motion.div>
+      <header className="relative w-full min-h-[calc(100vh-76px)] flex flex-col justify-center items-center max-w-5xl mx-auto px-6 md:px-8 xl:px-12 py-12 md:py-24 text-center select-text">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] uppercase tracking-wider font-extrabold text-primary mb-8"
+        >
+          <Terminal size={12} className="animate-pulse" />
+          <span>Competitive Programming Growth Core</span>
+        </motion.div>
 
-            <h1
-              ref={heroTextRef}
-              className="font-extrabold tracking-tight text-white mb-6 leading-[1.02] overflow-hidden"
-              style={{ fontSize: 'clamp(36px, 6.8vw, 92px)' }}
-            >
-              <span className="hero-line block">Master the Patterns.</span>
-              <span className="hero-line block text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">
-                Solve Anything.
-              </span>
-            </h1>
+        <h1
+          ref={heroTextRef}
+          className="font-extrabold tracking-tight text-white mb-8 leading-[1.02] overflow-hidden"
+          style={{ fontSize: 'clamp(40px, 7.5vw, 96px)' }}
+        >
+          <span className="hero-line block">Master the Patterns.</span>
+          <span className="hero-line block text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">
+            Solve Anything.
+          </span>
+        </h1>
 
-            <p className="text-muted-foreground text-sm md:text-base xl:text-lg leading-relaxed max-w-lg mb-10">
-              Praxis explains <span className="text-white font-semibold">WHY</span> your code failed, not just <span className="text-white font-semibold">THAT</span> it failed. Target logical errors, identify boundary weaknesses, and conquer competitive coding.
-            </p>
-
-            <div ref={heroBtnRef} className="flex flex-col sm:flex-row items-center gap-4">
-              <Link href="/register" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto px-8 group">
-                  Create Free Account
-                  <ArrowRight size={15} className="ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-              <a href="#diagnosis" className="w-full sm:w-auto">
-                <Button variant="secondary" size="lg" className="w-full sm:w-auto px-8">
-                  View Live Demo
-                </Button>
-              </a>
-            </div>
-          </div>
-
-          {/* Hero Right 3D Visual */}
-          <div ref={heroCanvasContainerRef} className="lg:col-span-5 w-full aspect-square lg:aspect-auto h-full flex justify-center items-center">
-            <RobotMascot />
-          </div>
-        </div>
+        <p className="text-muted-foreground text-base md:text-lg xl:text-xl leading-relaxed max-w-3xl mb-12">
+          Praxis explains <span className="text-white font-semibold">WHY</span> your code failed, not just <span className="text-white font-semibold">THAT</span> it failed.
+          <br className="hidden md:inline" />{' '}
+          Identify logical errors, discover recurring weaknesses, and improve faster with personalized learning intelligence.
+        </p>
       </header>
 
       {/* ─── Section 2: Live Diagnosis Animation ────────────────────── */}
