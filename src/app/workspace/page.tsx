@@ -11,6 +11,8 @@ import {
   Sparkles,
   Loader2,
   AlertCircle,
+  FileText,
+  Layers,
 } from 'lucide-react';
 import {
   useGraphFailures,
@@ -20,11 +22,12 @@ import {
 } from '@/hooks/usePhase3Queries';
 import { searchTopics, getLevelsForTopic } from '@/lib/learning-sheet/topic-registry';
 import { LearningSheet as LearningSheetRenderer } from '@/components/learning-sheet/LearningSheet';
+import { PracticeQueue } from '@/components/workspace/PracticeQueue';
 import type { Difficulty, SheetCategory } from '@/types/learning-sheet';
 
 // ─── Sub-types & Constants ───────────────────────────────────────────────────
 
-type WorkspaceSection = 'learning-sheets' | 'journal' | 'bookmarks';
+type WorkspaceSection = 'practice-queue' | 'journal' | 'cheatsheets' | 'bookmarks';
 
 const DIFFICULTIES: Array<{ id: Difficulty; label: string; desc: string }> = [
   { id: 'fundamentals', label: 'Fundamentals', desc: 'Core concepts' },
@@ -46,7 +49,7 @@ export default function WorkspacePage() {
   const searchParams = useSearchParams();
 
   // ─── Navigation State ───
-  const [section, setSection] = useState<WorkspaceSection>('learning-sheets');
+  const [section, setSection] = useState<WorkspaceSection>('practice-queue');
 
   // ─── Bookmarks State ───
   const [bookmarks, setBookmarks] = useState<string[]>([]);
@@ -107,15 +110,19 @@ export default function WorkspacePage() {
 
   // Initialize section from query param if present
   useEffect(() => {
-    const sect = searchParams.get('section') as WorkspaceSection;
-    if (sect && ['learning-sheets', 'journal', 'bookmarks'].includes(sect)) {
-      setSection(sect);
+    const sect = searchParams.get('section') as any;
+    if (sect) {
+      if (sect === 'learning-sheets' || sect === 'cheatsheets') {
+        setSection('cheatsheets');
+      } else if (['practice-queue', 'journal', 'bookmarks'].includes(sect)) {
+        setSection(sect);
+      }
     }
     const queryTopic = searchParams.get('topic');
     if (queryTopic) {
       setSelectedTopic(queryTopic);
       setTopicQuery(queryTopic);
-      setSection('learning-sheets');
+      setSection('cheatsheets');
       setActiveSheetParams({
         topic: queryTopic,
         difficulty: 'interview',
@@ -243,9 +250,10 @@ export default function WorkspacePage() {
           `}</style>
 
           {[
-            { id: 'learning-sheets' as WorkspaceSection, label: 'Learning Sheets', icon: BookOpen },
-            { id: 'journal' as WorkspaceSection, label: 'Practice Journal', icon: Clock },
-            { id: 'bookmarks' as WorkspaceSection, label: 'Bookmarks', icon: Bookmark },
+            { id: 'practice-queue' as WorkspaceSection, label: 'Practice Queue', desc: 'Revise solved problems', icon: Layers },
+            { id: 'journal' as WorkspaceSection, label: 'Practice Journal', desc: 'Analyze failed submissions', icon: BookOpen },
+            { id: 'cheatsheets' as WorkspaceSection, label: 'Cheatsheets', desc: 'AI learning sheets', icon: FileText },
+            { id: 'bookmarks' as WorkspaceSection, label: 'Bookmarks', desc: 'Bookmarked content', icon: Bookmark },
           ].map((item) => {
             const Icon = item.icon;
             const isActive = section === item.id;
@@ -257,22 +265,25 @@ export default function WorkspacePage() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  padding: '10px 14px',
-                  borderRadius: 10,
+                  gap: 12,
+                  padding: '12px 14px',
+                  borderRadius: 12,
                   border: 'none',
                   background: isActive ? 'rgba(255,95,82,0.08)' : 'transparent',
                   color: isActive ? '#ff5f52' : '#71717a',
-                  fontSize: '13px',
-                  fontWeight: isActive ? 700 : 600,
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 150ms',
                 }}
                 className="flex-1 md:flex-initial"
               >
-                <Icon size={16} strokeWidth={isActive ? 2.3 : 1.8} />
-                <span>{item.label}</span>
+                <Icon size={18} strokeWidth={isActive ? 2.3 : 1.8} style={{ color: isActive ? '#ff5f52' : '#52525b', flexShrink: 0 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+                  <span style={{ fontSize: '13px', fontWeight: isActive ? 800 : 600, color: isActive ? '#ff5f52' : '#e4e4e7', lineHeight: 1 }}>{item.label}</span>
+                  <span style={{ fontSize: '10px', color: isActive ? 'rgba(255,95,82,0.7)' : '#52525b', fontWeight: 500, lineHeight: 1 }} className="hidden md:inline">
+                    {item.desc}
+                  </span>
+                </div>
               </button>
             );
           })}
@@ -289,8 +300,13 @@ export default function WorkspacePage() {
         >
 
 
-          {/* ── SECTION: LEARNING SHEETS ── */}
-          {section === 'learning-sheets' && (
+          {/* ── SECTION: PRACTICE QUEUE ── */}
+          {section === 'practice-queue' && (
+            <PracticeQueue />
+          )}
+
+          {/* ── SECTION: AI CHEATSHEETS ── */}
+          {section === 'cheatsheets' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {/* Creator control box */}
               <div
@@ -674,7 +690,7 @@ export default function WorkspacePage() {
                             onClick={() => {
                               setSelectedTopic(b);
                               setTopicQuery(b);
-                              setSection('learning-sheets');
+                              setSection('cheatsheets');
                               setActiveSheetParams({
                                 topic: b,
                                 difficulty: 'interview',
@@ -756,7 +772,7 @@ export default function WorkspacePage() {
                             setSelectedTopic(s.topic);
                             setTopicQuery(s.topic);
                             setDifficulty(s.difficulty);
-                            setSection('learning-sheets');
+                            setSection('cheatsheets');
                             setActiveSheetParams({
                               topic: s.topic,
                               difficulty: s.difficulty,

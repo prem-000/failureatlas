@@ -35,6 +35,7 @@ import { generateFailureExplanation, type ExplanationEngineInput } from '@/lib/e
 import { upsertCodeEvidence } from '@/lib/interceptor/uploader';
 import { isHighLatency } from '@/lib/interceptor/extractor';
 import type { SubmissionEvent, Evidence } from '@/types';
+import { checkAndCreatePracticeReview } from '@/lib/practice-queue/scheduler';
 
 
 export async function OPTIONS(request: NextRequest) {
@@ -229,6 +230,7 @@ export async function POST(request: NextRequest) {
     await delGraphCache(userId);
     if (submissionStatus === 'Accepted') {
       await delRoadmapCache(userId);
+      await checkAndCreatePracticeReview(userId, subRecord.problemId, subRecord.timestamp);
     }
 
     // ── Return 200 immediately — analysis runs async ──────────────────────────

@@ -20,6 +20,10 @@ export async function GET(request: NextRequest) {
         userId: auth.userId,
         dailyMissionEmail: true,
         preferredTime: '08:00',
+        leetcodeUsername: null,
+        codeforcesUsername: null,
+        codechefUsername: null,
+        atcoderUsername: null,
         createdAt: new Date()
       };
     }
@@ -40,14 +44,28 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
 
-    let body: { dailyMissionEmail?: boolean; preferredTime?: string } = {};
+    let body: {
+      dailyMissionEmail?: boolean;
+      preferredTime?: string;
+      leetcodeUsername?: string | null;
+      codeforcesUsername?: string | null;
+      codechefUsername?: string | null;
+      atcoderUsername?: string | null;
+    } = {};
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { dailyMissionEmail, preferredTime } = body;
+    const {
+      dailyMissionEmail,
+      preferredTime,
+      leetcodeUsername,
+      codeforcesUsername,
+      codechefUsername,
+      atcoderUsername
+    } = body;
 
     // Basic validation
     if (preferredTime !== undefined) {
@@ -61,12 +79,20 @@ export async function POST(request: NextRequest) {
       where: { userId: auth.userId },
       update: {
         dailyMissionEmail: dailyMissionEmail !== undefined ? dailyMissionEmail : undefined,
-        preferredTime: preferredTime !== undefined ? preferredTime : undefined
+        preferredTime: preferredTime !== undefined ? preferredTime : undefined,
+        leetcodeUsername: leetcodeUsername !== undefined ? leetcodeUsername : undefined,
+        codeforcesUsername: codeforcesUsername !== undefined ? codeforcesUsername : undefined,
+        codechefUsername: codechefUsername !== undefined ? codechefUsername : undefined,
+        atcoderUsername: atcoderUsername !== undefined ? atcoderUsername : undefined,
       },
       create: {
         userId: auth.userId,
         dailyMissionEmail: dailyMissionEmail !== undefined ? dailyMissionEmail : true,
-        preferredTime: preferredTime || '08:00'
+        preferredTime: preferredTime || '08:00',
+        leetcodeUsername: leetcodeUsername || null,
+        codeforcesUsername: codeforcesUsername || null,
+        codechefUsername: codechefUsername || null,
+        atcoderUsername: atcoderUsername || null,
       }
     });
 

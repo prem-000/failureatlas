@@ -320,6 +320,10 @@ export interface UserPreferencesData {
   userId?: string;
   dailyMissionEmail: boolean;
   preferredTime: string;
+  leetcodeUsername?: string | null;
+  codeforcesUsername?: string | null;
+  codechefUsername?: string | null;
+  atcoderUsername?: string | null;
   createdAt?: string;
 }
 

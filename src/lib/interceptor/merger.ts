@@ -12,6 +12,7 @@
 import { createHash } from 'crypto';
 import { prisma } from '@/lib/db/prisma';
 import type { NormalizedInterceptorEvent, MergeResult } from './types';
+import { checkAndCreatePracticeReview } from '@/lib/practice-queue/scheduler';
 
 // ── Submission hash helpers ───────────────────────────────────────────────────
 
@@ -97,7 +98,7 @@ async function enrichExistingSubmission(
   });
   if (!current) return;
 
-  await prisma.submissionEvent.update({
+  const updated = await prisma.submissionEvent.update({
     where: { id },
     data: {
       // Only enrich fields that are currently null
@@ -113,6 +114,10 @@ async function enrichExistingSubmission(
   });
 
   console.log(`[Merger] Enriched submission ${id} with network evidence`);
+
+  if (updated.status === 'Accepted' || updated.status === 'AC') {
+    await checkAndCreatePracticeReview(updated.userId, updated.problemId, updated.timestamp);
+  }
 }
 
 /**
@@ -170,6 +175,11 @@ async function createInterceptorStub(
   });
 
   console.log(`[Merger] Created interceptor stub submission ${stub.id} (eventId=${eventId})`);
+
+  if (stub.status === 'Accepted' || stub.status === 'AC') {
+    await checkAndCreatePracticeReview(userId, stub.problemId, stub.timestamp);
+  }
+
   return { id: stub.id };
 }
 

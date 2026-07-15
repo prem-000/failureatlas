@@ -253,6 +253,122 @@ function DailyCoachPreferences() {
   );
 }
 
+// ─── Connected Accounts Editor ──────────────────────────────────────────────────
+function ConnectedAccountsEditor() {
+  const queryClient = useQueryClient();
+  const { data: preferences, isLoading: loading, error: fetchError } = useUserPreferences();
+  const updatePreferences = useUpdateUserPreferences();
+
+  const [leetcodeUsername, setLeetcodeUsername] = useState('');
+  const [codeforcesUsername, setCodeforcesUsername] = useState('');
+  const [codechefUsername, setCodechefUsername] = useState('');
+  const [atcoderUsername, setAtcoderUsername] = useState('');
+
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync state with query data when loaded
+  useEffect(() => {
+    if (preferences) {
+      setLeetcodeUsername(preferences.leetcodeUsername || '');
+      setCodeforcesUsername(preferences.codeforcesUsername || '');
+      setCodechefUsername(preferences.codechefUsername || '');
+      setAtcoderUsername(preferences.atcoderUsername || '');
+    }
+  }, [preferences]);
+
+  const save = async () => {
+    setError(null);
+    try {
+      await updatePreferences.mutateAsync({
+        leetcodeUsername: leetcodeUsername.trim() || null,
+        codeforcesUsername: codeforcesUsername.trim() || null,
+        codechefUsername: codechefUsername.trim() || null,
+        atcoderUsername: atcoderUsername.trim() || null,
+      });
+      await queryClient.invalidateQueries({ queryKey: ['user', 'preferences'] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e: any) {
+      setError(e.message || 'Failed to update connected accounts');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 20, color: '#71717a', fontSize: 13 }}>
+        Loading connected accounts...
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div style={{ padding: 20, color: '#ef4444', fontSize: 13 }}>
+        Error loading connected accounts: {(fetchError as Error).message}
+      </div>
+    );
+  }
+
+  const platforms = [
+    { key: 'leetcode', label: 'LeetCode', color: '#ffa116', value: leetcodeUsername, setter: setLeetcodeUsername, placeholder: 'LeetCode Username' },
+    { key: 'codeforces', label: 'Codeforces', color: '#1f85de', value: codeforcesUsername, setter: setCodeforcesUsername, placeholder: 'Codeforces Username' },
+    { key: 'codechef', label: 'CodeChef', color: '#5b4638', value: codechefUsername, setter: setCodechefUsername, placeholder: 'CodeChef Username' },
+    { key: 'atcoder', label: 'AtCoder', color: '#ffffff', value: atcoderUsername, setter: setAtcoderUsername, placeholder: 'AtCoder Username' },
+  ];
+
+  return (
+    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ fontSize: 13, color: '#a1a1aa', lineHeight: 1.6 }}>
+        Connect your competitive programming accounts. Once connected, your solved problems and submission events from these platforms will automatically enter the Praxis pipeline. Note that these are profile metadata only and do not perform synchronization.
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="settings-grid">
+        {platforms.map(platform => (
+          <div key={platform.key} style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: 12, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: platform.color }} />
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#e5e7eb' }}>{platform.label}</div>
+              {platform.value && (
+                <span style={{ fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 4, padding: '1px 6px', marginLeft: 'auto' }}>
+                  Connected
+                </span>
+              )}
+            </div>
+            <input
+              value={platform.value}
+              onChange={e => platform.setter(e.target.value)}
+              placeholder={platform.placeholder}
+              style={{ width: '100%', background: '#111111', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 14px', color: '#f4f4f5', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {error && (
+        <div style={{ fontSize: 12, color: '#ef4444', background: '#450a0a', border: '1px solid #991b1b', borderRadius: 6, padding: '8px 12px' }}>
+          {error}
+        </div>
+      )}
+
+      <button
+        onClick={save}
+        disabled={updatePreferences.isPending}
+        style={{
+          background: saved ? '#052e16' : '#ffa116',
+          border: 'none', borderRadius: 9, padding: '11px 20px',
+          color: '#fff', fontSize: 13, fontWeight: 600,
+          cursor: updatePreferences.isPending ? 'wait' : 'pointer',
+          transition: 'background 0.2s', alignSelf: 'flex-start',
+          boxShadow: saved ? 'none' : '0 4px 10px rgba(255, 161, 22, 0.2)'
+        }}
+      >
+        {updatePreferences.isPending ? 'Saving…' : saved ? '✓ Saved' : 'Save Connections'}
+      </button>
+    </div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -260,7 +376,7 @@ export default function SettingsPage() {
   const user  = data?.user  ?? null;
   const stats = data?.stats ?? null;
   const error = queryError ? (queryError as Error).message : null;
-  const [activeTab, setActiveTab]           = useState<'profile' | 'stats' | 'missions' | 'api' | 'extension'>('profile');
+  const [activeTab, setActiveTab]           = useState<'profile' | 'stats' | 'missions' | 'accounts' | 'api' | 'extension'>('profile');
   const [regenError,   setRegenError]       = useState<string | null>(null);
   const [regenSuccess, setRegenSuccess]     = useState(false);
 
@@ -306,6 +422,7 @@ export default function SettingsPage() {
     { key: 'profile', label: 'Profile' },
     { key: 'stats',   label: 'Statistics' },
     { key: 'missions', label: 'Daily Coach' },
+    { key: 'accounts', label: 'Connected Accounts' },
     { key: 'api',     label: 'API Access' },
     { key: 'extension', label: 'Extension Setup' },
   ] as const;
@@ -398,6 +515,13 @@ export default function SettingsPage() {
           {activeTab === 'missions' && (
             <SectionCard title="Daily Coach Preferences" accent="#a855f7">
               <DailyCoachPreferences />
+            </SectionCard>
+          )}
+
+          {/* ── Connected Accounts Tab ── */}
+          {activeTab === 'accounts' && (
+            <SectionCard title="Connected Accounts" accent="#ffa116">
+              <ConnectedAccountsEditor />
             </SectionCard>
           )}
 
