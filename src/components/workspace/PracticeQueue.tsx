@@ -10,10 +10,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
-  TrendingUp,
   Award,
-  Zap,
-  Percent,
   ChevronLeft,
   ChevronRight,
   Play,
@@ -635,76 +632,6 @@ export function PracticeQueue() {
             </button>
           </div>
 
-        </div>
-
-        {/* Statistics Section */}
-        <div>
-          <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#f4f4f5', marginBottom: 16 }}>
-            Statistics
-          </h3>
-          <div className="stats-grid">
-            
-            {/* Reviews Completed */}
-            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, padding: '20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,95,82,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Award size={20} style={{ color: '#ff5f52' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#f4f4f5', lineHeight: 1.1 }}>
-                  {statistics.reviewsCompleted}
-                </div>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4 }}>
-                  Reviews Completed
-                </div>
-              </div>
-            </div>
-
-            {/* Current Streak */}
-            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, padding: '20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(251,146,60,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Zap size={20} style={{ color: '#fb923c' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#f4f4f5', lineHeight: 1.1 }}>
-                  {statistics.currentStreak} {statistics.currentStreak === 1 ? 'day' : 'days'}
-                </div>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4 }}>
-                  Current Streak
-                </div>
-              </div>
-            </div>
-
-            {/* Average Recall */}
-            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, padding: '20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(96,165,250,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <TrendingUp size={20} style={{ color: '#60a5fa' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#f4f4f5', lineHeight: 1.1 }}>
-                  {statistics.averageRecall.toFixed(1)} / 5.0
-                </div>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4 }}>
-                  Average Recall
-                </div>
-              </div>
-            </div>
-
-            {/* Retention Rate */}
-            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 16, padding: '20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(52,211,153,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Percent size={18} style={{ color: '#34d399' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#f4f4f5', lineHeight: 1.1 }}>
-                  {statistics.retentionRate.toFixed(1)}%
-                </div>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4 }}>
-                  Retention Rate
-                </div>
-              </div>
-            </div>
-
-          </div>
         </div>
 
         {/* Recent Session History */}

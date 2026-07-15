@@ -16,6 +16,8 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
     const elementId = `mermaid-${Math.floor(Math.random() * 100000)}`;
 
     const renderDiagram = async () => {
+      let cleanCode = '';
+      let codeToRender = '';
       try {
         // Dynamically import mermaid to avoid SSR issues
         const { default: mermaid } = await import('mermaid');
@@ -33,31 +35,52 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
         });
 
         // Clean the code string: replace escaped newlines/characters
-        const cleanCode = code
+        cleanCode = code
           .replace(/\\n/g, '\n')
           .replace(/\\"/g, '"')
           .trim();
 
-        // Check if syntax is valid
-        let codeToRender = cleanCode;
+        // 1. First Parse Attempt
+        codeToRender = cleanCode;
         let isValid = false;
+        let parseError: any = null;
+
         try {
           await mermaid.parse(codeToRender);
           isValid = true;
-        } catch (e) {
-          // Attempt automatic repair
+        } catch (e: any) {
+          parseError = e;
+          isValid = false;
+        }
+
+        // 2. Retry Sanitization if first attempt fails
+        if (!isValid) {
           try {
-            const { repairMermaid } = await import('@/lib/learning-sheet/repair');
-            codeToRender = repairMermaid(codeToRender);
+            // Import and run sanitizeMermaid
+            const { sanitizeMermaid } = await import('@/lib/learning-sheet/mermaidSanitizer');
+            codeToRender = sanitizeMermaid(cleanCode);
             await mermaid.parse(codeToRender);
             isValid = true;
-          } catch (err2) {
+          } catch (err2: any) {
+            parseError = err2;
             isValid = false;
           }
         }
 
         if (!isValid) {
-          throw new Error('Invalid Mermaid syntax');
+          // Log complete debugging information
+          console.error("Mermaid Parse Error");
+          console.error({
+            original: code,
+            sanitized: codeToRender,
+            error: parseError?.message || parseError,
+            stack: parseError instanceof Error ? parseError.stack : undefined
+          });
+
+          if (active) {
+            setError(true);
+          }
+          return;
         }
 
         const { svg: renderedSvg } = await mermaid.render(elementId, codeToRender);
@@ -65,8 +88,8 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
           setSvg(renderedSvg);
           setError(false);
         }
-      } catch (err) {
-        console.error('[Mermaid Rendering Error]:', err);
+      } catch (err: any) {
+        console.error('[Mermaid Rendering Critical Exception]:', err);
         if (active) {
           setError(true);
         }
@@ -85,16 +108,22 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
       <div
         style={{
           padding: '24px 20px',
-          background: 'rgba(255,255,255,0.01)',
+          background: 'rgba(255,255,255,0.015)',
           border: '1px solid rgba(255,255,255,0.05)',
-          borderRadius: 12,
+          borderRadius: 14,
           fontSize: '13px',
-          color: '#71717a',
+          color: '#a1a1aa',
           textAlign: 'center',
           fontFamily: 'sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 6,
         }}
       >
-        <span>Unable to generate workflow.</span>
+        <span style={{ fontWeight: 800, color: '#e4e4e7', fontSize: '14px' }}>Diagram unavailable</span>
+        <span style={{ color: '#71717a' }}>The AI-generated diagram could not be rendered.</span>
+        <span style={{ color: '#71717a', fontSize: '12px' }}>The explanation below contains the complete learning content.</span>
       </div>
     );
   }

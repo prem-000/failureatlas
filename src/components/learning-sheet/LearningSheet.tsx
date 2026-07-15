@@ -493,50 +493,52 @@ export function LearningSheet({
       )}
 
       {/* 6. Complexity Breakdown callout */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: 16,
-        }}
-        className="ls-complexity"
-      >
-        <style>{`
-          @media (min-width: 768px) {
-            .ls-complexity {
-              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      {data.complexity && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: 16,
+          }}
+          className="ls-complexity"
+        >
+          <style>{`
+            @media (min-width: 768px) {
+              .ls-complexity {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              }
             }
-          }
-        `}</style>
-        
-        {/* Time Complexity */}
-        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '16px 20px', display: 'flex', gap: 14 }}>
-          <Clock size={20} style={{ color: '#ff5f52', flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <span style={{ fontSize: '10px', color: '#71717a', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Time Complexity</span>
-            <span style={{ fontSize: '18px', color: '#ff5f52', fontWeight: 800, display: 'block', marginBottom: 4 }}>
-              {isSchemaV2 ? data.complexity.time : data.complexity.time.split(' ')[0]}
-            </span>
-            <span style={{ fontSize: '12px', color: '#a1a1aa', lineHeight: 1.5 }}>
-              {isSchemaV2 ? data.complexity.timeExplanation : data.complexity.time.split(' ').slice(1).join(' ')}
-            </span>
+          `}</style>
+          
+          {/* Time Complexity */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '16px 20px', display: 'flex', gap: 14 }}>
+            <Clock size={20} style={{ color: '#ff5f52', flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <span style={{ fontSize: '10px', color: '#71717a', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Time Complexity</span>
+              <span style={{ fontSize: '18px', color: '#ff5f52', fontWeight: 800, display: 'block', marginBottom: 4 }}>
+                {isSchemaV2 ? data.complexity.time : data.complexity.time.split(' ')[0]}
+              </span>
+              <span style={{ fontSize: '12px', color: '#a1a1aa', lineHeight: 1.5 }}>
+                {isSchemaV2 ? data.complexity.timeExplanation : data.complexity.time.split(' ').slice(1).join(' ')}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Space Complexity */}
-        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '16px 20px', display: 'flex', gap: 14 }}>
-          <Layers size={20} style={{ color: '#3b82f6', flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <span style={{ fontSize: '10px', color: '#71717a', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Space Complexity</span>
-            <span style={{ fontSize: '18px', color: '#3b82f6', fontWeight: 800, display: 'block', marginBottom: 4 }}>
-              {isSchemaV2 ? data.complexity.space : data.complexity.space.split(' ')[0]}
-            </span>
-            <span style={{ fontSize: '12px', color: '#a1a1aa', lineHeight: 1.5 }}>
-              {isSchemaV2 ? data.complexity.spaceExplanation : data.complexity.space.split(' ').slice(1).join(' ')}
-            </span>
+          {/* Space Complexity */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '16px 20px', display: 'flex', gap: 14 }}>
+            <Layers size={20} style={{ color: '#3b82f6', flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <span style={{ fontSize: '10px', color: '#71717a', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Space Complexity</span>
+              <span style={{ fontSize: '18px', color: '#3b82f6', fontWeight: 800, display: 'block', marginBottom: 4 }}>
+                {isSchemaV2 ? data.complexity.space : data.complexity.space.split(' ')[0]}
+              </span>
+              <span style={{ fontSize: '12px', color: '#a1a1aa', lineHeight: 1.5 }}>
+                {isSchemaV2 ? data.complexity.spaceExplanation : data.complexity.space.split(' ').slice(1).join(' ')}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 7. Common Pitfalls / Mistakes Card */}
       {(data.pitfalls || data.mistakes) && (

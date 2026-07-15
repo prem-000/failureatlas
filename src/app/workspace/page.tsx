@@ -13,6 +13,7 @@ import {
   AlertCircle,
   FileText,
   Layers,
+  X,
 } from 'lucide-react';
 import {
   useGraphFailures,
@@ -215,7 +216,7 @@ export default function WorkspacePage() {
           .custom-sb::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
           .custom-sb::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
 
-          /* Sidebar responsive layout */
+          /* Sidebar responsive layout - hidden/drawer on tablets/mobile, permanent on desktop */
           .workspace-sidebar {
             display: flex;
             flex-direction: column;
@@ -224,13 +225,15 @@ export default function WorkspacePage() {
           .workspace-sidebar-backdrop {
             display: none;
           }
-          @media (max-width: 767px) {
+          
+          @media (max-width: 1023px) {
             .workspace-sidebar {
               position: fixed !important;
               left: 0;
               top: 0;
               bottom: 0;
-              width: 260px !important;
+              width: 82% !important;
+              max-width: 320px !important;
               height: 100vh !important;
               z-index: 1000 !important;
               background: #0f0f12 !important;
@@ -260,12 +263,19 @@ export default function WorkspacePage() {
               opacity: 1 !important;
               pointer-events: auto !important;
             }
-            .md\\:hidden-header {
+            .workspace-header {
+              display: flex !important;
+            }
+            .lg\\:hidden-close {
               display: flex !important;
             }
           }
-          @media (min-width: 768px) {
-            .md\\:hidden-header {
+          
+          @media (min-width: 1024px) {
+            .workspace-header {
+              display: none !important;
+            }
+            .lg\\:hidden-close {
               display: none !important;
             }
           }
@@ -278,8 +288,41 @@ export default function WorkspacePage() {
             background: 'rgba(15,15,18,0.4)',
             gap: 6,
           }}
-          className="workspace-sidebar"
+          className={`workspace-sidebar ${sidebarOpen ? 'open' : ''}`}
         >
+          {/* Header & Close button inside Mobile Drawer */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '0 12px 16px 12px',
+              borderBottom: '1px solid rgba(255,255,255,0.04)',
+              marginBottom: 8,
+            }}
+            className="lg:hidden-close"
+          >
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#ff5f52', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Workspace Hub
+            </span>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#71717a',
+                cursor: 'pointer',
+                padding: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label="Close Navigation"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
           <div
             style={{
               fontSize: '10px',
@@ -289,14 +332,14 @@ export default function WorkspacePage() {
               letterSpacing: '0.08em',
               padding: '0 12px 12px 12px',
             }}
-            className="hidden md:block"
+            className="hidden lg:block"
           >
             Workspace Hub
           </div>
           <style>{`
             .hidden { display: none !important; }
-            @media (min-width: 768px) {
-              .md\\:block { display: block !important; }
+            @media (min-width: 1024px) {
+              .lg\\:block { display: block !important; }
             }
           `}</style>
 
@@ -351,7 +394,7 @@ export default function WorkspacePage() {
             flexDirection: 'column',
           }}
         >
-          {/* Mobile Header Bar */}
+          {/* Workspace Header Bar */}
           <div
             style={{
               alignItems: 'center',
@@ -362,7 +405,7 @@ export default function WorkspacePage() {
               top: 0,
               zIndex: 40,
             }}
-            className="md:hidden-header"
+            className="workspace-header"
           >
             <button
               onClick={() => setSidebarOpen(true)}

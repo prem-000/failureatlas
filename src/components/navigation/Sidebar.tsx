@@ -24,6 +24,15 @@ const NAV_ITEMS = [
 ];
 
 
+const MOBILE_NAV_ITEMS = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/problems',  icon: ListChecks,      label: 'Problems'   },
+  { href: '/graph',     icon: GitFork,          label: 'Graph'      },
+  { href: '/workspace', icon: BookOpen,         label: 'Workspace'  },
+  { href: '/settings',  icon: Settings,         label: 'Settings'   },
+];
+
+
 interface SidebarProps {
   user?: { name?: string | null; email: string; image?: string | null };
   onSignOut?: () => void;
@@ -308,7 +317,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
 
       {/* ─── Mobile bottom tab bar ──────────────────────────────────── */}
       <nav className="mobile-tab-bar" aria-label="Main navigation">
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+        {MOBILE_NAV_ITEMS.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || (href !== '/' && pathname.startsWith(href));
           return (
             <Link
@@ -318,20 +327,13 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
               aria-label={label}
             >
               <Icon size={19} strokeWidth={active ? 2.2 : 1.7} />
-              <span style={{ fontSize: 10 }}>{label}</span>
+              <span style={{ fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', padding: '0 4px' }}>
+                {label}
+              </span>
               <span className="mobile-tab-active-dot" aria-hidden="true" />
             </Link>
           );
         })}
-        <button
-          onClick={onSignOut}
-          className="mobile-tab-item"
-          aria-label="Sign out"
-        >
-          <LogOut size={19} strokeWidth={1.7} />
-          <span style={{ fontSize: 10 }}>Sign out</span>
-          <span className="mobile-tab-active-dot" style={{ opacity: 0 }} aria-hidden="true" />
-        </button>
       </nav>
     </>
   );

@@ -240,6 +240,12 @@ ${progressiveSchema}
 ✅ Prefer visuals over text. Output structured timeline rows and visualization steps so the UI can animate them.
 ✅ For practice problems, ONLY use real, well-known LeetCode problems. Verify URLs match 'https://leetcode.com/problems/slug-name/'.
 ✅ Never use raw code formatting inside text fields (use normal text).
+✅ If generating Mermaid diagrams:
+   - Generate ONLY valid Mermaid v10 syntax.
+   - Never use Markdown, HTML, emojis, bold, italic, or code fences inside labels or nodes.
+   - Never use nested square brackets (e.g., Incorrect: A[Range Sum(Query Range [i,j])], Correct: A["Range Sum (Query Range i,j)"]).
+   - Wrap labels containing spaces, commas, parentheses, or punctuation in double quotes.
+   - Do not include explanations; the output must parse successfully via Mermaid.parse().
 
 --- ANTI-HALLUCINATION RULES ---
 ❌ Never invent time/space complexities. Use standard Big-O representation.
