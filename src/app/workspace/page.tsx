@@ -48,8 +48,9 @@ const DIFF_COLORS: Record<string, string> = {
 export default function WorkspacePage() {
   const searchParams = useSearchParams();
 
-  // ─── Navigation State ───
+    // ─── Navigation State ───
   const [section, setSection] = useState<WorkspaceSection>('practice-queue');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ─── Bookmarks State ───
   const [bookmarks, setBookmarks] = useState<string[]>([]);
@@ -189,13 +190,18 @@ export default function WorkspacePage() {
 
   return (
     <AppShell>
+      {/* Backdrop for Mobile Sidebar Drawer */}
+      <div
+        className={`workspace-sidebar-backdrop ${sidebarOpen ? 'open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
       <div
         style={{
           display: 'flex',
-          height: '100vh',
           background: '#0d0d0f',
-          overflow: 'hidden',
           width: '100%',
+          minHeight: '100vh',
         }}
         className="flex-col md:flex-row"
       >
@@ -208,6 +214,61 @@ export default function WorkspacePage() {
           .custom-sb::-webkit-scrollbar-track { background: transparent; }
           .custom-sb::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
           .custom-sb::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+
+          /* Sidebar responsive layout */
+          .workspace-sidebar {
+            display: flex;
+            flex-direction: column;
+            width: 220px;
+          }
+          .workspace-sidebar-backdrop {
+            display: none;
+          }
+          @media (max-width: 767px) {
+            .workspace-sidebar {
+              position: fixed !important;
+              left: 0;
+              top: 0;
+              bottom: 0;
+              width: 260px !important;
+              height: 100vh !important;
+              z-index: 1000 !important;
+              background: #0f0f12 !important;
+              flex-direction: column !important;
+              padding: 24px 16px !important;
+              transform: translateX(-100%);
+              transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+              border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+              box-shadow: 10px 0 30px rgba(0, 0, 0, 0.7) !important;
+            }
+            .workspace-sidebar.open {
+              transform: translateX(0) !important;
+            }
+            .workspace-sidebar-backdrop {
+              display: block !important;
+              position: fixed !important;
+              inset: 0 !important;
+              background: rgba(0, 0, 0, 0.6) !important;
+              backdrop-filter: blur(4px) !important;
+              -webkit-backdrop-filter: blur(4px) !important;
+              z-index: 999 !important;
+              opacity: 0;
+              pointer-events: none;
+              transition: opacity 250ms ease !important;
+            }
+            .workspace-sidebar-backdrop.open {
+              opacity: 1 !important;
+              pointer-events: auto !important;
+            }
+            .md\\:hidden-header {
+              display: flex !important;
+            }
+          }
+          @media (min-width: 768px) {
+            .md\\:hidden-header {
+              display: none !important;
+            }
+          }
         `}</style>
 
         {/* Left Subsection Sidebar */}
@@ -215,20 +276,10 @@ export default function WorkspacePage() {
           style={{
             borderRight: '1px solid rgba(255,255,255,0.05)',
             background: 'rgba(15,15,18,0.4)',
-            display: 'flex',
-            flexShrink: 0,
-            padding: '24px 16px',
             gap: 6,
           }}
-          className="w-full md:w-[220px] flex-row md:flex-col border-b md:border-b-0 border-r-0 md:border-r"
+          className="workspace-sidebar"
         >
-          <style>{`
-            .w-full { width: 100% !important; }
-            @media (min-width: 768px) {
-              .md\\:w-\\[220px\\] { width: 220px !important; }
-            }
-          `}</style>
-          
           <div
             style={{
               fontSize: '10px',
@@ -261,7 +312,10 @@ export default function WorkspacePage() {
             return (
               <button
                 key={item.id}
-                onClick={() => setSection(item.id)}
+                onClick={() => {
+                  setSection(item.id);
+                  setSidebarOpen(false);
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -274,8 +328,8 @@ export default function WorkspacePage() {
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 150ms',
+                  width: '100%',
                 }}
-                className="flex-1 md:flex-initial"
               >
                 <Icon size={18} strokeWidth={isActive ? 2.3 : 1.8} style={{ color: isActive ? '#ff5f52' : '#52525b', flexShrink: 0 }} />
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
@@ -293,17 +347,58 @@ export default function WorkspacePage() {
         <div
           style={{
             flex: 1,
-            overflowY: 'auto',
-            padding: 'clamp(16px, 4vw, 32px)',
+            display: 'flex',
+            flexDirection: 'column',
           }}
-          className="custom-sb"
         >
+          {/* Mobile Header Bar */}
+          <div
+            style={{
+              alignItems: 'center',
+              padding: '12px 16px',
+              borderBottom: '1px solid rgba(255,255,255,0.05)',
+              background: '#0f0f12',
+              position: 'sticky',
+              top: 0,
+              zIndex: 40,
+            }}
+            className="md:hidden-header"
+          >
+            <button
+              onClick={() => setSidebarOpen(true)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#e4e4e7',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: 8,
+                marginLeft: -8,
+              }}
+              aria-label="Open Workspace Navigation"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <span style={{ fontSize: '14px', fontWeight: 800, color: '#f4f4f5', marginLeft: 12 }}>
+              {section === 'practice-queue' ? 'Practice Queue' : section === 'journal' ? 'Practice Journal' : section === 'cheatsheets' ? 'Cheatsheets' : 'Bookmarks'}
+            </span>
+          </div>
 
-
-          {/* ── SECTION: PRACTICE QUEUE ── */}
-          {section === 'practice-queue' && (
-            <PracticeQueue />
-          )}
+          <div
+            style={{
+              flex: 1,
+              padding: 'clamp(16px, 4vw, 32px)',
+            }}
+          >
+            {/* ── SECTION: PRACTICE QUEUE ── */}
+            {section === 'practice-queue' && (
+              <PracticeQueue />
+            )}
 
           {/* ── SECTION: AI CHEATSHEETS ── */}
           {section === 'cheatsheets' && (
@@ -799,6 +894,7 @@ export default function WorkspacePage() {
           )}
         </div>
       </div>
-    </AppShell>
+    </div>
+  </AppShell>
   );
 }

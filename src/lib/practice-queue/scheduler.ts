@@ -100,7 +100,7 @@ export async function runPracticeQueueMigration(userId: string) {
       return { migrated: false, reason: 'No accepted submissions' };
     }
 
-    // Deduplicate by problem slug (newest first because we sorted by timestamp desc)
+    // Deduplicate by problem slug
     const uniqueSubmissions: typeof acceptedSubmissions = [];
     const seenProblems = new Set<string>();
     for (const sub of acceptedSubmissions) {
@@ -113,28 +113,17 @@ export async function runPracticeQueueMigration(userId: string) {
 
     console.log(`[Migration] Running practice queue migration for user ${userId}. ${uniqueSubmissions.length} unique problems found.`);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
 
     let migratedCount = 0;
 
-    for (let i = 0; i < uniqueSubmissions.length; i++) {
-      const sub = uniqueSubmissions[i];
+    for (const sub of uniqueSubmissions) {
       let subPlatform = 'LeetCode';
       if (sub.problem.url?.includes('codeforces.com')) subPlatform = 'Codeforces';
       else if (sub.problem.url?.includes('codechef.com')) subPlatform = 'CodeChef';
       else if (sub.problem.url?.includes('atcoder.jp')) subPlatform = 'AtCoder';
-
-      let nextReview: Date;
-      if (i < 25) {
-        // Most recent 25 problems are scheduled for Today's review
-        nextReview = new Date(today);
-      } else {
-        // Remaining are spread across future days (10 problems per day)
-        const daysToAdd = Math.floor((i - 25) / 10) + 1;
-        nextReview = new Date(today);
-        nextReview.setDate(nextReview.getDate() + daysToAdd);
-      }
 
       await prisma.practiceReviewState.upsert({
         where: {
@@ -155,7 +144,7 @@ export async function runPracticeQueueMigration(userId: string) {
           repetitions: 0,
           easeFactor: 2.5,
           interval: 1,
-          nextReview,
+          nextReview: tomorrow,
         },
       });
 

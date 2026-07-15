@@ -25,8 +25,10 @@ model User {
   roadmapStates RoadmapState[]
   preferences   UserPreferences?
   dailyMissions DailyMission[]
-  learningSheets LearningSheet[]
-  practiceReviews PracticeReviewState[]
+  learningSheets   LearningSheet[]
+  practiceReviews  PracticeReviewState[]
+  practiceSessions PracticeSession[]
+  practiceExports  PracticeExport[]
 
   @@map("users")
 }
@@ -445,22 +447,25 @@ model LearningSheet {
 }
 
 model PracticeReviewState {
-  id           String                  @id @default(cuid())
-  userId       String
-  problemId    String                  // Unique problem ID/slug per platform (e.g. '704', 'two-sum')
-  title        String
-  difficulty   String                  // 'Easy' | 'Medium' | 'Hard'
-  platform     String                  // 'LeetCode' | 'Codeforces' | 'CodeChef' | 'AtCoder'
-  solveDate    DateTime                @default(now())
-  lastReview   DateTime?
-  nextReview   DateTime                @default(now())
-  repetitions  Int                     @default(0)
-  easeFactor   Float                   @default(2.5)
-  interval     Int                     @default(1) // In days
-  createdAt    DateTime                @default(now())
-  updatedAt    DateTime                @updatedAt
-  history      PracticeReviewHistory[]
-  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String                  @id @default(cuid())
+  userId        String
+  problemId     String                  // Unique problem ID/slug per platform (e.g. '704', 'two-sum')
+  title         String
+  difficulty    String                  // 'Easy' | 'Medium' | 'Hard'
+  platform      String                  // 'LeetCode' | 'Codeforces' | 'CodeChef' | 'AtCoder'
+  solveDate     DateTime                @default(now())
+  lastReview    DateTime?
+  nextReview    DateTime                @default(now())
+  repetitions   Int                     @default(0)
+  easeFactor    Float                   @default(2.5)
+  interval      Int                     @default(1) // In days
+  reviewAgain   Boolean                 @default(false)
+  personalNotes String                  @default("")
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  history       PracticeReviewHistory[]
+  sessionItems  PracticeSessionItem[]
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, platform, problemId])
   @@index([userId])
@@ -469,17 +474,69 @@ model PracticeReviewState {
 }
 
 model PracticeReviewHistory {
-  id            String              @id @default(cuid())
-  reviewStateId String
-  reviewedAt    DateTime            @default(now())
-  quality       Int                 // 1-5 quality score
+  id               String              @id @default(cuid())
+  reviewStateId    String
+  sessionId        String?
+  reviewedAt       DateTime            @default(now())
+  quality          Int                 // 1-5 quality score
   easeFactorBefore Float
   easeFactorAfter  Float
   intervalBefore   Int
   intervalAfter    Int
   repetitions      Int
-  reviewState   PracticeReviewState @relation(fields: [reviewStateId], references: [id], onDelete: Cascade)
+  reviewState      PracticeReviewState @relation(fields: [reviewStateId], references: [id], onDelete: Cascade)
+  session          PracticeSession?    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([reviewStateId])
+  @@index([sessionId])
   @@map("practice_review_histories")
+}
+
+enum PracticeStrategy {
+  PRIORITY
+  WEAKEST_TOPIC
+  MIXED
+}
+
+model PracticeSession {
+  id             String                @id @default(cuid())
+  userId         String
+  startedAt      DateTime              @default(now())
+  completedAt    DateTime?
+  strategy       PracticeStrategy
+  filterTopic    String?
+  averageRecall  Float?
+  retentionRate  Float?
+  currentIndex   Int                   @default(0)
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items          PracticeSessionItem[]
+  history        PracticeReviewHistory[]
+
+  @@index([userId])
+  @@map("practice_sessions")
+}
+
+model PracticeSessionItem {
+  id                    String              @id @default(cuid())
+  sessionId             String
+  practiceReviewStateId String
+  order                 Int
+  completed             Boolean             @default(false)
+  session               PracticeSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  review                PracticeReviewState @relation(fields: [practiceReviewStateId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([practiceReviewStateId])
+  @@map("practice_session_items")
+}
+
+model PracticeExport {
+  id        String   @id @default(cuid())
+  userId    String
+  payload   Json
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("practice_exports")
 }
