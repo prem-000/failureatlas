@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const session = await auth(request);
     if (!session?.id) {
       return NextResponse.json(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+        { success: false, message: 'Authentication required' },
         { status: 401 }
       );
     }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       body = await request.json();
     } catch {
       return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON request body' } },
+        { success: false, message: 'Invalid JSON request body' },
         { status: 400 }
       );
     }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const topic = body.topic?.trim();
     if (!topic) {
       return NextResponse.json(
-        { success: false, error: { code: 'BAD_REQUEST', message: 'Topic is required' } },
+        { success: false, message: 'Topic is required' },
         { status: 400 }
       );
     }
@@ -341,16 +341,14 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    logger.error('❌ Learning sheet generation failed:', error);
+    const { handleGeminiError } = await import('@/lib/gemini');
+    const friendly = handleGeminiError(error);
     return NextResponse.json(
       {
         success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to generate learning sheet',
-        },
+        message: friendly.message,
       },
-      { status: 500 }
+      { status: friendly.status === 429 ? 429 : 500 }
     );
   }
 }

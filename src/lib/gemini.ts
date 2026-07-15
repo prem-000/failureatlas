@@ -55,8 +55,66 @@ function extractJSON(raw: string): string {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
+export interface GeminiFriendlyError {
+  status: number;
+  message: string;
+}
+
+/**
+ * Centralized Gemini error handler.
+ * Converts error states into user-friendly clean strings and logs full response on the server.
+ */
+export function handleGeminiError(error: any): GeminiFriendlyError {
+  console.error("Gemini Error:", error);
+
+  let status = 500;
+  let message = "Something went wrong while generating AI content.";
+
+  if (error) {
+    // Attempt to extract status code
+    if (typeof error.status === 'number') {
+      status = error.status;
+    } else if (typeof error.statusCode === 'number') {
+      status = error.statusCode;
+    } else if (typeof error.code === 'number') {
+      status = error.code;
+    } else {
+      const msg = String(error.message || '').toLowerCase();
+      if (msg.includes('429') || msg.includes('quota') || msg.includes('limit exceeded')) {
+        status = 429;
+      } else if (msg.includes('400') || msg.includes('invalid argument') || msg.includes('bad request')) {
+        status = 400;
+      } else if (msg.includes('401') || msg.includes('403') || msg.includes('api key') || msg.includes('auth') || msg.includes('unauthorized')) {
+        status = 401;
+      } else if (msg.includes('500') || msg.includes('internal') || msg.includes('service error')) {
+        status = 500;
+      } else if (msg.includes('timeout') || msg.includes('deadline') || msg.includes('abort')) {
+        status = 408;
+      }
+    }
+
+    const msg = String(error.message || '').toLowerCase();
+    if (status === 429) {
+      message = "AI service is busy. Please try again shortly.";
+    } else if (status === 400) {
+      message = "Unable to process your request.";
+    } else if (status === 401 || status === 403) {
+      message = "AI service authentication failed.";
+    } else if (status === 500) {
+      message = "Temporary AI service issue.";
+    } else if (status === 408 || msg.includes('timeout') || msg.includes('deadline')) {
+      message = "Connection to AI service timed out.";
+    } else {
+      message = "Something went wrong while generating AI content.";
+    }
+  }
+
+  return { status, message };
+}
+
 /**
  * Calls Gemini to generate learning sheet content.
+ * Handles 429 rate limit retries with exponential backoff (1s, 2s, 4s).
  *
  * @param prompt - The fully-built prompt string
  * @returns Raw JSON string extracted from the model response
@@ -64,13 +122,15 @@ function extractJSON(raw: string): string {
  */
 export async function generateWithGemini(prompt: string): Promise<string> {
   const ai = getClient();
-  let lastError: Error | null = null;
+  let lastError: any = null;
+  const backoffs = [1000, 2000, 4000]; // 1s, 2s, 4s backoff delays
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt <= backoffs.length; attempt++) {
     try {
       if (attempt > 0) {
-        logger.info(`🔄 Gemini retry attempt ${attempt}/${MAX_RETRIES}`);
-        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        const delay = backoffs[attempt - 1];
+        logger.info(`🔄 Gemini retry attempt ${attempt}/${backoffs.length} after ${delay}ms`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
 
       logger.info('🤖 Calling Gemini API', { model: GEMINI_MODEL, promptLength: prompt.length });
@@ -93,20 +153,25 @@ export async function generateWithGemini(prompt: string): Promise<string> {
       const json = extractJSON(text);
       logger.info('✅ Gemini response received', { responseLength: json.length });
       return json;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+    } catch (error: any) {
+      lastError = error;
+      
       logger.error(`❌ Gemini API error (attempt ${attempt + 1})`, {
-        error: lastError.message,
+        error: error instanceof Error ? error.message : String(error),
       });
 
-      // Don't retry on auth errors
-      if (lastError.message.includes('API key') || lastError.message.includes('401')) {
-        throw lastError;
+      const msg = String(error.message || '').toLowerCase();
+      const status = error.status || error.statusCode || error.code || 0;
+      const is429 = status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('limit exceeded');
+
+      // Fail immediately on non-rate-limit errors
+      if (!is429) {
+        throw error;
       }
     }
   }
 
-  throw lastError || new Error('Gemini API call failed');
+  throw lastError || new Error('AI service is busy. Please try again shortly.');
 }
 
 /** Returns the currently configured model name */

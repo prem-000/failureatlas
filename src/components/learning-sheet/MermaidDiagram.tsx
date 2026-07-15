@@ -39,12 +39,28 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
           .trim();
 
         // Check if syntax is valid
-        const isValid = await mermaid.parse(cleanCode);
+        let codeToRender = cleanCode;
+        let isValid = false;
+        try {
+          await mermaid.parse(codeToRender);
+          isValid = true;
+        } catch (e) {
+          // Attempt automatic repair
+          try {
+            const { repairMermaid } = await import('@/lib/learning-sheet/repair');
+            codeToRender = repairMermaid(codeToRender);
+            await mermaid.parse(codeToRender);
+            isValid = true;
+          } catch (err2) {
+            isValid = false;
+          }
+        }
+
         if (!isValid) {
           throw new Error('Invalid Mermaid syntax');
         }
 
-        const { svg: renderedSvg } = await mermaid.render(elementId, cleanCode);
+        const { svg: renderedSvg } = await mermaid.render(elementId, codeToRender);
         if (active) {
           setSvg(renderedSvg);
           setError(false);
@@ -68,18 +84,17 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
     return (
       <div
         style={{
-          padding: '16px 20px',
+          padding: '24px 20px',
           background: 'rgba(255,255,255,0.01)',
           border: '1px solid rgba(255,255,255,0.05)',
           borderRadius: 12,
-          fontSize: '12px',
+          fontSize: '13px',
           color: '#71717a',
-          fontFamily: 'monospace',
-          whiteSpace: 'pre-wrap',
+          textAlign: 'center',
+          fontFamily: 'sans-serif',
         }}
       >
-        <span style={{ color: '#ef4444', fontWeight: 800 }}>⚠️ Visual flowchart rendering failed</span>
-        <div style={{ marginTop: 8 }}>{code}</div>
+        <span>Unable to generate workflow.</span>
       </div>
     );
   }

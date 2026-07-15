@@ -217,3 +217,106 @@ export function slugifyTopic(topic: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 }
+
+export const TOPIC_LEVELS: Record<string, string[]> = {
+  'kadane': ['fundamentals', 'interview'],
+  'kadane\'s algorithm': ['fundamentals', 'interview'],
+  'segment tree': ['beginner', 'intermediate', 'advanced', 'cp'],
+  'segment trees': ['beginner', 'intermediate', 'advanced', 'cp'],
+  'fenwick tree': ['beginner', 'intermediate', 'advanced', 'cp'],
+  'fenwick trees': ['beginner', 'intermediate', 'advanced', 'cp'],
+};
+
+/**
+ * Returns custom difficulty levels for specific topics, falling back to fundamentals/interview/expert.
+ */
+export function getLevelsForTopic(topic: string): string[] {
+  if (!topic) return ['fundamentals', 'interview', 'expert'];
+  const normalized = topic.toLowerCase().trim();
+  if (TOPIC_LEVELS[normalized]) {
+    return TOPIC_LEVELS[normalized];
+  }
+  for (const [key, val] of Object.entries(TOPIC_LEVELS)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return val;
+    }
+  }
+  return ['fundamentals', 'interview', 'expert'];
+}
+
+/**
+ * Maps a topic string to a specific visualization player type deterministically.
+ */
+export function getVisualizationTypeForTopic(topic: string): string {
+  if (!topic) return 'flowchart';
+  const normalized = topic.toLowerCase().trim();
+  
+  // 1. Pointer (Arrays, Strings, Pointers, Windows)
+  if (
+    normalized.includes('sliding window') ||
+    normalized.includes('two pointer') ||
+    normalized.includes('fast and slow pointer') ||
+    normalized.includes('pointer') ||
+    normalized.includes('array') ||
+    normalized.includes('string') ||
+    normalized.includes('sorting') ||
+    normalized.includes('merge sort') ||
+    normalized.includes('quick sort') ||
+    normalized.includes('counting sort')
+  ) {
+    return 'pointer';
+  }
+  
+  // 2. DP Grid
+  if (
+    normalized.includes('dynamic programming') ||
+    normalized.includes('memoization') ||
+    normalized.includes('tabulation') ||
+    normalized.includes('lis') ||
+    normalized.includes('lcs') ||
+    normalized.includes('knapsack') ||
+    normalized.includes('matrix')
+  ) {
+    return 'grid';
+  }
+  
+  // 3. Trees
+  if (
+    normalized.includes('tree') ||
+    normalized.includes('bst') ||
+    normalized.includes('avl') ||
+    normalized.includes('trie')
+  ) {
+    return 'tree';
+  }
+  
+  // 4. Graphs
+  if (
+    normalized.includes('graph') ||
+    normalized.includes('bfs') ||
+    normalized.includes('dfs') ||
+    normalized.includes('dijkstra') ||
+    normalized.includes('bellman') ||
+    normalized.includes('floyd') ||
+    normalized.includes('kruskal') ||
+    normalized.includes('prim') ||
+    normalized.includes('topological') ||
+    normalized.includes('union find')
+  ) {
+    return 'graph';
+  }
+  
+  // 5. Memory layout (Heaps, stacks, queues)
+  if (
+    normalized.includes('heap') ||
+    normalized.includes('stack') ||
+    normalized.includes('queue') ||
+    normalized.includes('priority queue')
+  ) {
+    return 'memory-layout';
+  }
+  
+  // 6. Default Flowchart
+  return 'flowchart';
+}
+

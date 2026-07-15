@@ -19,7 +19,7 @@ export async function apiFetch<T = unknown>(path: string, init?: RequestInit): P
   const json = await res.json();
 
   if (!res.ok || json.success === false) {
-    throw new Error(json.error?.message || `Request failed (${res.status})`);
+    throw new Error(json.message || json.error?.message || `Request failed (${res.status})`);
   }
 
   return json as T;

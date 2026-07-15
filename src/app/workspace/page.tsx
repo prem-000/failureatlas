@@ -18,7 +18,7 @@ import {
   useBookmarkedLearningSheets,
   useToggleBookmark,
 } from '@/hooks/usePhase3Queries';
-import { searchTopics } from '@/lib/learning-sheet/topic-registry';
+import { searchTopics, getLevelsForTopic } from '@/lib/learning-sheet/topic-registry';
 import { LearningSheet as LearningSheetRenderer } from '@/components/learning-sheet/LearningSheet';
 import type { Difficulty, SheetCategory } from '@/types/learning-sheet';
 
@@ -58,6 +58,16 @@ export default function WorkspacePage() {
   const [searchSuggestions, setSearchSuggestions] = useState<Array<{ topic: string; category: SheetCategory }>>([]);
   const [difficulty, setDifficulty] = useState<Difficulty>('interview');
   const [showSheet, setShowSheet] = useState(false);
+
+  // Dynamic levels list based on selected topic
+  const activeLevels = getLevelsForTopic(selectedTopic || topicQuery);
+
+  // Synchronize difficulty state if active levels change
+  useEffect(() => {
+    if (activeLevels.length > 0 && !activeLevels.includes(difficulty)) {
+      setDifficulty(activeLevels[0]);
+    }
+  }, [selectedTopic, topicQuery, activeLevels, difficulty]);
   const [activeSheetParams, setActiveSheetParams] = useState<{
     topic: string;
     difficulty: Difficulty;
@@ -406,12 +416,13 @@ export default function WorkspacePage() {
                       Difficulty Level
                     </label>
                     <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.15)', padding: 4, borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
-                      {DIFFICULTIES.map((d) => {
-                        const isSel = difficulty === d.id;
+                      {activeLevels.map((lvl) => {
+                        const isSel = difficulty === lvl;
+                        const label = lvl.charAt(0).toUpperCase() + lvl.slice(1);
                         return (
                           <button
-                            key={d.id}
-                            onClick={() => setDifficulty(d.id)}
+                            key={lvl}
+                            onClick={() => setDifficulty(lvl)}
                             style={{
                               flex: 1,
                               padding: '8px 4px',
@@ -426,7 +437,7 @@ export default function WorkspacePage() {
                               transition: 'all 150ms',
                             }}
                           >
-                            {d.label}
+                            {label}
                           </button>
                         );
                       })}

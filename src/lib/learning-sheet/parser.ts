@@ -1,16 +1,86 @@
 /**
- * Zod Parser for Compact Learning Sheet Data
+ * Zod Parser for Progressive Learning Sheet Data
  *
  * Validates and repairs Gemini JSON output using Zod schemas.
- * Matches the new compact LearningSheetData shape (no code, no diagrams).
- * Missing fields are filled with safe defaults so partial AI responses
- * never crash the renderer.
+ * Converts structured visualization JSON into sanitized, wrapped Mermaid strings when appropriate.
  */
 
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import type { LearningSheetData } from '@/types/learning-sheet';
 import { repairMermaid } from './repair';
+
+// ─── Sanitization & Wrap Helpers ──────────────────────────────────────────────
+
+function sanitizeLabel(label: string): string {
+  if (!label) return '';
+  let cleaned = label;
+  
+  // Replace array[...] patterns with array(...)
+  cleaned = cleaned.replace(/(\w+)\s*\[\s*(.+?)\s*\]/g, '$1($2)');
+  
+  // Replace Map<...> or HashMap<...> patterns with Map(...)
+  cleaned = cleaned.replace(/(\w+)\s*<\s*(.+?)\s*>/g, '$1($2)');
+  
+  // Remove HTML tags
+  cleaned = cleaned.replace(/<[^>]*>/g, '');
+  
+  // Remove markdown style table/bullets/formatting characters
+  cleaned = cleaned.replace(/[#*`\[\]{}<>"]/g, '');
+  
+  // Emojis: remove emoji patterns
+  cleaned = cleaned.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F1E6}-\u{1F1FF}]/gu, '');
+
+  return cleaned.trim();
+}
+
+function wrapLabel(label: string, maxLength: number = 35): string {
+  if (label.length <= maxLength) return label;
+  
+  const words = label.split(/\s+/);
+  let lines: string[] = [];
+  let currentLine = '';
+  
+  for (const word of words) {
+    if (currentLine.length + word.length + (currentLine ? 1 : 0) <= maxLength) {
+      currentLine += (currentLine ? ' ' : '') + word;
+    } else {
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      currentLine = word;
+      while (currentLine.length > maxLength) {
+        lines.push(currentLine.slice(0, maxLength));
+        currentLine = currentLine.slice(maxLength);
+      }
+    }
+  }
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  
+  return lines.join('\\n');
+}
+
+export function buildMermaidFromSchema(json: { nodes: Array<{ id: string; label: string }>; edges: Array<{ from: string; to: string }> }): string {
+  if (!json || !Array.isArray(json.nodes)) return '';
+  let code = "flowchart TD\n";
+  
+  for (const node of json.nodes) {
+    const sanitizedLabel = sanitizeLabel(node.label);
+    const wrappedLabel = wrapLabel(sanitizedLabel, 35);
+    const escapedLabel = wrappedLabel.replace(/"/g, '\\"');
+    code += `  ${node.id}["${escapedLabel}"]\n`;
+  }
+  
+  if (Array.isArray(json.edges)) {
+    for (const edge of json.edges) {
+      code += `  ${edge.from} --> ${edge.to}\n`;
+    }
+  }
+  
+  return code;
+}
 
 // ─── Zod Schemas ──────────────────────────────────────────────────────────────
 
@@ -21,30 +91,109 @@ const PracticeProblemSchema = z.object({
   hint: z.string().optional(),
 });
 
+const VisualMemoryHookSchema = z.object({
+  analogyName: z.string().default(''),
+  analogyDescription: z.string().default(''),
+});
+
+const PatternRecognitionSchema = z.object({
+  decisionPath: z.array(z.string()).default([]),
+  keywords: z.array(z.string()).default([]),
+  explanation: z.string().default(''),
+});
+
+const InteractiveVisualizationSchema = z.object({
+  type: z.string().default('flowchart'),
+  array: z.array(z.string()).optional(),
+  rows: z.array(z.string()).optional(),
+  cols: z.array(z.string()).optional(),
+  structure: z.string().optional(),
+  steps: z.array(z.object({
+    step: z.number(),
+    action: z.string(),
+    explanation: z.string(),
+    left: z.number().optional(),
+    right: z.number().optional(),
+    pointers: z.array(z.object({ name: z.string(), index: z.number() })).optional(),
+    row: z.number().optional(),
+    col: z.number().optional(),
+    val: z.string().optional(),
+    state: z.array(z.string()).optional(),
+  })).default([]),
+});
+
+const StateTimelineSchema = z.object({
+  headers: z.array(z.string()).default([]),
+  rows: z.array(z.array(z.string())).default([]),
+});
+
+const FundamentalsExtrasSchema = z.object({
+  concept: z.string().default(''),
+  whyItWorks: z.string().default(''),
+});
+
+const InterviewExtrasSchema = z.object({
+  strategy: z.string().default(''),
+  template: z.string().default(''),
+  variants: z.array(z.string()).default([]),
+  similarPatterns: z.array(z.object({
+    name: z.string(),
+    difference: z.string(),
+  })).default([]),
+});
+
+const ExpertExtrasSchema = z.object({
+  invariants: z.array(z.string()).default([]),
+  edgeCases: z.array(z.string()).default([]),
+  alternatives: z.array(z.object({
+    name: z.string(),
+    complexity: z.string(),
+    prosCons: z.string(),
+  })).default([]),
+  followUps: z.array(z.object({
+    question: z.string(),
+    answer: z.string(),
+  })).default([]),
+  productionApplications: z.array(z.object({
+    system: z.string(),
+    useCase: z.string(),
+  })).default([]),
+});
+
 const LearningSheetSchema = z.object({
+  schemaVersion: z.number().default(2),
   title: z.string().catch('Untitled'),
   coreIdea: z.string().default(''),
-  recognitionClues: z.array(z.string()).default([]),
-  mermaidDiagram: z.string().optional(),
+  analogy: VisualMemoryHookSchema.default({ analogyName: '', analogyDescription: '' }),
+  recognition: PatternRecognitionSchema.default({ decisionPath: [], keywords: [], explanation: '' }),
+  visualization: InteractiveVisualizationSchema,
+  timeline: StateTimelineSchema.default({ headers: [], rows: [] }),
   complexity: z.object({
     time: z.string().default('O(?)'),
+    timeExplanation: z.string().default(''),
     space: z.string().default('O(?)'),
-  }).default({ time: 'O(?)', space: 'O(?)' }),
-  mistakes: z.array(z.string()).default([]),
-  practiceProblems: z.array(PracticeProblemSchema).default([]),
+    spaceExplanation: z.string().default(''),
+  }).default({ time: 'O(?)', timeExplanation: '', space: 'O(?)', spaceExplanation: '' }),
+  pitfalls: z.array(z.string()).default([]),
+  practiceRoadmap: z.array(PracticeProblemSchema).default([]),
+  
+  // Progressive difficulty levels
+  fundamentals: FundamentalsExtrasSchema.optional(),
+  interview: InterviewExtrasSchema.optional(),
+  expert: ExpertExtrasSchema.optional(),
+
+  // Compatibility / Fallback properties
+  recognitionClues: z.array(z.string()).optional(),
+  mermaidDiagram: z.string().optional(),
+  mistakes: z.array(z.string()).optional(),
+  practiceProblems: z.array(PracticeProblemSchema).optional(),
   personalizedMistakes: z.array(z.string()).optional(),
   personalizedRecommendations: z.array(z.string()).optional(),
 });
 
 // ─── JSON Extraction ──────────────────────────────────────────────────────────
 
-/**
- * Extracts clean, balanced JSON from raw Gemini text output.
- * Walks the string to find the first matching balanced '{' and '}'
- * to completely ignore any trailing explanatory text.
- */
 function extractJsonString(raw: string): string {
-  // If wrapped in markdown code blocks, try to isolate it first
   const codeBlockMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
   const target = codeBlockMatch ? codeBlockMatch[1].trim() : raw.trim();
 
@@ -64,7 +213,7 @@ function extractJsonString(raw: string): string {
   let inString = false;
   let escape = false;
 
-  const openToken = target[startIdx]; // '{' or '['
+  const openToken = target[startIdx];
   const closeToken = openToken === '{' ? '}' : ']';
 
   for (let i = startIdx; i < target.length; i++) {
@@ -97,7 +246,6 @@ function extractJsonString(raw: string): string {
     }
   }
 
-  // Fallback to last index match if not balanced
   const lastBrace = target.lastIndexOf(closeToken);
   if (lastBrace !== -1 && lastBrace > startIdx) {
     return target.slice(startIdx, lastBrace + 1);
@@ -106,12 +254,6 @@ function extractJsonString(raw: string): string {
   return target;
 }
 
-// ─── JSON Repair ──────────────────────────────────────────────────────────────
-
-/**
- * Attempts to repair a truncated JSON string by closing open strings,
- * arrays, and objects in correct reverse order, handling dangling colons/commas.
- */
 function repairTruncatedJson(str: string): string {
   let repaired = str.trim();
   if (!repaired) return '{}';
@@ -155,7 +297,6 @@ function repairTruncatedJson(str: string): string {
     }
   }
 
-  // 1. Close open string literal
   if (inString) {
     repaired += '"';
   }
@@ -166,7 +307,6 @@ function repairTruncatedJson(str: string): string {
     repaired += ' null';
   }
 
-  // 2. Close any open braces/brackets
   while (braceStack.length > 0) {
     const last = braceStack.pop();
     repaired = repaired.trim();
@@ -190,17 +330,6 @@ function repairTruncatedJson(str: string): string {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/**
- * Parses and repairs raw Gemini output into a validated LearningSheetData.
- *
- * 1. Extracts JSON from markdown code fences
- * 2. Parses with JSON.parse
- * 3. If that fails, attempts to auto-repair truncation/cut-offs
- * 4. Validates against Zod schema
- * 5. Missing fields get safe defaults
- *
- * @throws Error if the raw string cannot be parsed as JSON at all
- */
 export function parseAndRepair(raw: string): LearningSheetData {
   const jsonStr = extractJsonString(raw);
 
@@ -220,68 +349,66 @@ export function parseAndRepair(raw: string): LearningSheetData {
     }
   }
 
-  // Zod parse with defaults applied for missing fields
   const result = LearningSheetSchema.safeParse(parsed);
 
   if (result.success) {
     const parsedData = result.data as LearningSheetData;
-    if (parsedData.mermaidDiagram) {
+    
+    // Convert structured visualization flowchart/tree/graph to Mermaid string
+    const vis = parsedData.visualization as any;
+    if (vis && (vis.type === 'flowchart' || vis.type === 'graph' || vis.type === 'tree') && vis.nodes && vis.edges) {
+      parsedData.mermaidDiagram = buildMermaidFromSchema(vis);
+    } else if (parsedData.mermaidDiagram) {
       parsedData.mermaidDiagram = repairMermaid(parsedData.mermaidDiagram);
     }
+
+    // Populate old lists for backwards-compatibility fallbacks
+    if (!parsedData.recognitionClues) {
+      parsedData.recognitionClues = parsedData.recognition.keywords;
+    }
+    if (!parsedData.mistakes) {
+      parsedData.mistakes = parsedData.pitfalls;
+    }
+    if (!parsedData.practiceProblems || parsedData.practiceProblems.length === 0) {
+      parsedData.practiceProblems = parsedData.practiceRoadmap;
+    }
+
     return parsedData;
   }
 
-  // If strict parse fails, salvage what we can
-  const data = parsed as Record<string, unknown>;
+  // Fallback parsing (v1 support)
+  const data = parsed as Record<string, any>;
   const rawMermaid = typeof data.mermaidDiagram === 'string' ? data.mermaidDiagram : undefined;
+  
   const repaired: LearningSheetData = {
+    schemaVersion: 1,
     title: typeof data.title === 'string' ? data.title : 'Untitled',
     coreIdea: typeof data.coreIdea === 'string' ? data.coreIdea : '',
-    recognitionClues: [],
+    analogy: { analogyName: '', analogyDescription: '' },
+    recognition: { decisionPath: [], keywords: [], explanation: '' },
+    visualization: { type: 'flowchart', steps: [] },
+    timeline: { headers: [], rows: [] },
+    complexity: { time: 'O(?)', timeExplanation: '', space: 'O(?)', spaceExplanation: '' },
+    pitfalls: [],
+    practiceRoadmap: [],
     mermaidDiagram: rawMermaid ? repairMermaid(rawMermaid) : undefined,
-    complexity: { time: 'O(?)', space: 'O(?)' },
-    mistakes: [],
-    practiceProblems: [],
   };
 
-  // Populate complexity
   if (data.complexity && typeof data.complexity === 'object') {
-    const c = data.complexity as Record<string, unknown>;
+    const c = data.complexity;
     repaired.complexity = {
       time: typeof c.time === 'string' ? c.time : 'O(?)',
+      timeExplanation: typeof c.timeExplanation === 'string' ? c.timeExplanation : '',
       space: typeof c.space === 'string' ? c.space : 'O(?)',
+      spaceExplanation: typeof c.spaceExplanation === 'string' ? c.spaceExplanation : '',
     };
-  }
-
-  // Populate string arrays
-  if (Array.isArray(data.recognitionClues))
-    repaired.recognitionClues = data.recognitionClues.filter((x): x is string => typeof x === 'string');
-  if (Array.isArray(data.mistakes))
-    repaired.mistakes = data.mistakes.filter((x): x is string => typeof x === 'string');
-  if (Array.isArray(data.personalizedMistakes))
-    repaired.personalizedMistakes = data.personalizedMistakes.filter((x): x is string => typeof x === 'string');
-  if (Array.isArray(data.personalizedRecommendations))
-    repaired.personalizedRecommendations = data.personalizedRecommendations.filter((x): x is string => typeof x === 'string');
-
-  // Populate practice problems
-  if (Array.isArray(data.practiceProblems)) {
-    repaired.practiceProblems = data.practiceProblems
-      .filter((p): p is Record<string, unknown> => typeof p === 'object' && p !== null)
-      .map((p) => ({
-        name: typeof p.name === 'string' ? p.name : 'Unknown Problem',
-        difficulty: typeof p.difficulty === 'string' ? p.difficulty : 'Medium',
-        url: typeof p.url === 'string' ? p.url : undefined,
-        hint: typeof p.hint === 'string' ? p.hint : undefined,
-      }));
   }
 
   return repaired;
 }
 
-/**
- * Generates a SHA-256 hash of the learning sheet data for cache deduplication.
- */
 export function generateHash(data: LearningSheetData): string {
   const str = JSON.stringify(data);
   return createHash('sha256').update(str).digest('hex').slice(0, 16);
 }
+
