@@ -11,8 +11,8 @@ export default defineConfig({
     exclude: ['tests/**/*.spec.ts', 'node_modules/**'],
     // Clear mocks between tests
     clearMocks: true,
-    // Verbose output
-    reporter: 'verbose',
+    // Verbose output (reporters replaces reporter as of Vitest v2+)
+    reporters: ['verbose'],
   },
   resolve: {
     alias: {

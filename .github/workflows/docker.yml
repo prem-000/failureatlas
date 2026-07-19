@@ -6,9 +6,62 @@ on:
       - main
   workflow_dispatch:
 
+# Fail the entire workflow fast if any job fails
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  docker:
+  # ── Job 1: Validate the app (type-check + Next.js build) ──────────────────
+  build:
+    name: Build & Type-check
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (LTS 22)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up pnpm (latest)
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+          run_install: false
+
+      - name: Get pnpm store path
+        id: pnpm-cache
+        run: echo "store=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.store }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check (app + extension)
+        run: pnpm type-check
+
+      - name: Build Next.js application
+        env:
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+          NEXTAUTH_SECRET: "ci-secret-placeholder"
+          NEXTAUTH_URL: "http://localhost:3000"
+        run: pnpm build
+
+  # ── Job 2: Build & push Docker image (only after build job passes) ─────────
+  docker:
+    name: Docker — Build & Push
+    runs-on: ubuntu-latest
+    needs: build
 
     permissions:
       contents: read
