@@ -1,6 +1,6 @@
-# Praxis Practice Journal
+# FailureAtlas Practice Journal
 
-The **Practice Journal** is a key feature of the Praxis system workspace. It provides developers with a structured, chronological feed of automated reflection notes extracted from recent coding practice failures (e.g., LeetCode submissions that did not result in an `Accepted` status). 
+The **Practice Journal** is a key feature of the FailureAtlas system workspace. It provides developers with a structured, chronological feed of automated reflection notes extracted from recent coding practice failures (e.g., LeetCode submissions that did not result in an `Accepted` status). 
 
 Instead of showing raw error messages, the Practice Journal correlates code edits, compilation/test results, and behavioral signals to isolate the actual **Root Cause** of a failure and explain it in plain English.
 
@@ -36,7 +36,7 @@ The Practice Journal operates through a decoupled, multi-layered pipeline:
                                         └──────────────────────────────┼───────────────────────────────┘
                                                                        ▼
                                                         ┌──────────────────────────────┐
-                                                        │      Neo4j Graph Write       │
+                                                        │    PostgreSQL Graph Write    │
                                                         │   & PageRank Weakness Calc   │
                                                         └──────────────┬───────────────┘
                                                                        ▼

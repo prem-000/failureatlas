@@ -19,7 +19,7 @@ Engineered for entropy, Praxis decodes systemic complexity using knowledge-graph
 - **Styling**: Tailwind CSS with CSS Variables
 - **Graph Engine**: React Flow for DAG Visualization
 - **AI/LLM**: Retrieval-Augmented Generation (RAG) with transparency evidence panels
-- **State Management**: Neo4j (Graph data structures)
+- **State Management**: Relational Graph stored in PostgreSQL (traversed with Prisma ORM)
 - **Typography**: Geist Sans font family
 - **Icons**: Heroicons and Lucide React
 
@@ -1693,9 +1693,9 @@ const computeMyersDiff = (oldCode: string, newCode: string): MyersDiffResult => 
 ```
 ```
 
-#### Neo4j Graph Node Component (Enhanced for Knowledge Graph)
+#### KnowledgeNode Component (Enhanced for Knowledge Graph)
 ```typescript
-interface Neo4jNodeProps {
+interface KnowledgeNodeProps {
   data: {
     id: string;
     type: 'Problem' | 'FailureEvent' | 'RootCause' | 'Weakness' | 'LearningStrategy';
@@ -1712,7 +1712,7 @@ interface Neo4jNodeProps {
   isHighlighted?: boolean;
 }
 
-const Neo4jNode: React.FC<Neo4jNodeProps> = ({ data, selected, isHighlighted }) => {
+const KnowledgeNode: React.FC<KnowledgeNodeProps> = ({ data, selected, isHighlighted }) => {
   const getNodeStyling = (type: string, severity?: string) => {
     const baseStyles = {
       Problem: { 
@@ -1836,12 +1836,12 @@ const Neo4jNode: React.FC<Neo4jNodeProps> = ({ data, selected, isHighlighted }) 
 
 // Enhanced node types for React Flow
 const knowledgeGraphNodeTypes = {
-  neo4jNode: Neo4jNode,
-  problemNode: (props) => <Neo4jNode {...props} data={{ ...props.data, type: 'Problem' }} />,
-  failureNode: (props) => <Neo4jNode {...props} data={{ ...props.data, type: 'FailureEvent' }} />,
-  rootCauseNode: (props) => <Neo4jNode {...props} data={{ ...props.data, type: 'RootCause' }} />,
-  weaknessNode: (props) => <Neo4jNode {...props} data={{ ...props.data, type: 'Weakness' }} />,
-  strategyNode: (props) => <Neo4jNode {...props} data={{ ...props.data, type: 'LearningStrategy' }} />,
+  knowledgeNode: KnowledgeNode,
+  problemNode: (props) => <KnowledgeNode {...props} data={{ ...props.data, type: 'Problem' }} />,
+  failureNode: (props) => <KnowledgeNode {...props} data={{ ...props.data, type: 'FailureEvent' }} />,
+  rootCauseNode: (props) => <KnowledgeNode {...props} data={{ ...props.data, type: 'RootCause' }} />,
+  weaknessNode: (props) => <KnowledgeNode {...props} data={{ ...props.data, type: 'Weakness' }} />,
+  strategyNode: (props) => <KnowledgeNode {...props} data={{ ...props.data, type: 'LearningStrategy' }} />,
 };
 ```
 ```
@@ -1960,7 +1960,7 @@ const RAGConfidenceBadge: React.FC<{
 };
 ```
 
-### Neo4j Graph Node Component
+### Knowledge Graph Node Component
 ```typescript
 interface GraphNodeProps {
   data: {
@@ -2036,7 +2036,7 @@ const customNodeTypes = {
 │   └── NavigationItem.tsx
 ├── intelligence/
 │   ├── EvidenceCard.tsx
-│   ├── Neo4jNode.tsx
+│   ├── KnowledgeNode.tsx
 │   ├── RootCauseBadge.tsx
 │   ├── SystemicWeaknessCard.tsx
 │   └── RiskIndexMeter.tsx
@@ -2067,7 +2067,7 @@ const customNodeTypes = {
 └── animations.css   # Motion & interaction styles
 
 /lib/                # Core logic and utilities
-├── graph/           # Neo4j graph traversal
+├── graph/           # Relational graph traversal
 ├── rag/            # RAG inference and retrieval
 ├── inference/      # Root cause analysis
 └── utils/          # Shared utilities
@@ -2108,7 +2108,7 @@ Praxis Intelligence System
 │   │   │   └── RiskIndexMeter (with Pulse Animation)
 │   │   └── MiniKnowledgeGraph
 │   │       └── ReactFlow
-│   │           └── Neo4jNode[] (Enhanced Intelligence Nodes)
+│   │           └── KnowledgeNode[] (Enhanced Intelligence Nodes)
 │   │
 │   ├── Graph Explorer - Full-Canvas Intelligence Mapping
 │   │   ├── GraphFilterDrawer
@@ -2118,7 +2118,7 @@ Praxis Intelligence System
 │   │   │   └── ConfidenceThresholdSlider
 │   │   ├── KnowledgeGraphCanvas (Full-Bleed)
 │   │   │   └── ReactFlow
-│   │   │       ├── Neo4jNode[] (Critical Pulse Animation)
+│   │   │       ├── KnowledgeNode[] (Critical Pulse Animation)
 │   │   │       ├── IntelligenceEdge[]
 │   │   │       ├── Background
 │   │   │       ├── Controls
@@ -2181,7 +2181,7 @@ Praxis Intelligence System
     │   ├── RootCauseBadge (Enhanced Severity)
     │   ├── CodeDiffViewer (Myers Diff + Reveal)
     │   ├── EvidenceCard (RAG Transparency)
-    │   └── Neo4jNode (Knowledge Graph Intelligence)
+    │   └── KnowledgeNode (Knowledge Graph Intelligence)
     │
     ├── Technical Interface Components
     │   ├── IntelligentButton

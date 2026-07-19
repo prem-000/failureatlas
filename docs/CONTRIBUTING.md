@@ -276,111 +276,30 @@ const processData = (data: any) => { /* ... */ };  // Bad
 const processData = (data: SubmissionEvent) => { /* ... */ };  // Good
 ```
 
-## Monorepo Package Structure
+## Repository Layout and Workspace Structure
 
-Praxis uses a monorepo structure with pnpm workspaces. Understanding this structure is crucial for effective contributions.
+FailureAtlas uses pnpm workspaces for managing the main Next.js web application and the Chrome Extension.
 
-### Current Package Structure
+### Workspace Structure
 ```
 failureatlas/
 ├── apps/
-│   ├── web/                    # Next.js frontend application
-│   └── extension/              # Chrome Extension (Manifest V3)
-├── packages/
-│   ├── inference/              # Root cause inference engine  
-│   ├── graph/                  # Neo4j operations and schema
-│   ├── embeddings/             # OpenAI embeddings pipeline
-│   ├── rag/                    # RAG retrieval and context builder
-│   ├── shared/                 # Shared types and utilities
-│   └── config/                 # Shared configuration (ESLint, etc.)
-└── prisma/                     # Database schema and migrations
+│   └── extension/              # Chrome Extension (v1.1.0 Manifest V3)
+├── prisma/                     # PostgreSQL database schema and migrations
+├── src/                        # Main web application (Next.js 15, React 19)
+│   ├── app/                    # Next.js App Router and API endpoints
+│   ├── components/             # Reusable UI components (Zustand, React Flow)
+│   ├── lib/                    # Business logic (Bayesian classifier, Myers diff, PageRank)
+│   └── styles/                 # Tailwind CSS styles and themes
+└── tests/                      # Vitest test suite
 ```
 
-### Adding a New Package
+### Adding New Business Logic
 
-To add a new package to the monorepo:
-
-#### 1. Create Package Structure
-```bash
-# Create new package directory
-mkdir packages/my-new-package
-cd packages/my-new-package
-
-# Initialize package.json
-pnpm init
-```
-
-#### 2. Configure Package.json
-```json
-{
-  "name": "@failureatlas/my-new-package",
-  "version": "0.1.0",
-  "description": "Description of package functionality",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "jest",
-    "lint": "eslint src --ext .ts,.tsx"
-  },
-  "dependencies": {
-    // Runtime dependencies
-  },
-  "devDependencies": {
-    "@types/node": "^18.0.0",
-    "typescript": "^5.0.0",
-    "jest": "^29.0.0",
-    "@failureatlas/config": "workspace:*"
-  }
-}
-```
-
-#### 3. Setup TypeScript Configuration
-```json
-// tsconfig.json
-{
-  "extends": "@failureatlas/config/typescript/base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
-}
-```
-
-#### 4. Create Package Structure
-```
-packages/my-new-package/
-├── src/
-│   ├── index.ts              # Main export file
-│   ├── types.ts              # Type definitions
-│   └── __tests__/            # Test files
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
-#### 5. Update Root Package.json
-```json
-{
-  "workspaces": [
-    "apps/*",
-    "packages/*",
-    "packages/my-new-package"
-  ]
-}
-```
-
-#### 6. Install Dependencies
-```bash
-# From root directory
-pnpm install
-
-# Add package as dependency to other packages
-pnpm --filter @failureatlas/web add @failureatlas/my-new-package
-```
+When adding or expanding features:
+1. **Core Business Logic**: Implement functions in typescript inside `src/lib/`. For example, new algorithms should go in `src/lib/analysis/` or similar folders.
+2. **Prisma Models**: If database changes are needed, update `prisma/schema.prisma` and run `npx prisma migrate dev`.
+3. **API Routes**: Implement Next.js endpoints inside `src/app/api/`.
 
 ## Testing Guidelines
 
@@ -490,112 +409,50 @@ describe('/api/submissions integration', () => {
 
 To add a new root cause to the learning ontology:
 
-#### 1. Update Ontology Schema
+#### 1. Update Type Definitions
+Add the new root cause type to the platform's types (such as `src/types/index.ts` or custom mapping files). For example:
 ```typescript
-// packages/shared/src/ontology.ts
-export enum RootCauseType {
-  BOUNDARY_CONDITION_ERROR = 'boundary-condition-error',
-  ALGORITHM_SELECTION_MISTAKE = 'algorithm-selection-mistake', 
-  // Add new root cause type
-  MEMORY_MANAGEMENT_ERROR = 'memory-management-error'
-}
+export type RootCauseType =
+  | 'boundary-condition-error'
+  | 'algorithm-selection-mistake'
+  | 'memory-management-error'; // Add your new cause type
+```
 
-export const ROOT_CAUSE_DEFINITIONS: Record<RootCauseType, RootCauseDefinition> = {
-  [RootCauseType.MEMORY_MANAGEMENT_ERROR]: {
-    name: 'Memory Management Error',
-    category: 'Resource Error',
-    description: 'Incorrect handling of memory allocation, deallocation, or access patterns',
-    commonPatterns: [
-      'memory leak in recursive calls',
-      'buffer overflow in array operations',
-      'dangling pointer access'
-    ],
-    detectionSignals: [
-      'memory_limit_exceeded',
-      'segmentation_fault',
-      'excessive_memory_usage'
-    ]
-  },
-  // ... existing definitions
+#### 2. Update Classification Weights
+Modify the Bayesian weights file (`src/lib/inference/bayesian-weights.json`) to register evidence-to-cause conditional probabilities for the new root cause type:
+```json
+{
+  "evidenceLikelihoods": {
+    "memory-management-error": {
+      "memory_limit_exceeded": 0.85,
+      "segmentation_fault": 0.70,
+      "rapid_resubmission": 0.20
+    }
+  }
+}
+```
+
+#### 3. Update Root Cause to Weakness Mapping
+Map the new root cause to one of the 4 canonical systemic weaknesses in `src/lib/graph/pagerank.ts`:
+```typescript
+const ROOT_CAUSE_TO_WEAKNESS: Record<string, { id: string; name: string }> = {
+  'boundary-condition-error': { id: 'edge-case-reasoning', name: 'Edge Case Reasoning' },
+  'memory-management-error': { id: 'performance-analysis', name: 'Performance Analysis' } // Map new cause
 };
 ```
 
-#### 2. Update Classification Logic
-```typescript  
-// packages/inference/src/classifiers/bayesian.ts
-export class BayesianClassifier {
-  private readonly priorProbabilities = {
-    [RootCauseType.BOUNDARY_CONDITION_ERROR]: 0.35,
-    [RootCauseType.ALGORITHM_SELECTION_MISTAKE]: 0.25,
-    [RootCauseType.MEMORY_MANAGEMENT_ERROR]: 0.15, // New prior
-    // ... other priors
-  };
-
-  private computeLikelihood(evidence: Evidence, rootCause: RootCauseType): number {
-    switch (rootCause) {
-      case RootCauseType.MEMORY_MANAGEMENT_ERROR:
-        return this.computeMemoryErrorLikelihood(evidence);
-      // ... other cases
-    }
-  }
-
-  private computeMemoryErrorLikelihood(evidence: Evidence): number {
-    let likelihood = 0.0;
-    
-    if (evidence.submissionStatus === 'Memory Limit Exceeded') {
-      likelihood += 0.8;
-    }
-    
-    if (evidence.memoryUsageTrend === 'exponential_growth') {
-      likelihood += 0.7;
-    }
-    
-    // Check for memory-related code patterns
-    const memoryPatterns = /malloc|free|new\[\]|delete\[\]|recursive/gi;
-    if (memoryPatterns.test(evidence.codeContent)) {
-      likelihood += 0.4;
-    }
-    
-    return Math.min(likelihood, 1.0);
-  }
-}
-```
-
-#### 3. Update Database Schema
-```sql
--- Add new root cause to Neo4j
-CREATE (r:RootCause {
-  causeId: "memory-management-error",
-  name: "Memory Management Error",
-  category: "Resource Error", 
-  description: "Incorrect handling of memory allocation and deallocation",
-  commonPatterns: ["memory leak", "buffer overflow", "dangling pointer"],
-  detectionSignals: ["memory_limit_exceeded", "segmentation_fault"]
-});
-
--- Link to Growth Opportunities
-MATCH (r:RootCause {causeId: "memory-management-error"})
-MATCH (w:Weakness {weaknessId: "resource-management"})
-CREATE (r)-[:INDICATES {strength: 0.85}]->(w);
-```
-
 #### 4. Add Test Coverage
+Add unit and integration tests inside the `tests/` directory to verify that submissions with the targeted failure patterns result in the expected root cause classifications:
 ```typescript
-// packages/inference/src/__tests__/memory-classification.test.ts
 describe('Memory Management Error Classification', () => {
-  it('should identify memory leak in recursive solution', async () => {
-    const evidence = {
-      submissionStatus: 'Memory Limit Exceeded',
-      codeContent: 'def factorial(n): return n * factorial(n-1)',
-      memoryUsage: 256.5, // MB
-      testCasesPassed: 15,
-      totalTestCases: 20
+  it('should identify memory leaks from submission events', async () => {
+    const event = {
+      status: 'Memory Limit Exceeded',
+      code: 'def recursive(): return recursive()',
+      memory: 512
     };
-
-    const result = await classifier.classify(evidence);
-
-    expect(result.rootCause).toBe('memory-management-error');
-    expect(result.confidence).toBeGreaterThan(0.7);
+    const diagnosis = await runBayesianInference(event);
+    expect(diagnosis.rootCause).toBe('memory-management-error');
   });
 });
 ```

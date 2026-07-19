@@ -1,8 +1,8 @@
-# Praxis Chrome Extension
+# FailureAtlas Chrome Extension
 
 ## Overview
 
-The Praxis Chrome Extension is the data collection frontend that passively monitors LeetCode submissions and feeds failure data into the Praxis analysis pipeline. Built with Manifest V3, it provides seamless, non-intrusive capture of coding session data.
+The FailureAtlas Chrome Extension is the data collection frontend that passively monitors coding platform submissions and feeds failure data into the FailureAtlas analysis pipeline. Built with Manifest V3, it provides seamless, non-intrusive capture of coding session data across multiple competitive programming and practice platforms.
 
 ## Manifest V3 Architecture
 
@@ -11,52 +11,59 @@ The Praxis Chrome Extension is the data collection frontend that passively monit
 ```json
 {
   "manifest_version": 3,
-  "name": "Praxis",
-  "version": "1.0.0",
-  "description": "Praxis Chrome Extension — LeetCode submission capture",
-
+  "name": "FailureAtlas",
+  "version": "1.1.0",
+  "description": "FailureAtlas Chrome Extension — Multi-platform submission capture (LeetCode, TUF, HackerRank, Codeforces & more)",
   "permissions": [
     "storage",
     "activeTab",
     "scripting",
-    "webNavigation"
+    "webNavigation",
+    "webRequest",
+    "alarms"
   ],
-
   "host_permissions": [
     "https://leetcode.com/*",
+    "https://*.takeuforward.org/*",
+    "https://codeforces.com/*",
+    "https://*.hackerrank.com/*",
+    "https://*.codechef.com/*",
+    "https://atcoder.jp/*",
+    "https://*.geeksforgeeks.org/*",
     "https://api.failureatlas.dev/*",
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "http://localhost:3000/api/*",
+    "http://127.0.0.1:3000/*"
   ],
-
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
-
-  "content_scripts": [{
-    "matches": [
-      "https://leetcode.com/problems/*",
-      "https://leetcode.com/contest/*"
-    ],
-    "js": ["content.js"],
-    "run_at": "document_idle"
-  }],
-
+  "content_scripts": [
+    {
+      "matches": [
+        "https://leetcode.com/*",
+        "https://*.takeuforward.org/*",
+        "https://codeforces.com/*",
+        "https://*.hackerrank.com/*",
+        "https://*.codechef.com/*",
+        "https://atcoder.jp/*",
+        "https://*.geeksforgeeks.org/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Praxis"
+    "default_title": "FailureAtlas"
   },
-
   "icons": {
-    "16": "icons/icon.svg",
-    "48": "icons/icon.svg",
-    "128": "icons/icon.svg"
-  },
-
-  "web_accessible_resources": [{
-    "resources": ["*.js"],
-    "matches": ["https://leetcode.com/*"]
-  }]
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
 }
 ```
 
@@ -65,8 +72,8 @@ The Praxis Chrome Extension is the data collection frontend that passively monit
 ### Core Permissions
 
 #### `storage`
-**Purpose**: Store user authentication tokens, session data, and cached Practice Sessions locally
-**Scope**: Limited to extension-specific data
+**Purpose**: Store user authentication tokens, session data, and cached Practice Sessions locally.
+**Scope**: Limited to extension-specific data.
 **Data Stored**:
 - JWT authentication token
 - User preference settings
@@ -74,46 +81,53 @@ The Praxis Chrome Extension is the data collection frontend that passively monit
 - Problem metadata cache
 
 #### `activeTab`
-**Purpose**: Access to currently active LeetCode tab for DOM inspection and event monitoring
-**Scope**: Only when user is actively on LeetCode
+**Purpose**: Access to currently active coding platform tabs for DOM inspection and event monitoring.
+**Scope**: Enabled only when the user is actively navigating a supported platform.
 **Usage**:
-- Detect submission button clicks
-- Extract problem metadata from DOM
-- Monitor code editor changes
+- Detect submission clicks and solve attempts
+- Extract problem metadata from the DOM
+- Monitor code editor changes and text selections
 
 #### `scripting`
-**Purpose**: Inject content scripts to monitor LeetCode interface interactions
-**Scope**: Limited to LeetCode domains
+**Purpose**: Inject content scripts to monitor platform interfaces and register Monaco/CodeMirror hooks.
+**Scope**: Limited to registered host domains.
 **Functions**:
-- Monitor submission events
-- Extract code from editor
-- Detect test result displays
+- Monitor submission events and DOM mutations
+- Extract code from Monaco/CodeMirror editor instances
+- Detect test result updates and run outputs
 
 #### `webNavigation`
-**Purpose**: Detect navigation between LeetCode problems to track session continuity
-**Scope**: LeetCode domain only
+**Purpose**: Detect navigation between problems to track session continuity and time-on-problem.
+**Scope**: Registered domains only.
 **Usage**:
-- Track problem transitions
-- Measure time-on-problem
-- Detect session boundaries
+- Track problem page transitions
+- Measure elapsed time on a problem
+- Detect session boundaries and tab changes
+
+#### `webRequest`
+**Purpose**: Intercept platform-specific AJAX requests to capture raw submission responses (e.g. for TUF and HackerRank network requests).
+**Scope**: Supported host platforms.
+
+#### `alarms`
+**Purpose**: Schedule background synchronization runs and retry-queues for offline-caching.
 
 ### Host Permissions
 
-#### `https://leetcode.com/*`
-**Purpose**: Access to LeetCode pages for data collection
-**Justification**: Core functionality requires monitoring LeetCode submission activity
+#### `https://leetcode.com/*`, `https://*.takeuforward.org/*`, `https://codeforces.com/*`, `https://*.hackerrank.com/*`, `https://*.codechef.com/*`, `https://atcoder.jp/*`, `https://*.geeksforgeeks.org/*`
+**Purpose**: Access to supported problem platforms for submission event capture.
+**Justification**: Core functionality requires monitoring solving activity across these sites.
 **Data Collected**:
-- Problem metadata (title, difficulty, topics)
-- Submission results and timing
-- Code content and evolution
+- Problem metadata (title, slug, difficulty, topics/tags)
+- Submission details (language, code, execution status, runtime, memory)
+- Test case statistics (total count, passed count, failed test case inputs/outputs)
 
-#### `https://api.praxis.dev/*`
-**Purpose**: Send collected data to Praxis backend API
-**Justification**: Extension must communicate with backend for analysis
+#### `https://api.failureatlas.dev/*`, `http://localhost:3000/*`
+**Purpose**: Transmit collected submission data and retrieve user-profiles.
+**Justification**: Enables the extension to sync data to the central database.
 **Data Transmitted**:
-- Anonymized submission events
-- Problem metadata
-- Code diffs and behavioral signals
+- Anonymized submission event records
+- Code diff evolution snapshots
+- Extracted behavioral signals (rapid submissions, duration)
 
 ## Content Script Injection Strategy
 

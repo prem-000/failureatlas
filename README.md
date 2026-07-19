@@ -43,31 +43,33 @@
 ## ✨ Features
 
 - 🔍 **Learning Intelligence** — Bayesian inference engine pinpoints exactly *why* your submission failed, not just *that* it failed
-- 🧠 **Learning Graph** — PageRank graph algorithm maps your recurring blind spots across all submissions
-- 📚 **Growth Analysis** — Groq (LLaMA-3) generates targeted study plans based on your *actual* practice sessions
+- 🧠 **Learning Graph** — Relational graph model (PostgreSQL + Prisma) with a custom PageRank algorithm maps your recurring blind spots across all submissions
+- 📚 **Growth Analysis** — Gemini & Groq generate targeted study plans based on your *actual* practice sessions
 - 📊 **Practice Insights** — Timeline view, streak analysis, acceptance rates and improvement metrics
-- 🔌 **Chrome Extension** — Auto-captures LeetCode submissions in real-time, zero manual input required
+- 🔌 **Chrome Extension (v1.1.0)** — Auto-captures submissions in real-time across **7 platforms** with zero manual input required
 - 🗂 **RAG-Powered Chat** — Ask anything about your practice sessions; the AI answers using your embedded submission history
-- 🌐 **Multi-language Support** — Works with Python, JavaScript, Java, C++, and more
-- ⚡ **Improvement Plans** — Context-aware recommendations with LLM-generated explanations
+- 🌐 **Multi-platform Support** — Works with LeetCode, Take U Forward (TUF), HackerRank, Codeforces, CodeChef, AtCoder, and GeeksforGeeks (GFG)
+- 📅 **SM-2 Priority Queue** — Fully automated practice scheduling workspace utilizing the SuperMemo-2 spacing algorithm and custom priority weights (difficulty, overdue status, historical failures)
+- 🎨 **Excalidraw & Mermaid Integration** — Built-in Excalidraw sketching workspace and a robust self-repairing Mermaid diagramming pipeline
+- 🎮 **Interactive Step Players** — Step through recursion memory trees (`MemoryPlayer`), two-pointer traversals (`PointerPlayer`), 2D arrays (`GridPlayer`), trees (`TreePlayer`), and execution cards (`StepCardsPlayer`) directly inside the Learning Sheet
 - 📈 **Knowledge Graph** — Visual React Flow graph of your weakness relationships and dependencies
 
 ### 🔌 What Data the Extension Captures
 
-When you submit code on LeetCode, the extension automatically captures:
+When you submit code on any of the supported platforms, the extension automatically captures:
 - **Problem Details**: Title, slug, difficulty, URL, and topics/tags.
-- **Submission Status**: Accepted, Wrong Answer, Time Limit Exceeded, Memory Limit Exceeded, Runtime Error, or Compilation Error.
+- **Submission Status**: Accepted (AC), Wrong Answer (WA), Time Limit Exceeded (TLE), Memory Limit Exceeded (MLE), Runtime Error (RE), or Compilation Error (CE).
 - **Code & Language**: Your submitted code and the programming language used.
-- **Performance Metrics**: Runtime and memory usage, test cases passed, total test cases, and failed test case details.
+- **Performance Metrics**: Runtime, memory usage, test cases passed, total test cases, and failed test case details.
 - **Session Data**: Time spent solving, attempt number, and whether it was a rapid submission.
 - **Code Evolution**: Differences (additions/deletions) tracking how your code changed over time before submission.
 
 #### How It Works (The Mechanism)
-The extension uses a lightweight content script injected into LeetCode to gather this data:
-1. **DOM MutationObserver**: Watches the submission result area for changes (e.g., when the "Pending" state changes to "Accepted" or "Wrong Answer").
-2. **Submit Button Listener**: Detects when you click "Submit", triggering an immediate code cache update.
-3. **Code Extraction**: Continuously caches your code every 2 seconds (using the Monaco Editor API or DOM parsing as a fallback) to ensure the exact code is captured before the page re-renders.
-4. **Regex Scraping**: Extracts runtime, memory, and test case data directly from the result text rendered on the page.
+The extension uses a lightweight content script and platform-specific adapters to gather data:
+1. **Network Interceptors**: intercept raw execution/submission network payloads on sites like HackerRank and TUF.
+2. **DOM MutationObservers**: Watch the submission result areas dynamically for changes (e.g. when states transition from Pending to Completed).
+3. **Submit Button Listeners**: Detect solve transitions to trigger immediate code caching.
+4. **Editor Hooks**: Caches and grabs code state directly from Monaco / CodeMirror APIs to preserve the exact code representation before page transitions.
 
 ---
 
@@ -75,14 +77,14 @@ The extension uses a lightweight content script injected into LeetCode to gather
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | Next.js 15, React 19, TailwindCSS, React Flow, Framer Motion |
+| **Frontend** | Next.js 15, React 19, TailwindCSS, React Flow, Excalidraw, Framer Motion |
 | **Backend** | Next.js API Routes, TypeScript, Prisma ORM |
-| **AI / LLM** | Groq Cloud (LLaMA-3 8B), RAG with cosine similarity embeddings |
-| **Analysis** | Bayesian Inference, Myers Diff, PageRank Graph Algorithm |
-| **Database** | PostgreSQL 16, Prisma Migrations |
-| **Extension** | Chrome Extension (Manifest V3), TypeScript |
+| **AI / LLM** | Gemini Pro, Groq Cloud (LLaMA-3 8B), RAG with cosine similarity embeddings |
+| **Analysis** | Bayesian Inference, Myers Diff, Relational PageRank (In-Memory Power Iteration) |
+| **Database** | PostgreSQL 16, pgvector, Redis (Caching & Rate-limiting), Prisma Migrations |
+| **Extension** | Chrome Extension (Manifest V3 v1.1.0), Webpack, TypeScript |
 | **Auth** | JWT + bcrypt, NextAuth adapter |
-| **Dev Tools** | Docker Compose, Prisma Studio, TSX |
+| **Dev Tools** | Vitest, Docker Compose, Prisma Studio, TSX, GitHub Actions |
 
 ---
 
@@ -91,9 +93,10 @@ The extension uses a lightweight content script injected into LeetCode to gather
 <details>
 <summary><b>📋 Prerequisites</b></summary>
 
-- **Node.js** v18+ and **pnpm** / **npm**
+- **Node.js** v22+ and **pnpm** / **npm**
 - **PostgreSQL** 16 running locally or via Docker
-- **Groq API Key** — free at [console.groq.com](https://console.groq.com)
+- **Redis** running locally or via Docker
+- **Groq API Key** and **Gemini API Key**
 - **Google Chrome** (for the extension)
 
 </details>
@@ -114,7 +117,7 @@ cd failureatlas
 npm install
 ```
 
-### 3. Start PostgreSQL (via Docker)
+### 3. Start PostgreSQL and Redis (via Docker)
 
 ```bash
 docker-compose up -d
@@ -132,8 +135,9 @@ Edit `.env.local`:
 # Database
 DATABASE_URL=postgresql://failureatlas:yourpassword@localhost:5432/failureatlas_dev
 
-# AI — get your free key at https://console.groq.com
+# AI
 GROQ_API_KEY=gsk_your_key_here
+GEMINI_API_KEY=your_gemini_key_here
 
 # Auth
 NEXTAUTH_URL=http://localhost:3000
@@ -180,33 +184,36 @@ Go to `chrome://extensions` → **Load unpacked** → select `apps/extension/dis
 | ![Dashboard](https://via.placeholder.com/600x340/0D1117/FF4444?text=Dashboard) | Main dashboard with submission timeline and weakness heatmap |
 | ![Learning Intelligence](https://via.placeholder.com/600x340/0D1117/3B82F6?text=Learning+Intelligence) | AI Practice Analyst chat — ask about your patterns |
 | ![Learning Graph](https://via.placeholder.com/600x340/0D1117/22C55E?text=Learning+Graph) | React Flow graph of weakness relationships |
-| ![Mastery Journey](https://via.placeholder.com/600x340/0D1117/F59E0B?text=Mastery+Journey) | Personalized learning plan generated by Groq |
+| ![Mastery Journey](https://via.placeholder.com/600x340/0D1117/F59E0B?text=Mastery+Journey) | Personalized learning plan generated by Gemini/Groq |
 
 ---
 
 ## 🗺 Roadmap
 
 ### ✅ Completed
-- [x] Chrome Extension for auto-capturing LeetCode submissions
+- [x] Chrome Extension (v1.1.0) with multi-platform auto-capture (LeetCode, TUF, HackerRank, Codeforces, CodeChef, AtCoder, GFG)
+- [x] Spaced Repetition Practice Queue (SM-2 scheduler and priority selection)
+- [x] Interactive Learning Sheet players (`MemoryPlayer`, `PointerPlayer`, `GridPlayer`, `TreePlayer`, `StepCardsPlayer`)
+- [x] Excalidraw diagramming integration and auto-repairing Mermaid renderer
+- [x] Bayesian retraining feedback loop pipeline
+- [x] In-memory relational PageRank weakness score calculations in PostgreSQL
 - [x] Bayesian inference engine for root cause analysis
-- [x] PageRank graph for weakness pattern detection
 - [x] RAG pipeline with cosine similarity embeddings
-- [x] Groq (LLaMA-3) powered AI diagnosis & chat
-- [x] Interactive knowledge graph (React Flow)
+- [x] Groq (LLaMA-3) & Gemini powered AI diagnosis & chat
+- [x] Interactive knowledge graph (React Flow `KnowledgeNode`)
 - [x] JWT authentication with API key support
 - [x] Prisma ORM with PostgreSQL migrations
 - [x] Progress tracking (streaks, acceptance rate, timelines)
 
 ### 🔄 In Progress
-- [ ] Codeforces & HackerRank extension support
 - [ ] GitHub OAuth login
 - [ ] Public profile & shareable weakness reports
+- [ ] VS Code extension for local IDE support
 
 ### 📌 Planned
 - [ ] Mobile app (React Native)
 - [ ] Weekly AI digest emails
 - [ ] Team / study group mode
-- [ ] VS Code extension for local IDE support
 - [ ] Fine-tuned model on competitive programming failures
 - [ ] Leaderboard & peer comparison
 

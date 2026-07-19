@@ -1,12 +1,12 @@
-# Praxis REST API Reference
+# FailureAtlas REST API Reference
 
 ## Overview
 
-The Praxis API provides endpoints for submission ingestion, Practice Analysis, graph queries, and diagnosis generation. All endpoints use JSON for request/response bodies and JWT authentication for user authorization.
+The FailureAtlas API provides endpoints for submission Ingestion, Practice Analysis, graph queries, and diagnosis generation. All endpoints use JSON for request/response bodies and JWT authentication for user authorization.
 
 ## Base URL
 ```
-Production: https://api.praxis.dev/api
+Production: https://api.failureatlas.dev/api
 Development: http://localhost:3000/api
 ```
 
@@ -39,8 +39,8 @@ The following 15 endpoints are implemented and verified in the current build.
 | `POST` | `/api/submissions/[id]/save-learning` | ✅ | Save learning feedback |
 | `POST` | `/api/submissions/analyze` | ✅ | On-demand analysis trigger |
 | `GET` | `/api/dashboard/stats` | ✅ | Aggregated dashboard stats |
-| `GET` | `/api/graph/subgraph` | ✅ | Neo4j subgraph for ReactFlow |
-| `GET` | `/api/graph/weaknesses` | ✅ | PageRank-scored weakness list |
+| `GET` | `/api/graph/subgraph` | ✅ | Relational subgraph for ReactFlow |
+| `GET` | `/api/graph/weaknesses` | ✅ | Relational PageRank weakness list |
 | `GET` | `/api/graph/failures/[weakness]` | ✅ | Failures filtered by weakness |
 | `POST` | `/api/diagnosis/generate` | ✅ | RAG + LLM personalized diagnosis |
 | `GET` | `/api/user/profile` | ✅ | Profile + detailed analytics |
@@ -124,17 +124,18 @@ curl -X POST http://localhost:3000/api/auth/login \
 ---
 
 #### GET /api/health
-System health check — returns connection status for PostgreSQL and Neo4j.
+System health check — returns connection status for PostgreSQL and Redis.
 
 **Authentication:** Not required
 
 **Response:**
 ```typescript
 {
-  status: "ok";
+  status: "ok" | "error";
+  timestamp: string;
   services: {
-    database: "connected" | "error";
-    neo4j: "connected" | "error";
+    database: "connected" | "disconnected";
+    redis: "connected" | "not_configured" | "disconnected";
   };
 }
 ```
@@ -187,7 +188,7 @@ problemSlug - Filter by problem
 
 #### POST /api/submissions
 Ingest a new submission event and trigger the full analysis pipeline:
-Myers diff → Behavioral signals → Bayesian inference → Neo4j graph recording → Embedding → RAG retrieval → Diagnosis generation → PageRank update.
+Myers diff → Behavioral signals → Bayesian inference → Relational graph recording → Embedding → RAG retrieval → Diagnosis generation → PageRank recalculation.
 
 **Authentication:** Required
 
@@ -603,4 +604,4 @@ The following endpoints are planned but not yet implemented:
 
 ---
 
-The Praxis API provides structured access to Learning Intelligence with consistent REST conventions and JWT authentication. All protected endpoints require `Authorization: Bearer <token>` obtained from `/api/auth/login`.
+The FailureAtlas API provides structured access to Learning Intelligence with consistent REST conventions and JWT authentication. All protected endpoints require `Authorization: Bearer <token>` obtained from `/api/auth/login`.

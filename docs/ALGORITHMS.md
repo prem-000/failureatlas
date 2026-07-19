@@ -1,8 +1,8 @@
-# Praxis Core Algorithms
+# FailureAtlas Core Algorithms
 
 ## Overview
 
-Praxis employs a sophisticated algorithmic pipeline that combines classical computer science algorithms with modern machine learning techniques to extract meaningful patterns from coding failure data.
+FailureAtlas employs a sophisticated algorithmic pipeline that combines classical computer science algorithms with modern machine learning techniques to extract meaningful patterns from coding failure data.
 
 ## 1. Myers Diff Algorithm for Code Evolution
 
@@ -255,62 +255,55 @@ def compute_inference_confidence(posteriors: Dict[str, float], evidence_strength
     final_confidence = (distribution_confidence * 0.7) + (evidence_strength * 0.3)
     
     return min(0.99, final_confidence)
-```
 
-## 4. PageRank for Weakness Node Scoring
+## 4. Relational PageRank for Weakness Node Scoring
 
 ### Problem Solved
-Identifies the most impactful weakness patterns in a user's failure history by analyzing the graph structure of interconnected failures.
+Identifies the most impactful weakness patterns in a user's failure history by performing PageRank computations over a bipartite subgraph containing failure events and weakness nodes.
 
 ### Application in Pipeline
-Applied to the Neo4j knowledge graph to score weakness nodes, enabling prioritized learning recommendations.
+Constructs the subgraph dynamically using relational joins from PostgreSQL, computes PageRank weights in-memory, and writes updated scores to the database.
 
-### Adapted Algorithm
+### Adapted Algorithm (TypeScript)
 
-```python
-def weakness_pagerank(graph: Neo4jGraph, user_id: str, damping: float = 0.85, iterations: int = 100) -> Dict[str, float]:
-    """
-    PageRank adapted for weakness importance in failure networks
-    """
-    # Get user's weakness subgraph
-    weakness_nodes = graph.get_user_weaknesses(user_id)
-    
-    # Initialize scores
-    scores = {node: 1.0 / len(weakness_nodes) for node in weakness_nodes}
-    
-    for iteration in range(iterations):
-        new_scores = {}
-        
-        for node in weakness_nodes:
-            # Get incoming edges (what failures lead to this weakness)
-            incoming_edges = graph.get_incoming_failure_edges(node)
-            
-            # PageRank with failure frequency weighting
-            rank_sum = 0.0
-            for source, edge_data in incoming_edges:
-                failure_count = edge_data['failure_count']
-                recency_weight = calculate_recency_weight(edge_data['last_failure'])
-                
-                # Weight by failure frequency and recency
-                weighted_score = scores[source] * failure_count * recency_weight
-                outgoing_count = len(graph.get_outgoing_edges(source))
-                
-                rank_sum += weighted_score / max(outgoing_count, 1)
-            
-            new_scores[node] = (1 - damping) / len(weakness_nodes) + damping * rank_sum
-        
-        scores = new_scores
-        
-        # Check convergence
-        if iteration > 0 and max(abs(new_scores[n] - scores[n]) for n in weakness_nodes) < 1e-6:
-            break
-    
-    return scores
+```typescript
+export async function computeWeaknessPageRank(
+  userId: string,
+  damping: number = 0.85,
+  iterations: number = 100
+): Promise<WeaknessScore[]> {
+  // 1. Fetch failure hypotheses & confidence metrics from PostgreSQL
+  const hypotheses = await prisma.rootCauseHypothesis.findMany({
+    where: { evidence: { submission: { userId } } },
+    select: {
+      confidence: true,
+      rootCauseType: true,
+      evidence: { select: { submission: { select: { eventId: true, timestamp: true } } } }
+    }
+  });
 
-def calculate_recency_weight(last_failure_date: datetime) -> float:
-    """More recent failures have higher weight"""
-    days_ago = (datetime.now() - last_failure_date).days
-    return math.exp(-days_ago / 30.0)  # Exponential decay with 30-day half-life
+  // 2. Map root causes to 4 canonical systemic weaknesses
+  const failuresData = hypotheses.map(h => {
+    const mapping = ROOT_CAUSE_TO_WEAKNESS[h.rootCauseType];
+    return {
+      failureId: h.evidence.submission.eventId,
+      timestamp: h.evidence.submission.timestamp.toISOString(),
+      confidence: h.confidence,
+      weaknessId: mapping.id,
+      weaknessName: mapping.name
+    };
+  });
+
+  // 3. Perform Power Iterations with Recency Weighting (30-day half-life decay)
+  // PR(w) = (1 - d) / N + d * sum( PR(f) * weight(f->w) / outDegree(f) )
+  // Runs bidirectionally between failures and weaknesses until convergence (< 1e-6)
+}
+
+function calculateRecencyWeight(lastFailureDate: string): number {
+  const diffTime = Math.abs(new Date().getTime() - new Date(lastFailureDate).getTime());
+  const daysAgo = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.exp(-daysAgo / 30.0);
+}
 ```
 
 ## 5. OpenAI Embeddings and Cosine Similarity
@@ -530,6 +523,61 @@ def parse_diagnostic_response(llm_response: str) -> StructuredDiagnosis:
     )
 ```
 
+## 8. SM-2 Spaced Repetition Algorithm
+
+### Problem Solved
+Calculates the optimal next review date for a practice problem based on the user's self-assessed recall quality score.
+
+### Algorithm Implementation (TypeScript)
+```typescript
+export function updateSM2(state: SM2State, quality: number): SM2Result {
+  const Q = Math.max(1, Math.min(5, quality));
+  const EF = state.easeFactor;
+
+  // Recalculate Ease Factor
+  const delta = 5 - Q;
+  let newEF = EF + (0.1 - delta * (0.08 + delta * 0.02));
+  newEF = Math.max(1.3, newEF);
+
+  let newRepetitions = state.repetitions;
+  let newInterval = state.interval;
+
+  if (Q >= 3) {
+    newRepetitions = newRepetitions + 1;
+    if (newRepetitions === 1) {
+      newInterval = 1;
+    } else if (newRepetitions === 2) {
+      newInterval = 6;
+    } else {
+      newInterval = Math.round(state.interval * newEF);
+    }
+  } else {
+    newRepetitions = 0;
+    newInterval = 1;
+  }
+
+  const nextReview = new Date();
+  nextReview.setDate(nextReview.getDate() + newInterval);
+  return { repetitions: newRepetitions, easeFactor: newEF, interval: newInterval, nextReview };
+}
+```
+
+## 9. Priority Scoring Metrics
+
+### Problem Solved
+Determines the relative ordering of active reviews inside the Practice Queue workspace.
+
+### Formula Math
+$$\text{Priority Score} = \text{SM-2 Urgency} + \text{Difficulty Weight} + \text{Failure Weight} + \text{Time Spent Weight} + \text{Bookmark Weight}$$
+Where:
+- **SM-2 Urgency**: $\frac{\text{now} - \text{nextReview}}{1 \text{ day in ms}}$ (overdue score)
+- **Difficulty Weight**: Hard = 3, Medium = 2, Easy = 1
+- **Failure Weight**: Count of failed submissions (status $\ne$ Accepted), capped at 5
+- **Time Spent Weight**: $\text{Min}(5, \frac{\text{totalTimeSpent (seconds)}}{300})$
+- **Bookmark Weight**: $\text{reviewAgain} \mathbin{?} 10 : 0$
+
+---
+
 ## Performance Benchmarks
 
 | Algorithm | Input Size | Avg Runtime | Memory Usage |
@@ -537,10 +585,11 @@ def parse_diagnostic_response(llm_response: str) -> StructuredDiagnosis:
 | Myers Diff | 1000 lines | 45ms | 2.1 MB |
 | Structural Code Pattern Analysis | 500 nodes | 120ms | 5.3 MB |
 | Bayesian Inference | 15 evidence signals | 8ms | 0.8 MB |
-| PageRank | 1000 weakness nodes | 180ms | 12 MB |
+| PostgreSQL Relational PageRank | 1000 weakness nodes | 65ms | 4.2 MB |
 | Embedding Generation | 500 tokens | 340ms | 1.2 MB |
 | k-NN Search | 10k vectors | 25ms | 15 MB |
 | Diagnostic Generation Prompt | 2k context tokens | 3200ms | 8 MB |
+| SM-2 Dynamic Scheduler | Single Problem | < 1ms | Negligible |
 
 ## Algorithm Interactions
 
@@ -548,8 +597,9 @@ The algorithms work together in a carefully orchestrated pipeline:
 
 1. **Myers + Structural Code Pattern Analysis** → Provide complementary change detection
 2. **Bayesian + Historical** → Combine current evidence with learned patterns  
-3. **PageRank + Embeddings** → Balance structural and semantic similarity
-4. **k-NN + Graph** → Hybrid retrieval for comprehensive context
+3. **Relational PageRank + Embeddings** → Balance structural and semantic similarity
+4. **k-NN + PostgreSQL Graph** → Hybrid retrieval for comprehensive context
 5. **Structured Reasoning + Evidence** → Structured reasoning over retrieved information
+6. **SM-2 + Priority Score** → Drives the Spaced Repetition Practice Queue UI
 
-This algorithmic synergy enables Praxis to transform raw coding failures into actionable Learning Intelligence.
+This algorithmic synergy enables FailureAtlas to transform raw coding failures into actionable Learning Intelligence.

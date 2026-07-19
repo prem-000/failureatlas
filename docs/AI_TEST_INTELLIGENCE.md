@@ -24,7 +24,7 @@ Submission
 → Behavioral Analysis
 → Myers Diff
 → Bayesian Root Cause
-→ Neo4j Retrieval
+→ Relational Graph Retrieval
 → User History Retrieval
 → Problem Metadata
 → Constraint Analysis
