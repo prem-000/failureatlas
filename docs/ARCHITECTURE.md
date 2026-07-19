@@ -28,10 +28,10 @@ Analyzer               Parser
       Ontology Mapping & Weakness)
                     │
                     ▼
-              Storage Layer
-     Practice Tracking Knowledge Graph — Neo4j
-     (PageRank weakness scoring ·
-      Cypher queries)
+               Storage Layer
+      Practice Tracking Relational Graph — PostgreSQL
+      (Recency-weighted section scoring ·
+       Relational queries)
                     │
          ┌──────────┴──────────┐
          ▼                     ▼
@@ -159,12 +159,12 @@ $$\text{FailureEvent} \xrightarrow{\text{HAS\_EVIDENCE}} \text{Evidence} \xright
 - **Vector Storage**: Stores in PostgreSQL with pgvector.
 - **k-NN Search**: Finds semantically similar past failures.
 
-#### Branch B: Graph RAG Retrieval
-- **Subgraph Traversal**: Neo4j Cypher queries to find related failures.
-- **PageRank Scoring**: Identifies highest-impact weakness nodes.
+#### Branch B: Relational Graph RAG Retrieval
+- **Relational Traversal**: Relational joins to find related failures.
+- **Recency-Weighted Scoring**: Identifies highest-impact weaknesses using frequency and recency.
 - **Relationship Analysis**: Traces failure patterns across problem types.
 
-**Hybrid Fusion**: Combines semantic similarity + graph relationships.
+**Hybrid Fusion**: Combines semantic similarity + relational graph associations.
 
 ### 5. Retrieval Layer → Context Layer
 
@@ -194,8 +194,7 @@ $$\text{FailureEvent} \xrightarrow{\text{HAS\_EVIDENCE}} \text{Evidence} \xright
 - **Structural Code Pattern Analysis**: Heuristic regex-based extraction for semantic changes in control structures.
 
 ### Storage Layer
-- **PostgreSQL + Prisma**: ACID-compliant relational storage for submission data.
-- **Neo4j**: Purpose-built graph database hosting the failure ontology taxonomy and connections.
+- **PostgreSQL + Prisma**: ACID-compliant relational storage for submission data, evidence mapping, and spaced-repetition queues.
 - **pgvector**: PostgreSQL extension for efficient vector similarity search.
 
 ### AI/ML Layer
@@ -264,7 +263,7 @@ Input: Root Cause + Historical Context
 
 ---
 
-## Neo4j Subgraph Structure
+## Relational Subgraph Structure
 
 ```
 Problem Nodes (P)
@@ -305,9 +304,6 @@ Cross-connections:
 
 ---
 
-## Scalability Considerations
-
-- **Horizontal Scaling**: Analysis and Retrieval forks can be distributed across multiple workers.
-- **Database Sharding**: Neo4j can be partitioned by user or problem type.
-- **Caching Strategy**: Embeddings and PageRank scores cached for performance.
+- **Database Partitioning**: PostgreSQL can be partitioned by user or problem type.
+- **Caching Strategy**: Embeddings and section mastery scores cached for performance.
 - **Rate Limiting**: API endpoints protected against abuse while maintaining responsiveness.

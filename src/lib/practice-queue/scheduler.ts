@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db/prisma';
+import { detectPlatformFromUrl } from '@/platforms/registry';
 
 /**
  * Checks if a practice review state exists for the user and problem, and creates it if not.
@@ -19,11 +20,8 @@ export async function checkAndCreatePracticeReview(
       return;
     }
 
-    // 2. Determine platform
-    let platform = 'LeetCode';
-    if (problem.url?.includes('codeforces.com')) platform = 'Codeforces';
-    else if (problem.url?.includes('codechef.com')) platform = 'CodeChef';
-    else if (problem.url?.includes('atcoder.jp')) platform = 'AtCoder';
+    const adapter = problem.url ? detectPlatformFromUrl(problem.url) : null;
+    const platform = adapter?.platformName ?? 'LeetCode';
 
     // 3. Check if PracticeReviewState already exists
     const existing = await prisma.practiceReviewState.findUnique({
@@ -120,10 +118,8 @@ export async function runPracticeQueueMigration(userId: string) {
     let migratedCount = 0;
 
     for (const sub of uniqueSubmissions) {
-      let subPlatform = 'LeetCode';
-      if (sub.problem.url?.includes('codeforces.com')) subPlatform = 'Codeforces';
-      else if (sub.problem.url?.includes('codechef.com')) subPlatform = 'CodeChef';
-      else if (sub.problem.url?.includes('atcoder.jp')) subPlatform = 'AtCoder';
+      const subAdapter = sub.problem.url ? detectPlatformFromUrl(sub.problem.url) : null;
+      const subPlatform = subAdapter?.platformName ?? 'LeetCode';
 
       await prisma.practiceReviewState.upsert({
         where: {
@@ -158,3 +154,51 @@ export async function runPracticeQueueMigration(userId: string) {
     throw error;
   }
 }
+
+/**
+ * Adds recommended problems from the Recommendation Engine into the practice queue.
+ */
+export async function addRecommendedProblemsToQueue(
+  userId: string,
+  problems: any[] // SelectedProblem[]
+) {
+  try {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
+    let addedCount = 0;
+
+    for (const problem of problems) {
+      await prisma.practiceReviewState.upsert({
+        where: {
+          userId_platform_problemId: {
+            userId,
+            platform: problem.platform,
+            problemId: problem.problemSlug,
+          },
+        },
+        update: {}, // Don't overwrite if it exists
+        create: {
+          userId,
+          platform: problem.platform,
+          problemId: problem.problemSlug,
+          title: problem.title,
+          difficulty: problem.difficulty,
+          solveDate: new Date(),
+          repetitions: 0,
+          easeFactor: 2.5,
+          interval: 1,
+          nextReview: tomorrow,
+          personalNotes: `Recommended: ${problem.rationale}`,
+        },
+      });
+      addedCount++;
+    }
+
+    console.log(`[Scheduler] Added ${addedCount} recommended problems to practice queue for user ${userId}`);
+  } catch (error) {
+    console.error('[Scheduler] Error in addRecommendedProblemsToQueue:', error);
+  }
+}
+

@@ -6,7 +6,7 @@ import { structuralCodePatternAnalysis } from '@/lib/analysis/ast-diff';
 import { parseBehavioralSignals } from '@/lib/analysis/behavioral';
 import { runBayesianInference, BayesianEvidence } from '@/lib/inference/bayesian';
 import { recordFailureEventInGraph } from '@/lib/graph/operations';
-import { computeWeaknessPageRank } from '@/lib/graph/pagerank';
+import { computeWeaknessPageRank, type WeaknessScore } from '@/lib/graph/pagerank';
 import { saveTextEmbedding, buildFailureEmbeddingContent } from '@/lib/embeddings/pipeline';
 import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
 import { generateAIDiagnosis, DIAGNOSIS_MODEL_VERSION } from '@/lib/diagnosis/generator';
@@ -15,6 +15,12 @@ import type { SubmissionEvent, Evidence } from '@/types';
 import { getAnalysisCache, setAnalysisCache } from '@/lib/cache/analysis';
 import { acquireLock, releaseLock } from '@/lib/lock';
 import { rateLimit } from '@/lib/rate-limit';
+
+// Realignment imports
+import { aggregateEvidence } from '@/lib/analysis/evidence-aggregator';
+import { computeSectionMastery } from '@/lib/analysis/section-rollup';
+import { buildConceptChain } from '@/lib/analysis/concept-mapper';
+import { buildDiagnosisContext } from '@/lib/context/builder';
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,6 +86,9 @@ export async function POST(request: NextRequest) {
 
     // Map database submission to SubmissionEvent type
     const mappedSubmission: SubmissionEvent = {
+      version: submission.version,
+      platform: submission.platform,
+      externalSubmissionId: submission.externalSubmissionId,
       eventId: submission.eventId,
       sessionId: submission.sessionId,
       timestamp: submission.timestamp,
@@ -116,6 +125,9 @@ export async function POST(request: NextRequest) {
     });
 
     const mappedPrevious: SubmissionEvent[] = previousSubmissions.map(prev => ({
+      version: prev.version,
+      platform: prev.platform,
+      externalSubmissionId: prev.externalSubmissionId,
       eventId: prev.eventId,
       sessionId: prev.sessionId,
       timestamp: prev.timestamp,
@@ -403,8 +415,45 @@ export async function POST(request: NextRequest) {
 
       if (!diagnosis) {
         try {
+          // Fetch existing evidence and hypotheses to build correct context
+          const submissionEvidence = await prisma.evidence.findMany({
+            where: { submissionId: submission.id },
+          });
+          const evidenceObjects = submissionEvidence.map(e => ({
+            type: e.type as any,
+            description: e.description,
+            confidence: e.confidence,
+            source: e.source as any,
+            rawData: e.rawData as any,
+            extractedAt: e.extractedAt,
+          }));
+          const aggregated = aggregateEvidence(evidenceObjects);
+
+          const dbHypothesis = await prisma.rootCauseHypothesis.findFirst({
+            where: { evidence: { submissionId: submission.id } },
+          });
+          const rootCause = {
+            type: dbHypothesis?.rootCauseType ?? 'boundary-condition-error',
+            name: dbHypothesis?.name ?? 'Boundary Condition Error',
+            confidence: dbHypothesis?.confidence ?? 85,
+          };
+
+          const sectionMastery = await computeSectionMastery(prisma, userId);
+          const conceptChain = buildConceptChain(aggregated.dominant);
+
+          const context = buildDiagnosisContext({
+            submission: mappedSubmission,
+            evidence: aggregated,
+            rootCause,
+            weaknessScores: pageRankScores,
+            sectionMastery,
+            similarFailures,
+            conceptChain,
+          });
+
           // 11. Generate AI Diagnosis using structured diagnosis generator
-          aiDiagnosis = await generateAIDiagnosis(mappedSubmission, similarFailures, pageRankScores);
+          aiDiagnosis = await generateAIDiagnosis(context);
+
 
           // 12. Save DiagnosisResult in PostgreSQL
           // Query/Upsert primary weakness node in postgres

@@ -17,6 +17,9 @@ export interface CodeDiff {
 }
 
 export interface SubmissionEvent {
+  version: number;
+  platform: string;
+  externalSubmissionId?: string | null;
   eventId: string;
   submissionTraceId?: string;
   sessionId: string;

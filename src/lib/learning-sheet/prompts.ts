@@ -240,12 +240,14 @@ ${progressiveSchema}
 ✅ Prefer visuals over text. Output structured timeline rows and visualization steps so the UI can animate them.
 ✅ For practice problems, ONLY use real, well-known LeetCode problems. Verify URLs match 'https://leetcode.com/problems/slug-name/'.
 ✅ Never use raw code formatting inside text fields (use normal text).
-✅ If generating Mermaid diagrams:
-   - Generate ONLY valid Mermaid v10 syntax.
-   - Never use Markdown, HTML, emojis, bold, italic, or code fences inside labels or nodes.
-   - Never use nested square brackets (e.g., Incorrect: A[Range Sum(Query Range [i,j])], Correct: A["Range Sum (Query Range i,j)"]).
-   - Wrap labels containing spaces, commas, parentheses, or punctuation in double quotes.
-   - Do not include explanations; the output must parse successfully via Mermaid.parse().
+✅ Generate compact Excalidraw scenes:
+   - Coordinates should remain between 0 and 1000.
+   - Width and height must not exceed 300 pixels unless necessary.
+   - Keep the complete scene within a 1200×800 virtual canvas.
+   - Do not place elements extremely far apart.
+   - Do not generate oversized rectangles.
+   - Use compact spacing.
+   - Never generate infinite or extremely large values.
 
 --- ANTI-HALLUCINATION RULES ---
 ❌ Never invent time/space complexities. Use standard Big-O representation.

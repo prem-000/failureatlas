@@ -1,7 +1,7 @@
 {
   "name": "@failureatlas/extension",
-  "version": "1.0.0",
-  "description": "FailureAtlas Chrome Extension — LeetCode submission capture",
+  "version": "1.1.0",
+  "description": "FailureAtlas Chrome Extension — Multi-platform submission capture (LeetCode, TUF, HackerRank, Codeforces & more)",
   "private": true,
   "scripts": {
     "build": "webpack --config webpack.config.js --mode production",
@@ -9,7 +9,7 @@
     "build:dev": "webpack --config webpack.config.js --mode development",
     "dev": "webpack --config webpack.config.js --mode development --watch",
     "type-check": "tsc --noEmit",
-    "package": "cd dist && zip -r ../failureatlas-extension-v1.0.0.zip .",
+    "package": "powershell -Command \"Compress-Archive -Force -Path dist\\* -DestinationPath failureatlas-extension-v1.0.0.zip\"",
     "lint": "eslint src --ext .ts,.tsx",
     "test": "jest"
   },

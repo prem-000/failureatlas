@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch all counts in parallel
+    // Fetch all counts and recent submissions in parallel
     const [totalSubmissions, acceptedSubmissions, weaknesses, recentSubmissions] = await Promise.all([
       prisma.submissionEvent.count({ where: { userId } }),
       prisma.submissionEvent.count({ where: { userId, status: 'Accepted' } }),

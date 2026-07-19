@@ -631,7 +631,6 @@ a.compact,
 .show-more-text {
   display: -webkit-box;
   -webkit-line-clamp: 3;
-  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   transition: none;
@@ -639,7 +638,6 @@ a.compact,
 .show-more-text.expanded {
   display: block;
   -webkit-line-clamp: unset;
-  line-clamp: unset;
   overflow: visible;
 }
 .show-more-btn {

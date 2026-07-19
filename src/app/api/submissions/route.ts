@@ -34,8 +34,18 @@ import { createFingerprint } from '@/lib/fingerprint/fingerprint';
 import { generateFailureExplanation, type ExplanationEngineInput } from '@/lib/explanation/engine';
 import { upsertCodeEvidence } from '@/lib/interceptor/uploader';
 import { isHighLatency } from '@/lib/interceptor/extractor';
-import type { SubmissionEvent, Evidence } from '@/types';
-import { checkAndCreatePracticeReview } from '@/lib/practice-queue/scheduler';
+import type { SubmissionEvent, Evidence, NormalizedSubmission } from '@/types';
+import { checkAndCreatePracticeReview, addRecommendedProblemsToQueue } from '@/lib/practice-queue/scheduler';
+
+// Realignment imports
+import { getAdapter } from '@/platforms/registry';
+import { validateSubmission } from '@/lib/validation/submission-validator';
+import { mapASTChangesToEvidence, mapDiffToEvidence, combineEvidence } from '@/lib/analysis/evidence-mapper';
+import { aggregateEvidence } from '@/lib/analysis/evidence-aggregator';
+import { buildConceptChain } from '@/lib/analysis/concept-mapper';
+import { computeSectionMastery, persistSectionMastery } from '@/lib/analysis/section-rollup';
+import { buildDiagnosisContext } from '@/lib/context/builder';
+import { generateRecommendations } from '@/lib/recommendation/engine';
 
 
 export async function OPTIONS(request: NextRequest) {
@@ -132,28 +142,58 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const {
-    eventId, sessionId,
-    problemSlug, problemTitle, problemDifficulty, problemTopics, problemUrl,
-    submissionStatus, submissionLanguage, submissionCode,
-    runtime, memory, testCasesPassed, totalTestCases, failedTestCase,
-    timeSpent, attemptNumber, rapidSubmission,
-    submissionTraceId,
-  } = body;
-
-  // ── Validate required fields ─────────────────────────────────────────────────
-  const missing = ['eventId', 'problemSlug', 'submissionStatus', 'submissionCode']
-    .filter(k => !body[k]);
-  if (missing.length > 0) {
+  // ── Realignment: Get Platform Adapter & Normalize ─────────────────────────
+  const platform = body.platform || 'leetcode';
+  let adapter;
+  try {
+    adapter = getAdapter(platform);
+  } catch (err: any) {
     return NextResponse.json(
-      { success: false, error: { code: 'VALIDATION_ERROR', message: `Missing required fields: ${missing.join(', ')}` } },
+      { success: false, error: { code: 'UNSUPPORTED_PLATFORM', message: err.message } },
       { status: 400, headers: corsHeaders }
     );
   }
 
+  let normalized: NormalizedSubmission;
+  if (body.version === undefined) {
+    // Treat as raw submission from old extension format and normalize it
+    const raw: any = {
+      submissionId: body.eventId || body.externalSubmissionId,
+      slug: body.problemSlug || body.problemId,
+      title: body.problemTitle || body.title,
+      difficulty: body.problemDifficulty || 'Medium',
+      topics: body.problemTopics || [],
+      url: body.problemUrl || '',
+      language: body.submissionLanguage || body.language,
+      code: body.submissionCode || body.code,
+      status: body.submissionStatus || body.status,
+      runtime: body.runtime,
+      memory: body.memory,
+      timestamp: body.timestamp ? new Date(body.timestamp).getTime() : Date.now(),
+      testCasesPassed: body.testCasesPassed,
+      totalTestCases: body.totalTestCases,
+      failedTestCase: body.failedTestCase,
+    };
+    normalized = adapter.normalize(raw);
+  } else {
+    normalized = body as NormalizedSubmission;
+  }
+
+  // ── Submission Validator ───────────────────────────────────────────────────
+  const validation = validateSubmission(normalized, adapter.capabilities());
+  if (!validation.valid) {
+    return NextResponse.json(
+      { success: false, error: { code: 'VALIDATION_ERROR', message: 'Validation failed', details: validation.errors } },
+      { status: 400, headers: corsHeaders }
+    );
+  }
+
+  const { eventId, sessionId, timeSpent, attemptNumber, rapidSubmission, submissionTraceId } = body;
+
   try {
     // ── Deduplicate by eventId ────────────────────────────────────────────────
-    const existing = await prisma.submissionEvent.findUnique({ where: { eventId } });
+    const checkEventId = eventId || normalized.externalSubmissionId || `ev-${Date.now()}`;
+    const existing = await prisma.submissionEvent.findUnique({ where: { eventId: checkEventId } });
     if (existing) {
       return NextResponse.json(
         { success: true, submissionId: existing.id, analysisQueued: false, message: 'Already recorded.' },
@@ -163,19 +203,19 @@ export async function POST(request: NextRequest) {
 
     // ── Upsert problem (needed for both dedup check and creation) ─────────────
     const problem = await prisma.problem.upsert({
-      where: { slug: problemSlug },
+      where: { slug: normalized.problemId },
       update: {
-        title: problemTitle || problemSlug,
-        difficulty: problemDifficulty || 'Medium',
-        topics: problemTopics ?? [],
-        url: problemUrl ?? null,
+        title: normalized.title || normalized.problemId,
+        difficulty: body.problemDifficulty || 'Medium',
+        topics: body.problemTopics ?? [],
+        url: body.problemUrl ?? null,
       },
       create: {
-        slug: problemSlug,
-        title: problemTitle || problemSlug,
-        difficulty: problemDifficulty || 'Medium',
-        topics: problemTopics ?? [],
-        url: problemUrl ?? null,
+        slug: normalized.problemId,
+        title: normalized.title || normalized.problemId,
+        difficulty: body.problemDifficulty || 'Medium',
+        topics: body.problemTopics ?? [],
+        url: body.problemUrl ?? null,
       },
     });
 
@@ -183,15 +223,13 @@ export async function POST(request: NextRequest) {
     await setProblemCache(problem.slug, problem);
 
     // ── Deduplicate by content: same user+problem+code+status within 60s ─────
-    // Catches cases where the extension fires two separate eventIds for one
-    // physical LeetCode submission (e.g. two DOM mutation detections).
     const sixtySecondsAgo = new Date(Date.now() - 60_000);
     const recentDupe = await prisma.submissionEvent.findFirst({
       where: {
         userId,
         problemId: problem.id,
-        status: submissionStatus,
-        code: submissionCode,
+        status: normalized.status,
+        code: normalized.code,
         timestamp: { gte: sixtySecondsAgo },
       },
     });
@@ -207,42 +245,37 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         problemId: problem.id,
-        eventId,
-        submissionTraceId: submissionTraceId || eventId,
+        eventId: checkEventId,
+        submissionTraceId: submissionTraceId || checkEventId,
         sessionId: sessionId || 'session-unknown',
-        timestamp: new Date(),
-        status: submissionStatus,
-        language: submissionLanguage || 'unknown',
-        code: submissionCode,
-        runtime: runtime ?? null,
-        memory: memory ?? null,
-        testCasesPassed: testCasesPassed ?? null,
-        totalTestCases: totalTestCases ?? null,
-        failedTestCase: failedTestCase ?? null,
+        timestamp: new Date(normalized.timestamp),
+        status: normalized.status,
+        language: normalized.language,
+        code: normalized.code,
+        runtime: normalized.runtime,
+        memory: normalized.memory,
+        testCasesPassed: normalized.testCasesPassed,
+        totalTestCases: normalized.totalTestCases,
+        failedTestCase: normalized.failedTestCase,
         timeSpent: timeSpent || 0,
         attemptNumber: attemptNumber || 1,
         rapidSubmission: rapidSubmission || false,
+        version: normalized.version,
+        platform: normalized.platform,
+        externalSubmissionId: normalized.externalSubmissionId,
       },
     });
 
     // Invalidate Caches
     await delDashboardCache(userId);
     await delGraphCache(userId);
-    if (submissionStatus === 'Accepted') {
+    if (normalized.status === 'Accepted') {
       await delRoadmapCache(userId);
       await checkAndCreatePracticeReview(userId, subRecord.problemId, subRecord.timestamp);
     }
 
     // ── Return 200 immediately — analysis runs async ──────────────────────────
-    // The extension gets a success response right away. If the pipeline crashes
-    // later, the submission row is already safe in the database.
-    runAnalysisPipeline(userId, subRecord, problem, {
-      submissionStatus, submissionCode, submissionLanguage,
-      problemDifficulty, problemTopics, problemUrl,
-      testCasesPassed, totalTestCases, failedTestCase,
-      rapidSubmission,
-    }).catch(err => {
-      // Log but never re-throw — a pipeline failure must not affect the saved row
+    runAnalysisPipeline(userId, subRecord, problem, normalized, rapidSubmission || false).catch(err => {
       console.error(`⚠️ Analysis pipeline failed for submission ${subRecord.id}:`, err?.message ?? err);
     });
 
@@ -252,6 +285,7 @@ export async function POST(request: NextRequest) {
       analysisQueued: true,
       message: 'Submission recorded. Analysis running in background.',
     }, { headers: corsHeaders });
+
 
   } catch (error: any) {
     console.error('❌ POST submission error:', error);
@@ -265,24 +299,20 @@ export async function POST(request: NextRequest) {
 // ─── Background analysis pipeline ────────────────────────────────────────────
 // Runs AFTER the HTTP response has been sent. Any exception here is caught by
 // the caller and logged — it never propagates to the route handler.
+// ─── Background analysis pipeline ────────────────────────────────────────────
+// Runs AFTER the HTTP response has been sent. Any exception here is caught by
+// the caller and logged — it never propagates to the route handler.
 async function runAnalysisPipeline(
   userId: string,
   subRecord: any,
   problem: any,
-  fields: {
-    submissionStatus: string;
-    submissionCode: string;
-    submissionLanguage: string;
-    problemDifficulty: string;
-    problemTopics: string[];
-    problemUrl?: string;
-    testCasesPassed?: number;
-    totalTestCases?: number;
-    failedTestCase?: string;
-    rapidSubmission?: boolean;
-  }
+  normalized: NormalizedSubmission,
+  rapidSubmission: boolean
 ) {
   const toSubmissionEvent = (s: any): SubmissionEvent => ({
+    version: s.version,
+    platform: s.platform,
+    externalSubmissionId: s.externalSubmissionId,
     eventId: s.eventId,
     sessionId: s.sessionId,
     timestamp: s.timestamp,
@@ -327,12 +357,15 @@ async function runAnalysisPipeline(
   let hasImplementationDetailChange = false;
 
   const evidencesToCreate: Array<{
-    type: 'code_diff' | 'behavioral' | 'test_failure';
+    type: string;
     description: string;
     confidence: number;
     source: string;
     rawData: any;
   }> = [];
+
+  let astEvidence: any[] = [];
+  let diffEvidence: any[] = [];
 
   if (lastAttempt) {
     const diffOps = myersDiff(lastAttempt.submissionCode, mappedCurrent.submissionCode);
@@ -340,35 +373,22 @@ async function runAnalysisPipeline(
     const changesCount = diffOps.filter(o => o.type !== 'EQUAL').length;
     hasBoundaryDiff = diffOps.some(o => o.type !== 'EQUAL' && /[<>=!+\-]/.test(o.content));
 
-    if (changesCount > 0) {
-      evidencesToCreate.push({
-        type: 'code_diff',
-        description: `${changesCount} line changes (confidence: ${diffConfidence.toFixed(2)})`,
-        confidence: diffConfidence,
-        source: 'myers-diff',
-        rawData: { changesCount },
-      });
-    }
+    diffEvidence = mapDiffToEvidence(diffOps);
 
     const astChanges = structuralCodePatternAnalysis(
       lastAttempt.submissionCode,
       mappedCurrent.submissionCode
     );
+    astEvidence = mapASTChangesToEvidence(astChanges);
+
     for (const ch of astChanges) {
       if (ch.type === 'BOUNDARY_CONDITION_CHANGE') hasStructuralBoundaryChange = true;
       if (ch.type === 'ALGORITHM_REWRITE') hasAlgorithmRewrite = true;
       if (ch.type === 'DATA_STRUCTURE_CHANGE') hasDataStructureChange = true;
       if (ch.type === 'IMPLEMENTATION_DETAIL') hasImplementationDetailChange = true;
-      evidencesToCreate.push({
-        type: 'code_diff',
-        description: ch.description,
-        confidence: ch.confidence,
-        source: 'structural-pattern',
-        rawData: ch,
-      });
     }
 
-    // ── Persist CodeEvidence row (typed table) ──────────────────────────────
+    // Persist CodeEvidence row (typed table)
     upsertCodeEvidence(subRecord.id, {
       previousCode: lastAttempt.submissionCode,
       currentCode:  mappedCurrent.submissionCode,
@@ -376,6 +396,18 @@ async function runAnalysisPipeline(
       changedLines: changesCount,
       confidence:   diffConfidence,
     }).catch(e => console.warn('⚠️ CodeEvidence upsert failed (non-fatal):', e?.message));
+  }
+
+  // Combine and deduplicate evidence from AST & Myers diff
+  const codeEvidence = combineEvidence(astEvidence, diffEvidence);
+  for (const ev of codeEvidence) {
+    evidencesToCreate.push({
+      type: ev.type,
+      description: ev.description,
+      confidence: ev.confidence,
+      source: ev.source,
+      rawData: ev.rawChange || {},
+    });
   }
 
   // ── Behavioral evidence ───────────────────────────────────────────────────
@@ -400,14 +432,14 @@ async function runAnalysisPipeline(
   if (mappedCurrent.submissionStatus !== 'Accepted') {
     evidencesToCreate.push({
       type: 'test_failure',
-      description: `${mappedCurrent.submissionStatus} — passed ${fields.testCasesPassed ?? 0}/${fields.totalTestCases ?? 0}`,
+      description: `${mappedCurrent.submissionStatus} — passed ${mappedCurrent.testCasesPassed ?? 0}/${mappedCurrent.totalTestCases ?? 0}`,
       confidence: 0.95,
-      source: 'leetcode-verdict',
+      source: 'platform-verdict',
       rawData: {
         verdict: mappedCurrent.submissionStatus,
-        passed: fields.testCasesPassed,
-        total: fields.totalTestCases,
-        failedCase: fields.failedTestCase,
+        passed: mappedCurrent.testCasesPassed,
+        total: mappedCurrent.totalTestCases,
+        failedCase: mappedCurrent.failedTestCase,
       },
     });
   }
@@ -429,8 +461,18 @@ async function runAnalysisPipeline(
     });
   }
 
+  // ── Evidence Aggregator ───────────────────────────────────────────────────
+  const evidenceObjects = createdEvidences.map(e => ({
+    type: e.type as any,
+    description: e.description,
+    confidence: e.confidence,
+    source: e.source as any,
+    rawData: e.rawData as any,
+    extractedAt: e.extractedAt,
+  }));
+  const aggregated = aggregateEvidence(evidenceObjects);
+
   // ── Bayesian root cause inference ─────────────────────────────────────────
-  // Check for any NetworkEvidence already stored by the interceptor
   const networkEv = await prisma.networkEvidence.findUnique({
     where: { submissionId: subRecord.id },
   });
@@ -445,8 +487,7 @@ async function runAnalysisPipeline(
     hasLongGap,
     hasManyMinorChanges,
     verdict: mappedCurrent.submissionStatus,
-    failedTestCase: fields.failedTestCase,
-    // Network signals — only populated when interceptor has already fired
+    failedTestCase: mappedCurrent.failedTestCase || undefined,
     hasHighLatency:     networkEv ? isHighLatency(networkEv.latencyMs)                    : undefined,
     hasRetries:         networkEv ? networkEv.retryCount > 0                               : undefined,
     hasTLEFromRuntime:  networkEv ? networkEv.verdict === 'Time Limit Exceeded'            : undefined,
@@ -469,7 +510,6 @@ async function runAnalysisPipeline(
   }
 
   // ── Database graph + PageRank ────────────────────────────────────────────────
-  // Wrapped individually so an outage doesn't kill embeddings/diagnosis
   try {
     await recordFailureEventInGraph(userId, mappedCurrent, hypotheses, createdEvidences);
   } catch (e: any) {
@@ -483,6 +523,13 @@ async function runAnalysisPipeline(
     console.warn('⚠️ PageRank computation failed (non-fatal):', e?.message);
   }
 
+  // ── Section Rollup ────────────────────────────────────────────────────────
+  try {
+    await persistSectionMastery(prisma, userId);
+  } catch (e: any) {
+    console.warn('⚠️ Section mastery rollup failed (non-fatal):', e?.message);
+  }
+
   // ── Embeddings ────────────────────────────────────────────────────────────
   try {
     await saveTextEmbedding(
@@ -492,7 +539,7 @@ async function runAnalysisPipeline(
         mappedCurrent.problemTopics,
         mappedCurrent.submissionStatus,
         mappedCurrent.submissionCode,
-        fields.failedTestCase
+        mappedCurrent.failedTestCase || undefined
       ),
       'SubmissionEvent',
       subRecord.id
@@ -506,12 +553,11 @@ async function runAnalysisPipeline(
     const { fingerprint, codeHash } = createFingerprint({
       userId,
       problemSlug: problem.slug,
-      language: fields.submissionLanguage,
-      status: fields.submissionStatus,
-      code: fields.submissionCode
+      language: mappedCurrent.submissionLanguage,
+      status: mappedCurrent.submissionStatus,
+      code: mappedCurrent.submissionCode
     });
 
-    // Check Redis first for analysis cache
     let cachedDiagnosis: any = await getAnalysisCache(fingerprint);
     if (!cachedDiagnosis) {
       cachedDiagnosis = await prisma.diagnosisResult.findUnique({
@@ -528,7 +574,6 @@ async function runAnalysisPipeline(
 
     if (cachedDiagnosis && cachedDiagnosis.modelVersion === DIAGNOSIS_MODEL_VERSION) {
       console.log(`[CACHE HIT] Found existing diagnosis for fingerprint ${fingerprint}. Linking to submission ${subRecord.id}`);
-      // Link the existing diagnosis to this submission event by updating its submissionId
       const updated = await prisma.diagnosisResult.update({
         where: { id: cachedDiagnosis.id },
         data: { submissionId: subRecord.id },
@@ -543,10 +588,42 @@ async function runAnalysisPipeline(
         userId, subRecord.eventId,
         mappedCurrent.problemTitle, mappedCurrent.problemDifficulty,
         mappedCurrent.problemTopics, mappedCurrent.submissionStatus,
-        mappedCurrent.submissionCode, fields.failedTestCase
+        mappedCurrent.submissionCode, mappedCurrent.failedTestCase || undefined
       );
 
-      const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores);
+      // ── Context Builder (pure assembly) ────────────────────────────────────
+      const sectionMastery = await computeSectionMastery(prisma, userId);
+      const conceptChain = buildConceptChain(aggregated.dominant);
+
+      const context = buildDiagnosisContext({
+        submission: mappedCurrent,
+        evidence: aggregated,
+        rootCause: {
+          type: hypotheses[0]?.rootCause ?? 'implementation-detail-error',
+          name: hypotheses[0]?.name ?? 'Implementation Detail Error',
+          confidence: hypotheses[0]?.confidence ?? 50,
+        },
+        weaknessScores: pageRankScores,
+        sectionMastery,
+        similarFailures,
+        conceptChain,
+      });
+
+      // ── LLM Diagnosis ──────────────────────────────────────────────────────
+      const aiDiagnosis = await generateAIDiagnosis(context);
+
+      // ── Recommendation Engine ──────────────────────────────────────────────
+      const recommendations = await generateRecommendations(prisma, {
+        evidence: aggregated,
+        sectionMastery,
+        similarFailures,
+        currentDifficulty: mappedCurrent.problemDifficulty,
+        currentTopics: mappedCurrent.problemTopics,
+        userId,
+      });
+
+      // ── Wire recommendations into SM2 queue ────────────────────────────────
+      await addRecommendedProblemsToQueue(userId, recommendations);
 
       const primaryWeaknessNode = await prisma.systemicWeakness.upsert({
         where: { name: aiDiagnosis.primaryWeaknessId },
@@ -561,7 +638,6 @@ async function runAnalysisPipeline(
 
       let diagnosis;
       if (cachedDiagnosis) {
-        // Update existing record by fingerprint (different modelVersion case)
         diagnosis = await prisma.diagnosisResult.update({
           where: { fingerprint },
           data: {
@@ -605,7 +681,6 @@ async function runAnalysisPipeline(
         });
       }
 
-      // Delete old recommendations if they exist
       await prisma.learningRecommendation.deleteMany({
         where: { diagnosisId: diagnosis.id }
       });
@@ -626,7 +701,6 @@ async function runAnalysisPipeline(
         });
       }
 
-      // Cache the complete diagnosis result
       const fullDiagnosis = await prisma.diagnosisResult.findUnique({
         where: { id: diagnosis.id },
         include: {
@@ -638,7 +712,6 @@ async function runAnalysisPipeline(
         await setAnalysisCache(fingerprint, fullDiagnosis);
       }
       
-      // Invalidate roadmap cache due to weakness graph changes
       await delRoadmapCache(userId);
     }
   } catch (e: any) {
@@ -647,7 +720,7 @@ async function runAnalysisPipeline(
 
   // ── AI Failure Explanation Engine (auto-trigger for failed submissions) ────
   // Runs after all other pipeline steps. Non-fatal — never blocks the pipeline.
-  if (fields.submissionStatus !== 'Accepted') {
+  if (normalized.status !== 'Accepted') {
     try {
       // Fetch hypotheses that were just persisted
       const persistedHypotheses = await prisma.rootCauseHypothesis
@@ -693,9 +766,9 @@ async function runAnalysisPipeline(
       const engineInput: ExplanationEngineInput = {
         submission: {
           ...mappedCurrent,
-          testCasesPassed: fields.testCasesPassed,
-          totalTestCases: fields.totalTestCases,
-          failedTestCase: fields.failedTestCase,
+          testCasesPassed: normalized.testCasesPassed ?? undefined,
+          totalTestCases: normalized.totalTestCases ?? undefined,
+          failedTestCase: normalized.failedTestCase ?? undefined,
         },
         networkVerdictRaw: networkEv?.verdict ?? null,
         networkFailedInput: networkEv?.failedTestcase ?? null,

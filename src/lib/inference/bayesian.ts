@@ -1,4 +1,6 @@
 import type { RootCauseType, RootCauseHypothesis, SubmissionStatus } from '@/types';
+import fs from 'fs';
+import path from 'path';
 
 export interface BayesianEvidence {
   hasBoundaryDiff: boolean;
@@ -207,12 +209,43 @@ const LIKELIHOODS: Record<string, Record<RootCauseType, number>> = {
   },
 };
 
+function loadDynamicWeights() {
+  try {
+    const weightsPath = path.join(process.cwd(), 'src/lib/inference/bayesian-weights.json');
+    if (fs.existsSync(weightsPath)) {
+      const data = JSON.parse(fs.readFileSync(weightsPath, 'utf8'));
+      if (data.weights && data.weights.priors && data.weights.likelihoods) {
+        return {
+          priors: data.weights.priors,
+          likelihoods: data.weights.likelihoods,
+        };
+      }
+      if (data.priors && data.likelihoods) {
+        return data;
+      }
+    }
+  } catch (err) {
+    // Silent fallback
+  }
+  return null;
+}
+
+export function getDynamicPriors(): Record<RootCauseType, number> {
+  const dynamic = loadDynamicWeights();
+  return dynamic?.priors ?? DEFAULT_PRIORS;
+}
+
+export function getDynamicLikelihoods(): Record<string, Record<RootCauseType, number>> {
+  const dynamic = loadDynamicWeights();
+  return dynamic?.likelihoods ?? LIKELIHOODS;
+}
+
 export function runBayesianInference(
   evidence: BayesianEvidence,
   userHistory?: UserInferenceHistory
 ): RootCauseHypothesis[] {
   // 1. Determine priors
-  const priors = { ...DEFAULT_PRIORS };
+  const priors = { ...getDynamicPriors() };
   if (userHistory) {
     priors['boundary-condition-error'] = userHistory.boundaryRate || priors['boundary-condition-error'];
     priors['algorithm-selection-mistake'] = userHistory.algorithmRate || priors['algorithm-selection-mistake'];
@@ -266,8 +299,9 @@ export function runBayesianInference(
   for (const rc of Object.keys(priors) as RootCauseType[]) {
     let likelihoodProduct = 1.0;
     
+    const likelihoods = getDynamicLikelihoods();
     for (const evKey of activeEvidence) {
-      const pEvGivenRc = LIKELIHOODS[evKey]?.[rc] ?? 0.1; // fallback
+      const pEvGivenRc = likelihoods[evKey]?.[rc] ?? 0.1; // fallback
       likelihoodProduct *= pEvGivenRc;
     }
     

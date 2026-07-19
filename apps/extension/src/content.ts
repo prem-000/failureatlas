@@ -5,6 +5,12 @@ import {
   SubmissionStatus,
   ProblemDifficulty
 } from './types';
+import { detectPlatform, getAdapter } from '@/platforms/registry';
+import { TUFEditorHook } from '@/platforms/takeuforward/editor-hook';
+import { TUFRawSubmission } from '@/platforms/takeuforward/adapter';
+import { HackerRankRawSubmission } from '@/platforms/hackerrank/adapter';
+import { NormalizedSubmission } from '@/platforms/types';
+
 
 // Track last-sent event & cached code on window to persist across DOM changes
 interface CustomWindow extends Window {
@@ -294,7 +300,6 @@ class CodeEvolutionTracker {
   }
 }
 
-// ─── Submission Monitor ──────────────────────────────────────────────────────
 interface DetectedResult {
   status: SubmissionStatus;
   runtime?: number;
@@ -302,6 +307,7 @@ interface DetectedResult {
   testCasesPassed?: number;
   totalTestCases?: number;
   failedTestCase?: string;
+  submissionId?: string | null;
 }
 
 class SubmissionMonitor {
@@ -313,13 +319,56 @@ class SubmissionMonitor {
     this.onDetectedCallback = onDetected;
   }
 
+  attach(): void {
+    if (this.observer) return;
+
+    // Attach observer to document body or container
+    const target = document.body;
+    this.observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'childList') {
+          for (const node of Array.from(mutation.addedNodes)) {
+            const result = this.parseSubmissionResult(node);
+            if (result) {
+              this.onDetectedCallback(result);
+              return;
+            }
+          }
+        }
+        // Check modified attributes
+        if (mutation.type === 'attributes') {
+          const result = this.parseSubmissionResult(mutation.target);
+          if (result) {
+            this.onDetectedCallback(result);
+            return;
+          }
+        }
+      }
+    });
+
+    this.observer.observe(target, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'data-status']
+    });
+
+    console.log('[FailureAtlas] Result observer attached');
+  }
+
+  disconnect(): void {
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
+  }
+
   private parseSubmissionResult(node: Node): DetectedResult | null {
     const container = node instanceof Element ? node : document.body;
 
-    // ✅ IMPROVED: More comprehensive status detection
     const statusSelectors = [
       '[data-cy="submission-result"]',
-      'h3',  // Status text in h3 on result page
+      'h3',
       '.submission-result',
       '.result-state',
       '.css-1jnblbv',
@@ -368,15 +417,12 @@ class SubmissionMonitor {
     let testCasesPassed: number | undefined;
     let totalTestCases: number | undefined;
 
-    // "0 ms"
     const runtimeMatch = bodyText.match(/(\d+)\s*ms/i);
     if (runtimeMatch) runtime = parseInt(runtimeMatch[1], 10);
 
-    // "12.98 MB"
     const memMatch = bodyText.match(/([\d.]+)\s*MB/i);
     if (memMatch) memory = parseFloat(memMatch[1]);
 
-    // "54 / 57 testcases passed"
     const testMatch = bodyText.match(/(\d+)\s*\/\s*(\d+)\s+test\s*cases?\s+passed/i);
     if (testMatch) {
       testCasesPassed = parseInt(testMatch[1], 10);
@@ -402,78 +448,154 @@ class SubmissionMonitor {
       'memory limit exceeded': 'Memory Limit Exceeded',
       'runtime error': 'Runtime Error',
       'compile error': 'Compilation Error',
-      'compilation error': 'Compilation Error'
+      'compilation error': 'Compilation Error',
+    };
+    return STATUS_MAP[lower] || null;
+  }
+}
+
+// ─── TUF Network Capture ─────────────────────────────────────────────────────
+class TUFNetworkCapture {
+  private listener: ((event: MessageEvent) => void) | null = null;
+  private scriptElement: HTMLScriptElement | null = null;
+  private onResultCallback: (payload: any) => void;
+  private lastCapturedSubmissionId: string | null = null;
+
+  constructor(onResult: (payload: any) => void) {
+    this.onResultCallback = onResult;
+  }
+
+  install(): void {
+    if (this.scriptElement) return;
+
+    this.scriptElement = document.createElement('script');
+    this.scriptElement.src = chrome.runtime.getURL('network-interceptor.js');
+    (document.head || document.documentElement).appendChild(this.scriptElement);
+
+    this.listener = (event: MessageEvent) => {
+      if (event.source !== window || !event.data || event.data.type !== 'FA_TUF_RESULT') {
+        return;
+      }
+
+      const { submissionId, result, problemSlug, timestamp } = event.data;
+
+      if (!result || !result.data || result.data.completed !== true) {
+        return;
+      }
+
+      if (submissionId && this.lastCapturedSubmissionId === submissionId) {
+        return;
+      }
+      this.lastCapturedSubmissionId = submissionId;
+
+      this.onResultCallback({
+        submissionId,
+        result,
+        problemSlug,
+        timestamp
+      });
     };
 
-    for (const [key, val] of Object.entries(STATUS_MAP)) {
-      if (lower.includes(key)) return val;
-    }
-    return null;
+    window.addEventListener('message', this.listener);
+    console.log('[FailureAtlas] TUFNetworkCapture installed');
   }
 
-  attach(): void {
-    this.disconnect();
-
-    const containerSelectors = [
-      '[data-cy="submission-area"]',
-      '.result-container',
-      '#result_container'
-    ];
-
-    let target: Node = document.body;
-    for (const sel of containerSelectors) {
-      const el = document.querySelector(sel);
-      if (el) {
-        target = el;
-        break;
-      }
+  uninstall(): void {
+    if (this.scriptElement) {
+      this.scriptElement.remove();
+      this.scriptElement = null;
     }
+    if (this.listener) {
+      window.removeEventListener('message', this.listener);
+      this.listener = null;
+    }
+    this.lastCapturedSubmissionId = null;
+    console.log('[FailureAtlas] TUFNetworkCapture uninstalled');
+  }
+}
 
-    this.observer = new MutationObserver(mutations => {
-      for (const mutation of mutations) {
-        // Check added nodes
-        for (const node of Array.from(mutation.addedNodes)) {
-          const result = this.parseSubmissionResult(node);
-          if (result) {
-            this.onDetectedCallback(result);
-            return;
-          }
-        }
-        // Check modified attributes
-        if (mutation.type === 'attributes') {
-          const result = this.parseSubmissionResult(mutation.target);
-          if (result) {
-            this.onDetectedCallback(result);
-            return;
-          }
-        }
-      }
-    });
+// ─── HackerRank Network Capture ──────────────────────────────────────────────
+class HRNetworkCapture {
+  private listener: ((event: MessageEvent) => void) | null = null;
+  private scriptElement: HTMLScriptElement | null = null;
+  private onResultCallback: (payload: any) => void;
+  private lastCapturedSubmissionId: string | null = null;
 
-    this.observer.observe(target, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'data-status']
-    });
-
-    console.log('[FailureAtlas] Result observer attached');
+  constructor(onResult: (payload: any) => void) {
+    this.onResultCallback = onResult;
   }
 
-  disconnect(): void {
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
+  install(): void {
+    if (this.scriptElement) return;
+    try {
+      this.scriptElement = document.createElement('script');
+      this.scriptElement.src = chrome.runtime.getURL('hackerrank-network-interceptor.js');
+      (document.head || document.documentElement).appendChild(this.scriptElement);
+      console.log('[FailureAtlas] HRNetworkCapture: script tag injected →', this.scriptElement.src);
+    } catch (e) {
+      console.error('[FailureAtlas] HRNetworkCapture: failed to inject interceptor', e);
     }
+
+    this.listener = (event: MessageEvent) => {
+      if (event.source !== window || !event.data) return;
+
+      // Interceptor ready ping
+      if (event.data.type === 'FA_HR_INTERCEPTOR_READY') {
+        console.log('[FailureAtlas] HRNetworkCapture: interceptor confirmed live in page context');
+        return;
+      }
+
+      if (event.data.type !== 'FA_HACKERRANK_RESULT') return;
+
+      const { submissionId, result, problemSlug, timestamp } = event.data;
+      console.log('[FailureAtlas] HRNetworkCapture: FA_HACKERRANK_RESULT received — submissionId:', submissionId, 'slug:', problemSlug);
+
+      // Dedup by submissionId+status pair (same key as interceptor)
+      const status = result?.model?.status || result?.status || result?.data?.status || '';
+      const fireKey = `${submissionId}:${status}`;
+      if (this.lastCapturedSubmissionId === fireKey) {
+        console.log('[FailureAtlas] HRNetworkCapture: duplicate suppressed —', fireKey);
+        return;
+      }
+      this.lastCapturedSubmissionId = fireKey;
+
+      this.onResultCallback({ submissionId, result, problemSlug, timestamp });
+    };
+    window.addEventListener('message', this.listener);
+    console.log('[FailureAtlas] HRNetworkCapture installed — listening for FA_HACKERRANK_RESULT');
+  }
+
+  uninstall(): void {
+    if (this.scriptElement) {
+      this.scriptElement.remove();
+      this.scriptElement = null;
+    }
+    if (this.listener) {
+      window.removeEventListener('message', this.listener);
+      this.listener = null;
+    }
+    this.lastCapturedSubmissionId = null;
+    console.log('[FailureAtlas] HRNetworkCapture uninstalled');
   }
 }
 
 // ─── FailureAtlasCollector (Orchestrator) ────────────────────────────────────
 class FailureAtlasCollector {
   private metadataExtractor = new ProblemMetadataExtractor();
-  private codeEditor = new CodeEditorHandler();  // ✅ NEW
+  private codeEditor = new CodeEditorHandler();
   private evolutionTracker = new CodeEvolutionTracker();
   private submissionMonitor = new SubmissionMonitor(res => this.onResultDetected(res));
+
+  // TUF-specific handlers
+  private tufEditorHook = new TUFEditorHook();
+  private tufNetworkCapture = new TUFNetworkCapture(payload => this.onTUFResultDetected(payload));
+  private tufNetworkFired = false;
+  private tufNetworkFiredTimeout: number | null = null;
+
+  // HackerRank-specific handlers
+  private hrNetworkCapture = new HRNetworkCapture(payload => this.onHRResultDetected(payload));
+  private hrNetworkFired = false;
+  private hrNetworkFiredTimeout: number | null = null;
 
   private sessionId = crypto.randomUUID();
   private attemptCount = 0;
@@ -482,13 +604,39 @@ class FailureAtlasCollector {
   private isActive = false;
   private currentProblem: ProblemMetadata | null = null;
   private submitListenerAttached = false;
+  private activePlatform = 'leetcode';
 
   activate(): void {
+    const adapter = detectPlatform(window.location);
+    if (!adapter) {
+      this.isActive = false;
+      this.submissionMonitor.disconnect();
+      this.codeEditor.stopCaching();
+      this.tufNetworkCapture.uninstall();
+      this.tufEditorHook.stop();
+      this.hrNetworkCapture.uninstall();
+      return;
+    }
+
+    if (adapter.platformId !== 'takeuforward') {
+      this.tufNetworkCapture.uninstall();
+      this.tufEditorHook.stop();
+    }
+
+    if (adapter.platformId !== 'hackerrank') {
+      this.hrNetworkCapture.uninstall();
+    }
+
+    this.activePlatform = adapter.platformId;
+
     const slug = this.metadataExtractor.extractSlugFromUrl();
     if (!slug) {
       this.isActive = false;
       this.submissionMonitor.disconnect();
       this.codeEditor.stopCaching();
+      this.tufNetworkCapture.uninstall();
+      this.tufEditorHook.stop();
+      this.hrNetworkCapture.uninstall();
       return;
     }
 
@@ -505,12 +653,20 @@ class FailureAtlasCollector {
     this.isActive = true;
     this.currentProblem = this.metadataExtractor.extractAll();
 
-    // ✅ KEY: Start caching code immediately
-    this.codeEditor.startCaching();
+    if (this.activePlatform === 'takeuforward') {
+      this.tufEditorHook.start();
+      this.tufNetworkCapture.install();
+    } else if (this.activePlatform === 'hackerrank') {
+      this.hrNetworkCapture.install();
+      this.codeEditor.startCaching();
+    } else {
+      this.codeEditor.startCaching();
+    }
+
     this.submissionMonitor.attach();
     this.attachSubmitButtonListener();
 
-    console.log(`[FailureAtlas] Activated for problem: ${slug}`);
+    console.log(`[FailureAtlas] Activated for platform: ${adapter.platformName}, problem: ${slug}`);
   }
 
   private extractLanguage(): string {
@@ -545,7 +701,6 @@ class FailureAtlasCollector {
 
       if (isSubmit) {
         console.log('[FailureAtlas] Submit button clicked — monitoring for result…');
-        // Ensure we have fresh code capture before result page loads
         this.codeEditor.updateCacheNow();
         setTimeout(() => this.submissionMonitor.attach(), 500);
       }
@@ -553,11 +708,20 @@ class FailureAtlasCollector {
   }
 
   private async onResultDetected(result: DetectedResult): Promise<void> {
+    if (this.activePlatform === 'takeuforward' && this.tufNetworkFired) {
+      console.log('[FailureAtlas] DOM detection ignored because TUF Network Interceptor recently fired');
+      return;
+    }
+
+    if (this.activePlatform === 'hackerrank' && this.hrNetworkFired) {
+      console.log('[FailureAtlas] DOM detection ignored because HackerRank Network Interceptor recently fired');
+      return;
+    }
+
     const traceId = Math.random().toString(36).substring(2, 10).toUpperCase();
 
     console.log(`[TRACE ${traceId}]\nDetected`);
 
-    // ── Retry code extraction up to 5s (10 × 500ms) ──────────────────────────
     let code = this.codeEditor.getCachedCode();
     if (!code || code.length <= 20) {
       console.log(`[TRACE ${traceId}]\nCode too short (${code?.length ?? 0} chars) or not ready. Retrying...`);
@@ -572,15 +736,15 @@ class FailureAtlasCollector {
       }
     }
 
-    // ── Deduplication ─────────────────────────────────────────────────────────
-    // Key: problem + status + code-hash (NOT attemptNumber — it increments on every
-    // DOM mutation, so two rapid detections of the same submit get different numbers).
-    const codeHash = hashCode(code.slice(0, 500)); // first 500 chars is enough
-    const dedupKey = `${this.currentProblem?.slug ?? 'unknown'}-${result.status}-${codeHash}`;
+    const codeHash = hashCode(code.slice(0, 500));
+    const dedupKey = result.submissionId
+      ? `${result.submissionId}-${this.currentProblem?.slug ?? 'unknown'}-${result.status}`
+      : `${this.currentProblem?.slug ?? 'unknown'}-${result.status}-${codeHash}`;
+
     const now = Date.now();
     if (
       customWindow.__fa_lastSentKey === dedupKey &&
-      now - (customWindow.__fa_lastSentTime || 0) < 30000  // 30s window
+      now - (customWindow.__fa_lastSentTime || 0) < 30000
     ) {
       console.log(`[TRACE ${traceId}]\nDuplicate submission blocked (same code+status within 30s)`);
       return;
@@ -588,7 +752,6 @@ class FailureAtlasCollector {
     customWindow.__fa_lastSentKey = dedupKey;
     customWindow.__fa_lastSentTime = now;
 
-    // Only increment attempt count when we are ACTUALLY sending
     this.attemptCount++;
 
     const event = this.buildSubmissionEvent(result, code, traceId);
@@ -614,6 +777,9 @@ class FailureAtlasCollector {
     }
 
     return {
+      version: 1,
+      platform: this.activePlatform,
+      externalSubmissionId: result.submissionId || null,
       eventId: crypto.randomUUID(),
       submissionTraceId: traceId,
       sessionId: this.sessionId,
@@ -632,6 +798,141 @@ class FailureAtlasCollector {
       testCasesPassed: result.testCasesPassed,
       totalTestCases: result.totalTestCases,
       failedTestCase: result.failedTestCase,
+      timeSpent: now - this.startTime,
+      attemptNumber: this.attemptCount,
+      rapidSubmission: timeSinceLastSubmit > 0 && timeSinceLastSubmit < 30000,
+      codeEvolution: this.evolutionTracker.getEvolution(),
+    };
+  }
+
+  private async onTUFResultDetected(payload: { submissionId: string; result: any; problemSlug: string; timestamp: number }): Promise<void> {
+    console.log('[FailureAtlas] Network interceptor captured submission:', payload.submissionId);
+
+    this.tufEditorHook.updateNow();
+    const snapshot = this.tufEditorHook.getSnapshot();
+
+    const raw: TUFRawSubmission = {
+      submissionId: payload.submissionId,
+      result: payload.result,
+      problemSlug: payload.problemSlug,
+      title: this.currentProblem?.title || this.metadataExtractor.extractTitle(),
+      code: snapshot.code,
+      timestamp: payload.timestamp
+    };
+
+    const adapter = getAdapter('takeuforward');
+    const normalized = adapter.normalize(raw);
+
+    this.tufNetworkFired = true;
+    if (this.tufNetworkFiredTimeout) {
+      clearTimeout(this.tufNetworkFiredTimeout);
+    }
+    this.tufNetworkFiredTimeout = window.setTimeout(() => {
+      this.tufNetworkFired = false;
+    }, 60000);
+
+    const codeHash = hashCode(normalized.code.slice(0, 500));
+    const dedupKey = normalized.externalSubmissionId
+      ? `${normalized.externalSubmissionId}-${normalized.problemId}-${normalized.status}`
+      : `${normalized.problemId}-${normalized.status}-${codeHash}`;
+
+    const now = Date.now();
+    if (
+      customWindow.__fa_lastSentKey === dedupKey &&
+      now - (customWindow.__fa_lastSentTime || 0) < 30000
+    ) {
+      console.log('[FailureAtlas] Duplicate network submission blocked');
+      return;
+    }
+    customWindow.__fa_lastSentKey = dedupKey;
+    customWindow.__fa_lastSentTime = now;
+
+    this.attemptCount++;
+
+    const traceId = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const event = this.buildSubmissionEventFromNormalized(normalized, traceId);
+
+    console.log(`[TRACE ${traceId}] TUF Network Payload Created`);
+    this.sendToBackground(event, traceId);
+    this.lastSubmissionTime = now;
+  }
+
+  private async onHRResultDetected(payload: { submissionId: string; result: any; problemSlug: string; timestamp: number }): Promise<void> {
+    console.log('[FailureAtlas] HackerRank network interceptor captured submission:', payload.submissionId);
+
+    const hrAdapter = getAdapter('hackerrank');
+    const code = (hrAdapter as any).extractCode?.() || this.codeEditor.getCachedCode();
+    const language = (hrAdapter as any).detectLanguage?.() || this.extractLanguage();
+    const meta = this.currentProblem || this.metadataExtractor.extractAll();
+
+    const raw: HackerRankRawSubmission = {
+      submissionId: payload.submissionId,
+      result: payload.result,
+      problemSlug: payload.problemSlug || meta.slug,
+      title: meta.title,
+      code,
+      language,
+      timestamp: payload.timestamp,
+    };
+
+    const normalized = hrAdapter.normalize(raw);
+
+    this.hrNetworkFired = true;
+    if (this.hrNetworkFiredTimeout) clearTimeout(this.hrNetworkFiredTimeout);
+    this.hrNetworkFiredTimeout = window.setTimeout(() => { this.hrNetworkFired = false; }, 60000);
+
+    const codeHash = hashCode(normalized.code.slice(0, 500));
+    const dedupKey = normalized.externalSubmissionId
+      ? `${normalized.externalSubmissionId}-${normalized.problemId}-${normalized.status}`
+      : `${normalized.problemId}-${normalized.status}-${codeHash}`;
+
+    const now = Date.now();
+    if (customWindow.__fa_lastSentKey === dedupKey && now - (customWindow.__fa_lastSentTime || 0) < 30000) {
+      console.log('[FailureAtlas] Duplicate HackerRank submission blocked');
+      return;
+    }
+    customWindow.__fa_lastSentKey = dedupKey;
+    customWindow.__fa_lastSentTime = now;
+
+    this.attemptCount++;
+    const traceId = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const event = this.buildSubmissionEventFromNormalized(normalized, traceId);
+    console.log(`[TRACE ${traceId}] HackerRank Network Payload Created`);
+    this.sendToBackground(event, traceId);
+    this.lastSubmissionTime = now;
+  }
+
+  private buildSubmissionEventFromNormalized(normalized: NormalizedSubmission, traceId: string): SubmissionEvent {
+    const meta = this.currentProblem || this.metadataExtractor.extractAll();
+    const now = Date.now();
+    const timeSinceLastSubmit = this.lastSubmissionTime > 0 ? now - this.lastSubmissionTime : 0;
+
+    if (normalized.code && normalized.code.length > 20) {
+      this.evolutionTracker.captureSnapshot(normalized.code);
+    }
+
+    return {
+      version: normalized.version,
+      platform: normalized.platform,
+      externalSubmissionId: normalized.externalSubmissionId,
+      eventId: crypto.randomUUID(),
+      submissionTraceId: traceId,
+      sessionId: this.sessionId,
+      userId: '',
+      timestamp: now,
+      problemSlug: normalized.problemId,
+      problemTitle: normalized.title,
+      problemDifficulty: meta.difficulty,
+      problemTopics: meta.topics,
+      problemUrl: meta.url,
+      submissionStatus: normalized.status as SubmissionStatus,
+      submissionLanguage: normalized.language,
+      submissionCode: normalized.code,
+      runtime: normalized.runtime ?? undefined,
+      memory: normalized.memory ?? undefined,
+      testCasesPassed: normalized.testCasesPassed ?? undefined,
+      totalTestCases: normalized.totalTestCases ?? undefined,
+      failedTestCase: normalized.failedTestCase ?? undefined,
       timeSpent: now - this.startTime,
       attemptNumber: this.attemptCount,
       rapidSubmission: timeSinceLastSubmit > 0 && timeSinceLastSubmit < 30000,

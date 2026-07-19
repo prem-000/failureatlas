@@ -65,25 +65,72 @@ export interface PatternRecognition {
   explanation: string;
 }
 
-export interface InteractiveVisualization {
-  type: string; // 'pointer' | 'grid' | 'memory-layout' | 'tree' | 'graph' | 'flowchart' | 'step-cards'
-  array?: string[];
-  rows?: string[];
-  cols?: string[];
-  structure?: string;
-  steps: Array<{
-    step: number;
-    action: string;
-    explanation: string;
-    left?: number;
-    right?: number;
-    pointers?: Array<{ name: string; index: number }>;
-    row?: number;
-    col?: number;
-    val?: string;
-    state?: string[];
-  }>;
+// ─── Visualization schema types ───────────────────────────────────────────────
+
+/** A step entry from the legacy step-based flowchart schema. */
+export interface VisualizationStep {
+  step:        number;
+  action:      string;
+  explanation: string;
+  left?:       number;
+  right?:      number;
+  pointers?:   Array<{ name: string; index: number }>;
+  row?:        number;
+  col?:        number;
+  val?:        string;
+  state?:      string[];
 }
+
+/** A node in the graph flowchart schema. */
+export interface VisualizationNode {
+  id:           string;
+  label:        string;
+  explanation?: string;
+}
+
+/** An edge in the graph flowchart schema. */
+export interface VisualizationEdge {
+  from: string;
+  to:   string;
+}
+
+/**
+ * A "new-style" graph-based interactive visualization.
+ * Produced by Gemini when generating flowchart/graph/tree diagrams
+ * with explicit node/edge structure.
+ */
+export interface GraphVisualization {
+  type:    string;
+  nodes:   VisualizationNode[];
+  edges:   VisualizationEdge[];
+  steps?:  never;
+  // Optional grid/array metadata (unused for graph type)
+  array?:  string[];
+  rows?:   string[];
+  cols?:   string[];
+}
+
+/**
+ * A "legacy-style" step-based interactive visualization.
+ * Used by older stored learning sheets and pointer/grid/memory players.
+ */
+export interface StepVisualization {
+  type:   string;
+  steps:  VisualizationStep[];
+  nodes?: never;
+  edges?: never;
+  // Optional grid/array metadata
+  array?: string[];
+  rows?:  string[];
+  cols?:  string[];
+  structure?: string;
+}
+
+/**
+ * Union of both supported interactive visualization schemas.
+ * The renderer accepts either form.
+ */
+export type InteractiveVisualization = GraphVisualization | StepVisualization;
 
 export interface StateTimeline {
   headers: string[];
@@ -133,7 +180,7 @@ export interface LearningSheetData {
 
   // ── Backward Compatibility / Fallback properties ──
   recognitionClues?: string[];
-  mermaidDiagram?: string;
+  excalidrawScene?: string | Record<string, any>;
   mistakes?: string[];
   practiceProblems?: PracticeProblem[];
   personalizedMistakes?: string[];

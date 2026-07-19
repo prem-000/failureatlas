@@ -227,7 +227,7 @@ curl http://localhost:3000/api/health
   "timestamp": "2024-01-15T10:30:00Z",
   "services": {
     "database": "connected",
-    "neo4j": "connected"
+    "redis": "connected"
   }
 }
 ```
@@ -272,16 +272,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  neo4j:
-    image: neo4j:5.5-community
-    environment:
-      NEO4J_AUTH: neo4j/dev_password
-      NEO4J_PLUGINS: '["apoc"]'
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    volumes:
-      - neo4j_data:/data
 
   redis:
     image: redis:7-alpine
@@ -292,7 +282,7 @@ services:
 
 volumes:
   postgres_data:
-  neo4j_data: 
+
   redis_data:
 ```
 
@@ -433,8 +423,7 @@ pnpm prisma generate
 # View database in Prisma Studio
 pnpm prisma studio
 
-# Neo4j browser access
-open http://localhost:7474
+
 ```
 
 ### Performance Monitoring

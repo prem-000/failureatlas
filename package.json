@@ -14,9 +14,11 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "test:phase3": "tsx scripts/test-phase3-api.ts"
+    "test:phase3": "tsx scripts/test-phase3-api.ts",
+    "test:retrain": "tsx scripts/test-retraining-pipeline.ts"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "^0.18.1",
     "@google/genai": "^2.11.0",
     "@prisma/client": "^5.7.1",
     "@react-three/drei": "^10.7.7",
@@ -33,7 +35,6 @@
     "jose": "^5.2.3",
     "katex": "^0.17.0",
     "lucide-react": "^0.344.0",
-    "mermaid": "^11.16.0",
     "next": "16.2.9",
     "next-auth": "^4.24.14",
     "prisma": "^5.7.1",
@@ -68,7 +69,8 @@
     "postcss": "^8.5.15",
     "sharp": "^0.35.3",
     "tsx": "^4.19.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

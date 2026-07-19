@@ -1,6 +1,5 @@
-import type { SubmissionEvent, WeaknessType } from '@/types';
-import type { RetrievedFailure } from '../rag/retrieval';
-import type { WeaknessScore } from '../graph/pagerank';
+import type { WeaknessType } from '@/types';
+import { DiagnosisContext, formatContextForLLM } from '@/lib/context/builder';
 
 export const DIAGNOSIS_MODEL_VERSION = 'llama-3.1-8b-instant';
 
@@ -23,20 +22,19 @@ export interface StructuredDiagnosis {
 }
 
 function getFallbackDiagnosis(
-  current: SubmissionEvent,
-  weaknessScores: WeaknessScore[]
+  context: DiagnosisContext
 ): StructuredDiagnosis {
   let primaryId: WeaknessType = 'edge-case-reasoning';
   let primaryName = 'Edge Case Reasoning';
   
-  if (current.submissionStatus === 'Time Limit Exceeded') {
+  if (context.submission.submissionStatus === 'Time Limit Exceeded') {
     primaryId = 'performance-analysis';
     primaryName = 'Performance Analysis';
-  } else if (current.submissionStatus === 'Memory Limit Exceeded') {
+  } else if (context.submission.submissionStatus === 'Memory Limit Exceeded') {
     primaryId = 'performance-analysis';
     primaryName = 'Performance Analysis';
-  } else if (weaknessScores.length > 0) {
-    const highest = weaknessScores[0];
+  } else if (context.userHistory.weaknessScores.length > 0) {
+    const highest = context.userHistory.weaknessScores[0];
     if (highest) {
       primaryId = highest.id as WeaknessType;
       primaryName = highest.name;
@@ -86,42 +84,27 @@ function getFallbackDiagnosis(
 }
 
 export async function generateAIDiagnosis(
-  current: SubmissionEvent,
-  similarFailures: RetrievedFailure[],
-  weaknessScores: WeaknessScore[],
+  context: DiagnosisContext,
   userQuery?: string
 ): Promise<StructuredDiagnosis> {
   const groqApiKey = process.env.GROQ_API_KEY;
   if (!groqApiKey || groqApiKey === 'your_groq_key_here') {
     console.warn('⚠️ GROQ_API_KEY is not defined or is a placeholder. Falling back to rules-based diagnosis.');
-    return getFallbackDiagnosis(current, weaknessScores);
+    return getFallbackDiagnosis(context);
   }
 
   console.log('[TRACE] Groq client created successfully');
 
+  const formattedContext = formatContextForLLM(context);
+
   const prompt = `
 You are an AI Failure Analyst for competitive programming. You help users understand their coding weaknesses by analyzing their submission history.
 
-## Current Failure Context
-Problem: ${current.problemTitle} (${current.problemDifficulty})
-Topics: ${current.problemTopics.join(', ')}
-Submission Status: ${current.submissionStatus}
-Code:
-\`\`\`
-${current.submissionCode}
-\`\`\`
-${current.failedTestCase ? `Failed Test Case: ${current.failedTestCase}` : ''}
+Below is the structured context of the user's latest failure and history:
 
-## Similar Past Failures (from embedding search)
-${similarFailures.length > 0
-  ? similarFailures.map(sf => `- Problem: ${sf.problemTitle} (${sf.submissionStatus}). Similarity: ${sf.similarityScore.toFixed(2)}. Code snippet: ${sf.code?.slice(0, 200)}`).join('\n')
-  : '- No similar past failures found.'}
-
-## Weakness Pattern Analysis (PageRank Scores)
-${weaknessScores.length > 0
-  ? weaknessScores.map(ws => `- ${ws.name} (${ws.id}): PageRank = ${ws.pageRankScore.toFixed(3)}, Frequency = ${ws.frequency}`).join('\n')
-  : '- No weakness patterns computed yet.'}
+${formattedContext}
 ${userQuery ? `\n## User's Specific Question\nThe user is asking: "${userQuery}"\nMake sure your reasoningChain directly addresses this question using the evidence above.\n` : ''}
+
 ## Instructions
 Reason step by step about the root cause. If the user asked a specific question, answer it directly in the reasoningChain field. Compile a custom learning plan tailored to their weaknesses. Output your response as a valid, parsable JSON object matching the schema below. Do not wrap the JSON in Markdown formatting.
 
@@ -182,6 +165,6 @@ JSON Schema:
     throw new Error('Groq response contains no choices content');
   } catch (err) {
     console.error('❌ Groq API diagnosis failed:', err);
-    return getFallbackDiagnosis(current, weaknessScores);
+    return getFallbackDiagnosis(context);
   }
 }

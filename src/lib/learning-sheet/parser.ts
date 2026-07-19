@@ -2,85 +2,17 @@
  * Zod Parser for Progressive Learning Sheet Data
  *
  * Validates and repairs Gemini JSON output using Zod schemas.
- * Converts structured visualization JSON into sanitized, wrapped Mermaid strings when appropriate.
+ * Converts structured visualization JSON into Excalidraw scene objects.
  */
 
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import type { LearningSheetData } from '@/types/learning-sheet';
-import { repairMermaid } from './repair';
+import { buildExcalidrawScene } from './excalidraw-scene';
 
-// ─── Sanitization & Wrap Helpers ──────────────────────────────────────────────
+// ─── Excalidraw Scene Builder (re-exported for use in VisualizationRegistry) ──
 
-function sanitizeLabel(label: string): string {
-  if (!label) return '';
-  let cleaned = label;
-  
-  // Replace array[...] patterns with array(...)
-  cleaned = cleaned.replace(/(\w+)\s*\[\s*(.+?)\s*\]/g, '$1($2)');
-  
-  // Replace Map<...> or HashMap<...> patterns with Map(...)
-  cleaned = cleaned.replace(/(\w+)\s*<\s*(.+?)\s*>/g, '$1($2)');
-  
-  // Remove HTML tags
-  cleaned = cleaned.replace(/<[^>]*>/g, '');
-  
-  // Remove markdown style table/bullets/formatting characters
-  cleaned = cleaned.replace(/[#*`\[\]{}<>"]/g, '');
-  
-  // Emojis: remove emoji patterns
-  cleaned = cleaned.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F1E6}-\u{1F1FF}]/gu, '');
-
-  return cleaned.trim();
-}
-
-function wrapLabel(label: string, maxLength: number = 35): string {
-  if (label.length <= maxLength) return label;
-  
-  const words = label.split(/\s+/);
-  let lines: string[] = [];
-  let currentLine = '';
-  
-  for (const word of words) {
-    if (currentLine.length + word.length + (currentLine ? 1 : 0) <= maxLength) {
-      currentLine += (currentLine ? ' ' : '') + word;
-    } else {
-      if (currentLine) {
-        lines.push(currentLine);
-      }
-      currentLine = word;
-      while (currentLine.length > maxLength) {
-        lines.push(currentLine.slice(0, maxLength));
-        currentLine = currentLine.slice(maxLength);
-      }
-    }
-  }
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-  
-  return lines.join('\\n');
-}
-
-export function buildMermaidFromSchema(json: { nodes: Array<{ id: string; label: string }>; edges: Array<{ from: string; to: string }> }): string {
-  if (!json || !Array.isArray(json.nodes)) return '';
-  let code = "flowchart TD\n";
-  
-  for (const node of json.nodes) {
-    const sanitizedLabel = sanitizeLabel(node.label);
-    const wrappedLabel = wrapLabel(sanitizedLabel, 35);
-    const escapedLabel = wrappedLabel.replace(/"/g, '\\"');
-    code += `  ${node.id}["${escapedLabel}"]\n`;
-  }
-  
-  if (Array.isArray(json.edges)) {
-    for (const edge of json.edges) {
-      code += `  ${edge.from} --> ${edge.to}\n`;
-    }
-  }
-  
-  return code;
-}
+export { buildExcalidrawScene } from './excalidraw-scene';
 
 // ─── Zod Schemas ──────────────────────────────────────────────────────────────
 
@@ -102,25 +34,52 @@ const PatternRecognitionSchema = z.object({
   explanation: z.string().default(''),
 });
 
-const InteractiveVisualizationSchema = z.object({
-  type: z.string().default('flowchart'),
-  array: z.array(z.string()).optional(),
-  rows: z.array(z.string()).optional(),
-  cols: z.array(z.string()).optional(),
-  structure: z.string().optional(),
-  steps: z.array(z.object({
-    step: z.number(),
-    action: z.string(),
-    explanation: z.string(),
-    left: z.number().optional(),
-    right: z.number().optional(),
-    pointers: z.array(z.object({ name: z.string(), index: z.number() })).optional(),
-    row: z.number().optional(),
-    col: z.number().optional(),
-    val: z.string().optional(),
-    state: z.array(z.string()).optional(),
-  })).default([]),
+
+// Shared sub-schemas
+const NodeSchema = z.object({
+  id:          z.string(),
+  label:       z.string(),
+  explanation: z.string().optional(),
 });
+
+const EdgeSchema = z.object({
+  from: z.string(),
+  to:   z.string(),
+});
+
+const StepSchema = z.object({
+  step:        z.number(),
+  action:      z.string(),
+  explanation: z.string(),
+  left:        z.number().optional(),
+  right:       z.number().optional(),
+  pointers:    z.array(z.object({ name: z.string(), index: z.number() })).optional(),
+  row:         z.number().optional(),
+  col:         z.number().optional(),
+  val:         z.string().optional(),
+  state:       z.array(z.string()).optional(),
+});
+
+/**
+ * Accepts both:
+ *  - Graph schema:  { type, nodes, edges }
+ *  - Step schema:   { type, steps, ... }
+ *
+ * Uses passthrough() so unknown AI fields are preserved rather than stripped.
+ */
+const InteractiveVisualizationSchema = z.object({
+  type:      z.string().default('flowchart'),
+  // Graph flowchart fields (optional — may not exist on legacy sheets)
+  nodes:     z.array(NodeSchema).optional(),
+  edges:     z.array(EdgeSchema).optional(),
+  // Step/array flowchart fields
+  array:     z.array(z.string()).optional(),
+  rows:      z.array(z.string()).optional(),
+  cols:      z.array(z.string()).optional(),
+  structure: z.string().optional(),
+  steps:     z.array(StepSchema).optional(),
+}).passthrough();
+
 
 const StateTimelineSchema = z.object({
   headers: z.array(z.string()).default([]),
@@ -184,7 +143,7 @@ const LearningSheetSchema = z.object({
 
   // Compatibility / Fallback properties
   recognitionClues: z.array(z.string()).optional(),
-  mermaidDiagram: z.string().optional(),
+  excalidrawScene: z.any().optional(),
   mistakes: z.array(z.string()).optional(),
   practiceProblems: z.array(PracticeProblemSchema).optional(),
   personalizedMistakes: z.array(z.string()).optional(),
@@ -354,12 +313,10 @@ export function parseAndRepair(raw: string): LearningSheetData {
   if (result.success) {
     const parsedData = result.data as LearningSheetData;
     
-    // Convert structured visualization flowchart/tree/graph to Mermaid string
+    // Convert structured visualization flowchart/tree/graph to Excalidraw scene
     const vis = parsedData.visualization as any;
     if (vis && (vis.type === 'flowchart' || vis.type === 'graph' || vis.type === 'tree') && vis.nodes && vis.edges) {
-      parsedData.mermaidDiagram = buildMermaidFromSchema(vis);
-    } else if (parsedData.mermaidDiagram) {
-      parsedData.mermaidDiagram = repairMermaid(parsedData.mermaidDiagram);
+      parsedData.excalidrawScene = buildExcalidrawScene(vis);
     }
 
     // Populate old lists for backwards-compatibility fallbacks
@@ -378,8 +335,6 @@ export function parseAndRepair(raw: string): LearningSheetData {
 
   // Fallback parsing (v1 support)
   const data = parsed as Record<string, any>;
-  const rawMermaid = typeof data.mermaidDiagram === 'string' ? data.mermaidDiagram : undefined;
-  
   const repaired: LearningSheetData = {
     schemaVersion: 1,
     title: typeof data.title === 'string' ? data.title : 'Untitled',
@@ -391,7 +346,6 @@ export function parseAndRepair(raw: string): LearningSheetData {
     complexity: { time: 'O(?)', timeExplanation: '', space: 'O(?)', spaceExplanation: '' },
     pitfalls: [],
     practiceRoadmap: [],
-    mermaidDiagram: rawMermaid ? repairMermaid(rawMermaid) : undefined,
   };
 
   if (data.complexity && typeof data.complexity === 'object') {

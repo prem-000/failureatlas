@@ -1,0 +1,179 @@
+{
+  "version": 3,
+  "createdAt": "2026-07-18T10:04:38.867Z",
+  "trainedOn": 2,
+  "weights": {
+    "priors": {
+      "boundary-condition-error": 0.2248062015503876,
+      "algorithm-selection-mistake": 0.1453488372093023,
+      "pattern-recognition-gap": 0.11627906976744186,
+      "time-complexity-oversight": 0.1744186046511628,
+      "space-complexity-oversight": 0.04844961240310078,
+      "data-structure-mismatch": 0.09689922480620156,
+      "implementation-detail-error": 0.1453488372093023,
+      "input-output-handling-error": 0.04844961240310078
+    },
+    "likelihoods": {
+      "hasBoundaryDiff": {
+        "boundary-condition-error": 0.85594,
+        "algorithm-selection-mistake": 0.1,
+        "pattern-recognition-gap": 0.15,
+        "time-complexity-oversight": 0.1,
+        "space-complexity-oversight": 0.1,
+        "data-structure-mismatch": 0.1,
+        "implementation-detail-error": 0.3,
+        "input-output-handling-error": 0.2
+      },
+      "hasStructuralBoundaryChange": {
+        "boundary-condition-error": 0.9,
+        "algorithm-selection-mistake": 0.05,
+        "pattern-recognition-gap": 0.1,
+        "time-complexity-oversight": 0.05,
+        "space-complexity-oversight": 0.05,
+        "data-structure-mismatch": 0.05,
+        "implementation-detail-error": 0.25,
+        "input-output-handling-error": 0.1
+      },
+      "hasAlgorithmRewrite": {
+        "boundary-condition-error": 0.05,
+        "algorithm-selection-mistake": 0.9,
+        "pattern-recognition-gap": 0.85,
+        "time-complexity-oversight": 0.6,
+        "space-complexity-oversight": 0.3,
+        "data-structure-mismatch": 0.4,
+        "implementation-detail-error": 0.1,
+        "input-output-handling-error": 0.1
+      },
+      "hasDataStructureChange": {
+        "boundary-condition-error": 0.05,
+        "algorithm-selection-mistake": 0.3,
+        "pattern-recognition-gap": 0.25,
+        "time-complexity-oversight": 0.5,
+        "space-complexity-oversight": 0.4,
+        "data-structure-mismatch": 0.9,
+        "implementation-detail-error": 0.1,
+        "input-output-handling-error": 0.05
+      },
+      "hasImplementationDetailChange": {
+        "boundary-condition-error": 0.25,
+        "algorithm-selection-mistake": 0.1,
+        "pattern-recognition-gap": 0.15,
+        "time-complexity-oversight": 0.1,
+        "space-complexity-oversight": 0.1,
+        "data-structure-mismatch": 0.1,
+        "implementation-detail-error": 0.85,
+        "input-output-handling-error": 0.3
+      },
+      "hasRapidResubmission": {
+        "boundary-condition-error": 0.6,
+        "algorithm-selection-mistake": 0.15,
+        "pattern-recognition-gap": 0.2,
+        "time-complexity-oversight": 0.15,
+        "space-complexity-oversight": 0.1,
+        "data-structure-mismatch": 0.15,
+        "implementation-detail-error": 0.7,
+        "input-output-handling-error": 0.4
+      },
+      "hasLongGap": {
+        "boundary-condition-error": 0.15,
+        "algorithm-selection-mistake": 0.75,
+        "pattern-recognition-gap": 0.8,
+        "time-complexity-oversight": 0.65,
+        "space-complexity-oversight": 0.5,
+        "data-structure-mismatch": 0.6,
+        "implementation-detail-error": 0.2,
+        "input-output-handling-error": 0.15
+      },
+      "hasManyMinorChanges": {
+        "boundary-condition-error": 0.7,
+        "algorithm-selection-mistake": 0.2,
+        "pattern-recognition-gap": 0.25,
+        "time-complexity-oversight": 0.2,
+        "space-complexity-oversight": 0.15,
+        "data-structure-mismatch": 0.2,
+        "implementation-detail-error": 0.75,
+        "input-output-handling-error": 0.35
+      },
+      "verdictTLE": {
+        "boundary-condition-error": 0.05,
+        "algorithm-selection-mistake": 0.7,
+        "pattern-recognition-gap": 0.5,
+        "time-complexity-oversight": 0.95,
+        "space-complexity-oversight": 0.2,
+        "data-structure-mismatch": 0.4,
+        "implementation-detail-error": 0.1,
+        "input-output-handling-error": 0.05
+      },
+      "verdictMLE": {
+        "boundary-condition-error": 0.02,
+        "algorithm-selection-mistake": 0.4,
+        "pattern-recognition-gap": 0.3,
+        "time-complexity-oversight": 0.2,
+        "space-complexity-oversight": 0.95,
+        "data-structure-mismatch": 0.5,
+        "implementation-detail-error": 0.05,
+        "input-output-handling-error": 0.02
+      },
+      "verdictWA": {
+        "boundary-condition-error": 0.7599,
+        "algorithm-selection-mistake": 0.4,
+        "pattern-recognition-gap": 0.4,
+        "time-complexity-oversight": 0.15,
+        "space-complexity-oversight": 0.1,
+        "data-structure-mismatch": 0.35,
+        "implementation-detail-error": 0.7,
+        "input-output-handling-error": 0.6
+      },
+      "verdictRE": {
+        "boundary-condition-error": 0.45,
+        "algorithm-selection-mistake": 0.3,
+        "pattern-recognition-gap": 0.2,
+        "time-complexity-oversight": 0.1,
+        "space-complexity-oversight": 0.6,
+        "data-structure-mismatch": 0.3,
+        "implementation-detail-error": 0.65,
+        "input-output-handling-error": 0.15
+      },
+      "hasHighLatency": {
+        "boundary-condition-error": 0.05,
+        "algorithm-selection-mistake": 0.55,
+        "pattern-recognition-gap": 0.4,
+        "time-complexity-oversight": 0.9,
+        "space-complexity-oversight": 0.2,
+        "data-structure-mismatch": 0.35,
+        "implementation-detail-error": 0.1,
+        "input-output-handling-error": 0.05
+      },
+      "hasRetries": {
+        "boundary-condition-error": 0.5,
+        "algorithm-selection-mistake": 0.25,
+        "pattern-recognition-gap": 0.3,
+        "time-complexity-oversight": 0.6,
+        "space-complexity-oversight": 0.4,
+        "data-structure-mismatch": 0.3,
+        "implementation-detail-error": 0.55,
+        "input-output-handling-error": 0.3
+      },
+      "hasTLEFromRuntime": {
+        "boundary-condition-error": 0.05,
+        "algorithm-selection-mistake": 0.75,
+        "pattern-recognition-gap": 0.55,
+        "time-complexity-oversight": 0.98,
+        "space-complexity-oversight": 0.15,
+        "data-structure-mismatch": 0.45,
+        "implementation-detail-error": 0.1,
+        "input-output-handling-error": 0.05
+      },
+      "hasMLE": {
+        "boundary-condition-error": 0.02,
+        "algorithm-selection-mistake": 0.35,
+        "pattern-recognition-gap": 0.25,
+        "time-complexity-oversight": 0.2,
+        "space-complexity-oversight": 0.97,
+        "data-structure-mismatch": 0.55,
+        "implementation-detail-error": 0.05,
+        "input-output-handling-error": 0.02
+      }
+    }
+  }
+}

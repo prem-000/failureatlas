@@ -359,7 +359,8 @@ export function LearningSheet({
               type: visData.type,
               visualization: visData,
               activeStep,
-              mermaidDiagram: data.mermaidDiagram,
+              excalidrawScene: data.excalidrawScene,
+              onRegenerate,
             })}
           </div>
 

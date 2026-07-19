@@ -4,6 +4,9 @@ import {
   ExtensionState,
   ExtensionMessage,
 } from './types';
+import { validateSubmission } from '@/lib/validation/submission-validator';
+import { getAdapter } from '@/platforms/registry';
+import type { NormalizedSubmission } from '@/types';
 
 // ─── API URL Normalization Utility ───────────────────────────────────────────
 export function normalizeApiBaseUrl(url: string): string {
@@ -392,9 +395,33 @@ export class MessageHandler {
     switch (message.type) {
       case 'SUBMISSION_EVENT': {
         const event: SubmissionEvent = message.data;
-        const validation = PrivacyManager.validateEvent(event);
-        if (!validation.valid) {
-          return { success: false, error: `Missing required parameters: ${validation.missing}` };
+        
+        // ── Client-side Adapter Validation ───────────────────────────────────
+        try {
+          const adapter = getAdapter(event.platform as any);
+          const normalized: NormalizedSubmission = {
+            version: event.version,
+            platform: event.platform,
+            externalSubmissionId: event.externalSubmissionId || null,
+            problemId: event.problemSlug,
+            title: event.problemTitle,
+            language: event.submissionLanguage,
+            code: event.submissionCode,
+            status: event.submissionStatus,
+            runtime: event.runtime || null,
+            memory: event.memory || null,
+            timestamp: new Date(event.timestamp).toISOString(),
+            testCasesPassed: event.testCasesPassed || null,
+            totalTestCases: event.totalTestCases || null,
+            failedTestCase: event.failedTestCase || null,
+          };
+
+          const validation = validateSubmission(normalized, adapter.capabilities());
+          if (!validation.valid) {
+            return { success: false, error: `Validation failed: ${validation.errors.join(', ')}` };
+          }
+        } catch (err: any) {
+          return { success: false, error: `Local validation error: ${err.message}` };
         }
 
         const creds = await this.storage.getCredentials();

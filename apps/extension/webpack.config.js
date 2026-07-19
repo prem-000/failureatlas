@@ -6,8 +6,11 @@ module.exports = {
   entry: {
     content: './src/content.ts',
     background: './src/background.ts',
-    popup: './src/popup.ts'
+    popup: './src/popup.ts',
+    'network-interceptor': '../../src/platforms/takeuforward/network-interceptor.ts',
+    'hackerrank-network-interceptor': '../../src/platforms/hackerrank/network-interceptor.ts'
   },
+  devtool: process.env.NODE_ENV === 'production' ? false : 'source-map',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].js',
@@ -23,7 +26,10 @@ module.exports = {
     ]
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js']
+    extensions: ['.tsx', '.ts', '.js'],
+    alias: {
+      '@': path.resolve(__dirname, '../../src')
+    }
   },
   plugins: [
     new HtmlWebpackPlugin({

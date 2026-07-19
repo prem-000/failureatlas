@@ -1,3 +1,15 @@
+// Re-export platform adapter types
+export type {
+  CapabilityState,
+  PlatformCapabilities,
+  RawSubmission,
+  EditorSnapshot,
+  ProblemMetadata as PlatformProblemMetadata,
+  NormalizedSubmission,
+  PlatformId,
+  PlatformAdapter,
+} from './platform-adapter';
+
 // Submission types
 export type SubmissionStatus =
   | 'Accepted'
@@ -10,6 +22,12 @@ export type SubmissionStatus =
 export type ProblemDifficulty = 'Easy' | 'Medium' | 'Hard';
 
 export interface SubmissionEvent {
+  /** Schema version — incremented on breaking changes */
+  version: number;
+  /** Platform identifier (e.g. 'leetcode', 'codeforces') */
+  platform: string;
+  /** Platform's own submission ID, if available */
+  externalSubmissionId?: string | null;
   eventId: string;
   sessionId: string;
   timestamp: Date;
@@ -284,7 +302,7 @@ export interface PaginationInfo {
 
 // Sidebar Navigation Types
 export interface SidebarNavItem {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: any; // React.ComponentType<{ className?: string }>;
   href: string;
   label: string;
   badge?: number;
@@ -596,4 +614,80 @@ export interface FailureExplanation {
   recurringPatterns: RecurringPattern[];
 
   generatedAt: string; // ISO timestamp
+}
+
+// ─── Evidence Type Enum ───────────────────────────────────────────────────────
+
+export type EvidenceType =
+  | 'BoundaryError'
+  | 'MissingNullCheck'
+  | 'WrongComparator'
+  | 'InfiniteLoop'
+  | 'Overflow'
+  | 'OffByOne'
+  | 'MissingBaseCase'
+  | 'WrongVariable'
+  | 'MissingReturn'
+  | 'AlgorithmRewrite'
+  | 'DataStructureChange'
+  | 'ImplementationDetail';
+
+export interface EvidenceObject {
+  type: EvidenceType;
+  description: string;
+  confidence: number;
+  source: 'ast_diff' | 'myers_diff' | 'behavioral' | 'network';
+  rawChange?: {
+    oldCode: string;
+    newCode: string;
+  };
+}
+
+export interface AggregatedEvidence {
+  counts: Record<EvidenceType, number>;
+  total: number;
+  dominant: EvidenceType;
+  dominantCount: number;
+  items: EvidenceObject[];
+}
+
+// ─── Concept & Section Types ──────────────────────────────────────────────────
+
+export interface Concept {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+}
+
+export interface Section {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  masteryScore: number;     // 0–1 recency-weighted
+  frequency: number;        // total mistake count
+  lastOccurrence: Date | null;
+  isWeak: boolean;          // flagged if below threshold
+}
+
+export interface ConceptMapping {
+  weakness: SystemicWeakness;
+  concepts: Concept[];
+  sections: Section[];
+}
+
+// ─── Feedback Loop Types ──────────────────────────────────────────────────────
+
+export type FeedbackVerdict = 'confirmed' | 'corrected' | 'rejected';
+
+export interface FeedbackEntry {
+  id: string;
+  userId: string;
+  diagnosisId: string;
+  submissionId: string;
+  rootCauseShown: string;
+  userVerdict: FeedbackVerdict;
+  userCorrection?: string;
+  createdAt: Date;
 }

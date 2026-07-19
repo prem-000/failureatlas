@@ -29,6 +29,7 @@ model User {
   practiceReviews  PracticeReviewState[]
   practiceSessions PracticeSession[]
   practiceExports  PracticeExport[]
+  feedbackEntries  FeedbackEntry[]
 
   @@map("users")
 }
@@ -49,26 +50,29 @@ model Problem {
 }
 
 model SubmissionEvent {
-  id                String            @id @default(cuid())
-  userId            String
-  problemId         String
-  eventId           String            @unique
-  submissionTraceId String?
-  submissionHash    String?           @unique
-  sessionId         String
-  timestamp         DateTime
-  status            String
-  language          String
-  code              String
-  runtime           Int?
-  memory            Int?
-  testCasesPassed   Int?
-  totalTestCases    Int?
-  failedTestCase    String?
-  timeSpent         Int
-  attemptNumber     Int
-  rapidSubmission   Boolean           @default(false)
-  source            String            @default("extension") // 'extension' | 'interceptor' | 'merged'
+  id                    String            @id @default(cuid())
+  userId                String
+  problemId             String
+  eventId               String            @unique
+  submissionTraceId     String?
+  submissionHash        String?           @unique
+  sessionId             String
+  version               Int               @default(1)
+  platform              String            @default("leetcode")
+  externalSubmissionId  String?
+  timestamp             DateTime
+  status                String
+  language              String
+  code                  String
+  runtime               Int?
+  memory                Int?
+  testCasesPassed       Int?
+  totalTestCases        Int?
+  failedTestCase        String?
+  timeSpent             Int
+  attemptNumber         Int
+  rapidSubmission       Boolean           @default(false)
+  source                String            @default("extension") // 'extension' | 'interceptor' | 'merged'
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   diagnosis         DiagnosisResult?
@@ -84,6 +88,7 @@ model SubmissionEvent {
   @@index([problemId])
   @@index([timestamp])
   @@index([submissionHash])
+  @@index([platform])
   @@map("submission_events")
 }
 
@@ -147,6 +152,7 @@ model SystemicWeakness {
   diagnoses           DiagnosisResult[]   @relation("PrimaryWeakness")
   diagnosisWeaknesses DiagnosisWeakness[]
   strategies          LearningStrategy[]
+  weaknessConcepts    WeaknessConcept[]
 
   @@map("systemic_weaknesses")
 }
@@ -539,4 +545,81 @@ model PracticeExport {
 
   @@index([userId])
   @@map("practice_exports")
+}
+
+// ─── Concept & Section Relational Chain ───────────────────────────────────────
+
+model Concept {
+  id                String              @id @default(cuid())
+  name              String              @unique
+  slug              String              @unique
+  description       String              @default("")
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  weaknessConcepts  WeaknessConcept[]
+  conceptSections   ConceptSection[]
+
+  @@map("concepts")
+}
+
+model Section {
+  id                String              @id @default(cuid())
+  name              String              @unique
+  slug              String              @unique
+  description       String              @default("")
+  masteryScore      Float               @default(1.0) // 0–1, recency-weighted
+  frequency         Int                 @default(0)   // total mistake count
+  lastOccurrence    DateTime?
+  isWeak            Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  conceptSections   ConceptSection[]
+
+  @@map("sections")
+}
+
+model ConceptSection {
+  id          String   @id @default(cuid())
+  conceptId   String
+  sectionId   String
+  createdAt   DateTime @default(now())
+  concept     Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  section     Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([conceptId, sectionId])
+  @@index([conceptId])
+  @@index([sectionId])
+  @@map("concept_sections")
+}
+
+model WeaknessConcept {
+  id          String           @id @default(cuid())
+  weaknessId  String
+  conceptId   String
+  createdAt   DateTime         @default(now())
+  weakness    SystemicWeakness @relation(fields: [weaknessId], references: [id], onDelete: Cascade)
+  concept     Concept          @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@unique([weaknessId, conceptId])
+  @@index([weaknessId])
+  @@index([conceptId])
+  @@map("weakness_concepts")
+}
+
+// ─── Feedback Loop ────────────────────────────────────────────────────────────
+
+model FeedbackEntry {
+  id              String          @id @default(cuid())
+  userId          String
+  diagnosisId     String
+  submissionId    String
+  rootCauseShown  String
+  userVerdict     String          // 'confirmed' | 'corrected' | 'rejected'
+  userCorrection  String?
+  createdAt       DateTime        @default(now())
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([diagnosisId])
+  @@map("feedback_entries")
 }

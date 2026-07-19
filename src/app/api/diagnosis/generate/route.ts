@@ -11,6 +11,12 @@ import { acquireLock, releaseLock } from '@/lib/lock';
 import { rateLimit } from '@/lib/rate-limit';
 import { delRoadmapCache } from '@/lib/cache/roadmap';
 
+// Realignment imports
+import { aggregateEvidence } from '@/lib/analysis/evidence-aggregator';
+import { computeSectionMastery } from '@/lib/analysis/section-rollup';
+import { buildConceptChain } from '@/lib/analysis/concept-mapper';
+import { buildDiagnosisContext } from '@/lib/context/builder';
+
 
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
@@ -115,6 +121,9 @@ export async function POST(request: NextRequest) {
 
     // Map latest failure to type SubmissionEvent
     const mappedCurrent: SubmissionEvent = {
+      version: latestFailure.version,
+      platform: latestFailure.platform,
+      externalSubmissionId: latestFailure.externalSubmissionId,
       eventId: latestFailure.eventId,
       sessionId: latestFailure.sessionId,
       timestamp: latestFailure.timestamp,
@@ -221,11 +230,48 @@ export async function POST(request: NextRequest) {
 
       if (!diagnosis) {
         try {
+          // Fetch existing evidence and hypotheses to build correct context
+          const latestFailureEvidence = await prisma.evidence.findMany({
+            where: { submissionId: latestFailure.id },
+          });
+          const evidenceObjects = latestFailureEvidence.map(e => ({
+            type: e.type as any,
+            description: e.description,
+            confidence: e.confidence,
+            source: e.source as any,
+            rawData: e.rawData as any,
+            extractedAt: e.extractedAt,
+          }));
+          const aggregated = aggregateEvidence(evidenceObjects);
+
+          const dbHypothesis = await prisma.rootCauseHypothesis.findFirst({
+            where: { evidence: { submissionId: latestFailure.id } },
+          });
+          const rootCause = {
+            type: dbHypothesis?.rootCauseType ?? 'boundary-condition-error',
+            name: dbHypothesis?.name ?? 'Boundary Condition Error',
+            confidence: dbHypothesis?.confidence ?? 85,
+          };
+
+          const sectionMastery = await computeSectionMastery(prisma, userId);
+          const conceptChain = buildConceptChain(aggregated.dominant);
+
+          const context = buildDiagnosisContext({
+            submission: mappedCurrent,
+            evidence: aggregated,
+            rootCause,
+            weaknessScores: pageRankScores,
+            sectionMastery,
+            similarFailures,
+            conceptChain,
+          });
+
           // 5. Generate AI Diagnosis (pass userQuery so Groq can answer it directly)
-          const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores, userQuery || undefined);
+          const aiDiagnosis = await generateAIDiagnosis(context, userQuery || undefined);
           aiDiagnosisPrimaryName = aiDiagnosis.primaryWeaknessName;
           aiDiagnosisConfidence = aiDiagnosis.confidence;
           aiDiagnosisReasoning = aiDiagnosis.reasoningChain;
+
 
           // 6. Save primary weakness in Prisma PostgreSQL
           const primaryWeaknessNode = await prisma.systemicWeakness.upsert({

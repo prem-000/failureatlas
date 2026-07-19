@@ -1,4 +1,4 @@
-﻿// src/app/api/submissions/[id]/explain/route.ts
+// src/app/api/submissions/[id]/explain/route.ts
 // POST /api/submissions/:id/explain  → generate (or regenerate) a FailureExplanation
 // GET  /api/submissions/:id/explain  → return cached FailureExplanation
 
@@ -132,6 +132,9 @@ export async function POST(
 
     // 3. Map to SubmissionEvent
     const mappedSubmission: SubmissionEvent = {
+      version: submission.version,
+      platform: submission.platform,
+      externalSubmissionId: submission.externalSubmissionId,
       eventId: submission.eventId,
       sessionId: submission.sessionId,
       timestamp: submission.timestamp,
@@ -171,6 +174,9 @@ export async function POST(
     const prevMapped: SubmissionEvent[] = prevSubmission
       ? [
           {
+            version: prevSubmission.version,
+            platform: prevSubmission.platform,
+            externalSubmissionId: prevSubmission.externalSubmissionId,
             eventId: prevSubmission.eventId,
             sessionId: prevSubmission.sessionId,
             timestamp: prevSubmission.timestamp,

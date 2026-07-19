@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FailureAtlas",
-  "version": "1.0.0",
-  "description": "FailureAtlas Chrome Extension — LeetCode submission capture",
+  "version": "1.1.0",
+  "description": "FailureAtlas Chrome Extension — Multi-platform submission capture (LeetCode, TUF, HackerRank, Codeforces & more)",
   "permissions": [
     "storage",
     "activeTab",
@@ -13,6 +13,12 @@
   ],
   "host_permissions": [
     "https://leetcode.com/*",
+    "https://*.takeuforward.org/*",
+    "https://codeforces.com/*",
+    "https://*.hackerrank.com/*",
+    "https://*.codechef.com/*",
+    "https://atcoder.jp/*",
+    "https://*.geeksforgeeks.org/*",
     "https://api.failureatlas.dev/*",
     "http://localhost:3000/*",
     "http://localhost:3000/api/*",
@@ -21,7 +27,27 @@
   "web_accessible_resources": [
     {
       "resources": ["content.js"],
-      "matches": ["https://leetcode.com/*"]
+      "matches": [
+        "https://leetcode.com/*",
+        "https://*.takeuforward.org/*",
+        "https://codeforces.com/*",
+        "https://*.hackerrank.com/*",
+        "https://*.codechef.com/*",
+        "https://atcoder.jp/*",
+        "https://*.geeksforgeeks.org/*"
+      ]
+    },
+    {
+      "resources": ["network-interceptor.js"],
+      "matches": [
+        "https://*.takeuforward.org/*"
+      ]
+    },
+    {
+      "resources": ["hackerrank-network-interceptor.js"],
+      "matches": [
+        "https://*.hackerrank.com/*"
+      ]
     }
   ],
   "background": {
@@ -30,7 +56,15 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://leetcode.com/*"],
+      "matches": [
+        "https://leetcode.com/*",
+        "https://*.takeuforward.org/*",
+        "https://codeforces.com/*",
+        "https://*.hackerrank.com/*",
+        "https://*.codechef.com/*",
+        "https://atcoder.jp/*",
+        "https://*.geeksforgeeks.org/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_start"
     }
