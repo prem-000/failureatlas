@@ -21,6 +21,7 @@ import { type DiffOp } from './components/DiffViewer';
 import { ConfidenceBar } from './components/ConfidenceBar';
 import { AttemptTimeline } from './components/AttemptTimeline';
 import { useScrollSpy } from './hooks/useScrollSpy';
+import { FailedSubmissionWorkspace } from './components/FailedSubmissionWorkspace';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface SubmissionDetail {
@@ -154,17 +155,19 @@ export default function ProblemDetailPage() {
   const sectionIds = useMemo(() => {
     if (!allData.length) return [];
     const isAccepted = allData[0].submission.status === 'Accepted';
-    const ids: string[] = [];
-    if (isAccepted) ids.push('success');
-    ids.push('timeline');
-    const evidences = allData.flatMap(d => d.evidences);
-    if (!isAccepted && evidences.length > 0) ids.push('evidence');
-    const hypotheses = allData.flatMap(d => d.rootCauseHypotheses);
-    if (hypotheses.length > 0 && !isAccepted) ids.push('root-cause');
-    const diag = allData.find(d => d.diagnosis)?.diagnosis;
-    if (diag?.primaryWeakness && !isAccepted) ids.push('growth');
-    if (diag?.recommendations?.length && !isAccepted) ids.push('practice');
-    return ids;
+    if (isAccepted) {
+      return ['success', 'timeline'];
+    }
+    return [
+      'failure-banner',
+      'bug-explanation',
+      'execution-simulation',
+      'ai-judge',
+      'root-cause',
+      'similar-failures',
+      'learning-recommendation',
+      'timeline',
+    ];
   }, [allData]);
 
   // ── Compute section navigation references eagerly (Rules of Hooks) ─────────
@@ -172,24 +175,23 @@ export default function ProblemDetailPage() {
     if (!allData.length) return [];
     const latest = allData[0];
     const isLatestAccepted = latest.submission.status === 'Accepted';
-    const latestDiagnosis = allData.find(d => d.diagnosis)?.diagnosis;
-    const allHypotheses = allData.flatMap(d => d.rootCauseHypotheses);
-    const allEvidences = allData.flatMap(d => d.evidences);
 
-    const hypothesisMap = new Map<string, Hypothesis>();
-    for (const h of allHypotheses) {
-      const existing = hypothesisMap.get(h.rootCauseType);
-      if (!existing || h.confidence > existing.confidence) hypothesisMap.set(h.rootCauseType, h);
+    if (isLatestAccepted) {
+      return [
+        { id: 'success', label: 'Success Intelligence', accent: '#22c55e' },
+        { id: 'timeline', label: 'Attempt Timeline', accent: '#3b82f6' },
+      ];
     }
-    const topHypotheses = Array.from(hypothesisMap.values()).sort((a, b) => b.confidence - a.confidence).slice(0, 6);
 
     return [
-      ...(isLatestAccepted ? [{ id: 'success', label: 'Success Intelligence', accent: '#22c55e' }] : []),
-      ...(latestDiagnosis?.primaryWeakness && !isLatestAccepted ? [{ id: 'growth', label: 'Primary Growth Area', accent: '#a855f7' }] : []),
-      ...(topHypotheses.length > 0 && !isLatestAccepted ? [{ id: 'root-cause', label: 'Root Cause Analysis', accent: '#ff5f52' }] : []),
-      ...(!isLatestAccepted && allEvidences.length > 0 ? [{ id: 'evidence', label: 'Evidence Collected', accent: '#f59e0b' }] : []),
-      ...(latestDiagnosis?.recommendations?.length && !isLatestAccepted ? [{ id: 'practice', label: 'Targeted Practice', accent: '#22c55e' }] : []),
-      { id: 'timeline', label: 'Attempt Timeline', accent: '#3b82f6' }
+      { id: 'failure-banner', label: 'Failure Verdict', accent: '#ef4444' },
+      { id: 'bug-explanation', label: 'Bug Explanation', accent: '#ef4444' },
+      { id: 'execution-simulation', label: 'AI Execution Sim', accent: '#3b82f6' },
+      { id: 'ai-judge', label: 'AI Judge Simulator', accent: '#a855f7' },
+      { id: 'root-cause', label: 'Root Cause Analysis', accent: '#ef4444' },
+      { id: 'similar-failures', label: 'Similar Failures', accent: '#f59e0b' },
+      { id: 'learning-recommendation', label: 'Learning Recommendation', accent: '#22c55e' },
+      { id: 'timeline', label: 'Attempt Timeline', accent: '#3b82f6' },
     ];
   }, [allData]);
 
@@ -395,151 +397,11 @@ export default function ProblemDetailPage() {
             </>
           ) : (
             <>
-              {/* Failed Solution Layout: 2-column grid on larger screens, stacks on mobile */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start">
-                <div className="flex flex-col gap-6 w-full min-w-0">
-                  {latestDiagnosis?.primaryWeakness && (
-                    <div id={`section-growth`} className="analysis-section-anchor w-full min-w-0">
-                      <SectionCard title="Primary Growth Area" accent="#a855f7">
-                        <div className="p-4 sm:p-5">
-                          <div style={{ fontSize: 15, fontWeight: 700, color: '#d8b4fe', marginBottom: 6 }}>
-                            {latestDiagnosis.primaryWeakness.name.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                          </div>
-                          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                            <span style={{ fontSize: 10, color: '#ef4444', background: '#450a0a', borderRadius: 4, padding: '2px 7px', fontWeight: 700 }}>
-                              {latestDiagnosis.primaryWeakness.severity?.toUpperCase()}
-                            </span>
-                          </div>
-                          <ConfidenceBar value={latestDiagnosis.primaryWeakness.confidence} color="#a855f7" />
-                          <button
-                            onClick={() => openDrawer(
-                              latestDiagnosis!.primaryWeakness!.type || latestDiagnosis!.primaryWeakness!.name,
-                              latestDiagnosis!.primaryWeakness!.name
-                            )}
-                            style={{
-                              marginTop: 12, width: '100%', padding: '8px 0',
-                              background: '#a855f720', border: '1px solid #a855f740',
-                              borderRadius: 7, color: '#d8b4fe', fontSize: 12, fontWeight: 600,
-                              cursor: 'pointer', transition: 'background 0.15s',
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.background = '#a855f730')}
-                            onMouseLeave={e => (e.currentTarget.style.background = '#a855f720')}
-                          >
-                            🧠 View Behavior Analysis →
-                          </button>
-                        </div>
-                      </SectionCard>
-                    </div>
-                  )}
-
-                  {latestDiagnosis?.recommendations && latestDiagnosis.recommendations.length > 0 && (
-                    <div id={`section-practice`} className="analysis-section-anchor w-full min-w-0">
-                      <SectionCard title="Targeted Practice" accent="#22c55e">
-                        <div className="p-4 sm:p-5 flex flex-col gap-3">
-                          {latestDiagnosis.recommendations.map(r => r.strategy && (
-                            <div key={r.id} style={{ background: '#052e1615', border: '1px solid #166534', borderRadius: 8, padding: '12px 14px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: '#86efac' }}>{r.strategy.name}</span>
-                                <span style={{ fontSize: 10, color: '#22c55e', background: '#052e16', borderRadius: 4, padding: '2px 6px' }}>
-                                  P{r.strategy.priority}
-                                </span>
-                              </div>
-                              <div style={{ fontSize: 11, color: '#4ade80', marginBottom: 8, lineHeight: 1.4 }}>{r.strategy.description}</div>
-                              {r.strategy.estimatedTime && (
-                                <div style={{ fontSize: 10, color: '#166534' }}>⏱ {r.strategy.estimatedTime}</div>
-                              )}
-                              {r.strategy.practiceProblems?.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                  {r.strategy.practiceProblems.slice(0, 4).map(p => (
-                                    <span key={p} style={{ fontSize: 10, color: '#71717a', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '2px 7px' }}>
-                                      {p}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </SectionCard>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-6 w-full min-w-0">
-                  {topHypotheses.length > 0 && (
-                    <div id={`section-root-cause`} className="analysis-section-anchor w-full min-w-0">
-                      <SectionCard title="Root Cause Analysis" accent="#ff5f52">
-                        <div className="p-4 sm:p-5 flex flex-col gap-3">
-                          <div style={{
-                            fontSize: 10, color: '#52525b', background: '#1a1a1a',
-                            border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 10px', marginBottom: 2,
-                          }}>
-                            💡 Click any root cause to open Behavior Intelligence
-                          </div>
-                          {topHypotheses.map(h => (
-                            <button
-                              key={h.id}
-                              onClick={() => openDrawer(h.rootCauseType, h.name)}
-                              style={{
-                                width: '100%', textAlign: 'left', background: '#141414',
-                                border: '1px solid #1f1f1f', borderRadius: 8, padding: '10px 12px',
-                                cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
-                              }}
-                              onMouseEnter={e => {
-                                (e.currentTarget as HTMLElement).style.borderColor = '#ff5f5260';
-                                (e.currentTarget as HTMLElement).style.background = '#1f1212';
-                              }}
-                              onMouseLeave={e => {
-                                (e.currentTarget as HTMLElement).style.borderColor = '#1f1f1f';
-                                (e.currentTarget as HTMLElement).style.background = '#141414';
-                              }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                                <span style={{ fontSize: 12, color: '#e4e4e7', fontWeight: 500 }}>{h.name}</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span style={{ fontSize: 11, color: '#71717a' }}>{Math.round(h.confidence * 100)}%</span>
-                                  <span style={{ fontSize: 10, color: '#ff5f5280' }}>→</span>
-                                </div>
-                              </div>
-                              <ConfidenceBar value={h.confidence} color="#ff5f52" />
-                              <div style={{ fontSize: 10, color: '#52525b', marginTop: 4 }}>{h.rootCauseType}</div>
-                            </button>
-                          ))}
-                        </div>
-                      </SectionCard>
-                    </div>
-                  )}
-
-                  {allEvidences.length > 0 && (
-                    <div id={`section-evidence`} className="analysis-section-anchor w-full min-w-0">
-                      <SectionCard title="Evidence Collected" accent="#f59e0b">
-                        <div className="p-4 sm:p-5 flex flex-col gap-3">
-                          {allEvidences.slice(0, 8).map(ev => (
-                            <div key={ev.id} style={{ background: '#141414', borderRadius: 8, padding: '10px 14px', border: '1px solid #1f1f1f' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                <span style={{
-                                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
-                                  color: EVIDENCE_TYPE_COLORS[ev.type] || '#71717a',
-                                  background: `${EVIDENCE_TYPE_COLORS[ev.type] || '#71717a'}22`,
-                                  letterSpacing: '0.06em',
-                                }}>
-                                  {ev.type.replace('_', ' ').toUpperCase()}
-                                </span>
-                                <span style={{ fontSize: 10, color: '#52525b' }}>{ev.source}</span>
-                              </div>
-                              <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.5, marginBottom: 6 }}>{ev.description}</div>
-                              <ConfidenceBar value={ev.confidence} color={EVIDENCE_TYPE_COLORS[ev.type] || '#71717a'} />
-                            </div>
-                          ))}
-                        </div>
-                      </SectionCard>
-                    </div>
-                  )}
-                </div>
-              </div>
+              {/* AI-Powered Debugging Workspace for Failed Submissions */}
+              <FailedSubmissionWorkspace submissionData={latest} />
 
               {/* Attempt Timeline */}
-              <div id={`section-timeline`} className="analysis-section-anchor w-full min-w-0">
+              <div id={`section-timeline`} className="analysis-section-anchor w-full min-w-0 mt-6">
                 <SectionCard title="Attempt Timeline" accent="#3b82f6">
                   <AttemptTimeline submissions={allData} />
                 </SectionCard>

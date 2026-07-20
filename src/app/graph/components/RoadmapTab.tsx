@@ -284,30 +284,137 @@ function RoadmapTabInner() {
   const totalCount = currentLevelData?.nodes?.length || 0;
   const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
+  // Auto fitView on resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (reactFlow) {
+        reactFlow.fitView({ padding: 0.2, duration: 200 });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [reactFlow]);
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', overflow: 'hidden' }}>
       <style>{`
-        .roadmap-toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; background: rgba(13,13,15,0.8); backdrop-filter: blur(12px); }
-        .topic-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: #e4e4e7; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 150ms; }
+        .roadmap-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 20px;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+          flex-shrink: 0;
+          background: rgba(13,13,15,0.8);
+          backdrop-filter: blur(12px);
+          flex-wrap: wrap;
+        }
+        .topic-wrapper {
+          position: relative;
+          width: 400px;
+          max-width: 100%;
+        }
+        .topic-btn {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          gap: 6px;
+          padding: 8px 14px;
+          border-radius: 10px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.04);
+          color: #e4e4e7;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 150ms;
+        }
         .topic-btn:hover { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.07); }
-        .generate-btn { display: flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 10px; border: none; background: linear-gradient(135deg, #ff5f52, #d32f2f); color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; transition: all 150ms; box-shadow: 0 4px 14px rgba(255,95,82,0.35); }
+        .generate-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px 18px;
+          border-radius: 10px;
+          border: none;
+          background: linear-gradient(135deg, #ff5f52, #d32f2f);
+          color: #fff;
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 150ms;
+          box-shadow: 0 4px 14px rgba(255,95,82,0.35);
+          white-space: nowrap;
+        }
         .generate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,95,82,0.45); }
         .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .level-tab { padding: 4px 12px; border-radius: 8px; border: none; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 150ms; }
+        .level-tab { padding: 6px 12px; border-radius: 8px; border: none; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 150ms; }
         .level-tab.active { background: rgba(255,95,82,0.15); color: #ff5f52; border: 1px solid rgba(255,95,82,0.3); }
         .level-tab.inactive { background: rgba(255,255,255,0.03); color: #52525b; border: 1px solid rgba(255,255,255,0.05); }
         .level-tab.inactive:hover { color: #a1a1aa; background: rgba(255,255,255,0.06); }
-        .topic-dropdown { position: absolute; top: calc(100% + 6px); left: 0; background: rgba(15,15,18,0.97); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 6px; z-index: 100; min-width: 200px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); backdrop-filter: blur(16px); }
-        .topic-option { display: block; width: 100%; text-align: left; padding: 7px 12px; border-radius: 8px; border: none; background: transparent; color: #a1a1aa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 120ms; }
+        .topic-dropdown {
+          position: absolute;
+          top: calc(100% + 6px);
+          left: 0;
+          right: 0;
+          background: rgba(15,15,18,0.97);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px;
+          padding: 6px;
+          z-index: 100;
+          width: 100%;
+          box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+          backdrop-filter: blur(16px);
+        }
+        .topic-option { display: block; width: 100%; text-align: left; padding: 8px 12px; border-radius: 8px; border: none; background: transparent; color: #a1a1aa; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 120ms; }
         .topic-option:hover, .topic-option.selected { background: rgba(255,95,82,0.1); color: #ff5f52; }
+
+        @media (max-width: 1023px) {
+          .roadmap-toolbar {
+            flex-direction: row;
+            flex-wrap: wrap;
+          }
+          .topic-wrapper {
+            width: 100%;
+          }
+          .generate-btn {
+            flex-shrink: 1;
+          }
+        }
+
+        @media (max-width: 767px) {
+          .roadmap-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+            padding: 10px 14px;
+          }
+          .topic-wrapper {
+            width: 100%;
+          }
+          .level-tabs-container {
+            width: 100%;
+            display: flex;
+            overflow-x: auto;
+          }
+          .progress-bar-container {
+            width: 100%;
+            max-width: 100% !important;
+          }
+          .generate-btn {
+            width: 100%;
+          }
+        }
       `}</style>
 
       {/* Toolbar */}
       <div className="roadmap-toolbar">
-        {/* Topic selector */}
-        <div style={{ position: 'relative' }}>
+        {/* Topic selector (Dropdown 400px Desktop, 100% Tablet/Mobile) */}
+        <div className="topic-wrapper">
           <button className="topic-btn" onClick={() => setShowTopicPicker(v => !v)}>
-            {topicLabel}
+            <span>{topicLabel}</span>
             <ChevronDown size={13} style={{ transform: showTopicPicker ? 'rotate(180deg)' : 'none', transition: 'transform 200ms' }} />
           </button>
           {showTopicPicker && dynamicTopics && (
@@ -328,7 +435,7 @@ function RoadmapTabInner() {
 
         {/* Level tabs */}
         {currentLevels.length > 0 && (
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div className="level-tabs-container" style={{ display: 'flex', gap: 6 }}>
             {currentLevels.map((l, i) => (
               <button
                 key={l.level}
@@ -343,7 +450,7 @@ function RoadmapTabInner() {
 
         {/* Progress bar */}
         {hasData && totalCount > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 200 }}>
+          <div className="progress-bar-container" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 140, maxWidth: 220 }}>
             <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
               <div style={{ width: `${progressPct}%`, height: '100%', background: 'linear-gradient(90deg, #22c55e, #16a34a)', borderRadius: 2, transition: 'width 600ms ease' }} />
             </div>
@@ -351,11 +458,7 @@ function RoadmapTabInner() {
           </div>
         )}
 
-        <div style={{ flex: 1 }} />
-
-        <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search problems..." />
-
-        {/* Generate Button */}
+        {/* Generate / Next Level Button */}
         <button
           className="generate-btn"
           onClick={handleGenerate}

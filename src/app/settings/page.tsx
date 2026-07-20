@@ -9,6 +9,7 @@ import { StatTile } from './components/StatTile';
 import { MiniBar } from './components/MiniBar';
 import { ActivityHeatmap } from './components/ActivityHeatmap';
 import { ApiKeyField } from './components/ApiKeyField';
+import { Logo } from '@/components/ui/logo';
 
 type UserProfile = ProfileData['user'];
 type Stats = ProfileData['stats'];
@@ -448,9 +449,14 @@ export default function SettingsPage() {
 
         {/* Header */}
         <div style={{ padding: 'clamp(14px, 3vw, 20px) clamp(16px, 4vw, 32px)', borderBottom: '1px solid #1f1f1f', background: '#161616' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f52', boxShadow: '0 0 8px #ff5f52' }} />
-            <span style={{ fontSize: '17px', fontWeight: 700, color: '#f4f4f5', letterSpacing: '-0.02em' }}>Settings</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f52', boxShadow: '0 0 8px #ff5f52' }} />
+              <span style={{ fontSize: '17px', fontWeight: 700, color: '#f4f4f5', letterSpacing: '-0.02em' }}>Settings</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', opacity: 0.9 }}>
+              <Logo variant="wordmark" size="md" />
+            </div>
           </div>
 
           {/* User Avatar Row */}

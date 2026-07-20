@@ -97,6 +97,17 @@ function KnowledgeGraphContent() {
   const { data, isLoading } = useDynamicKnowledgeGraph(query);
   const { nodes, edges } = buildGraph(data, searchInput, isMobile);
 
+  // Auto-center and zoom on resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (reactFlow) {
+        reactFlow.fitView({ padding: 0.3, duration: 200 });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [reactFlow]);
+
   // Auto-center and zoom when nodes and search changes
   useEffect(() => {
     if (!reactFlow || !query) return;

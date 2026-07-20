@@ -257,18 +257,40 @@ export default function DiagnosisPage() {
   return (
     <AppShell>
       <style>{`
-        @media (max-width: 768px) {
-          .diagnosis-split { flex-direction: column !important; }
-          .diagnosis-chat { flex: 1 1 50% !important; border-right: none !important; }
-          .diagnosis-evidence { flex: 1 1 50% !important; border-top: 1px solid #1f1f1f !important; }
+        .diagnosis-split {
+          flex-direction: row;
+        }
+        .diagnosis-chat {
+          flex: 0 0 70% !important;
+          max-width: 70%;
+          border-right: 1px solid #1f1f1f;
+        }
+        .diagnosis-evidence {
+          flex: 0 0 30% !important;
+          max-width: 30%;
+          border-top: none;
+        }
+        .evidence-card {
+          width: 100% !important;
+          max-width: 100% !important;
+          word-break: break-word;
+        }
+        code, pre {
+          overflow-x: auto !important;
+          max-width: 100% !important;
+        }
+        @media (max-width: 767px) {
+          .diagnosis-split { flex-direction: column !important; overflow-y: auto !important; }
+          .diagnosis-chat { flex: 1 1 auto !important; max-width: 100% !important; border-right: none !important; border-bottom: 1px solid #1f1f1f; }
+          .diagnosis-evidence { flex: 1 1 auto !important; max-width: 100% !important; border-top: 1px solid #1f1f1f !important; }
         }
       `}</style>
-    <div style={{ width: '100%', height: '100vh', background: '#131313', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', minHeight: '100vh', height: '100vh', background: '#131313', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{
         padding: '14px 24px', borderBottom: '1px solid #1f1f1f',
         display: 'flex', alignItems: 'center', gap: 12,
-        background: '#161616',
+        background: '#161616', flexShrink: 0,
       }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f52', boxShadow: '0 0 8px #ff5f52' }} />
         <span style={{ fontSize: '17px', fontWeight: 700, color: '#f4f4f5', letterSpacing: '-0.02em' }}>
@@ -277,11 +299,11 @@ export default function DiagnosisPage() {
         <span style={{ fontSize: 12, color: '#52525b', marginLeft: 4 }}>Powered by RAG + Claude / GPT-4o</span>
       </div>
 
-      {/* Split pane */}
+      {/* Split pane: 70% / 30% on desktop/tablet, single column on mobile */}
       <div className="diagnosis-split" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* Left: Chat (60%) */}
-        <div className="diagnosis-chat" style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1f1f1f' }}>
+        {/* Left: Chat Diagnosis (70%) */}
+        <div className="diagnosis-chat" style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Messages */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {messages.map(m => <ChatBubble key={m.id} msg={m} />)}
@@ -354,8 +376,8 @@ export default function DiagnosisPage() {
           </div>
         </div>
 
-        {/* Right: Evidence + Explanation Panel (40%) */}
-        <div className="diagnosis-evidence" style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', background: '#141414' }}>
+        {/* Right: Evidence + Explanation Panel (30%) */}
+        <div className="diagnosis-evidence" style={{ display: 'flex', flexDirection: 'column', background: '#141414' }}>
           {/* Tab switcher */}
           <div style={{ padding: '0 20px', borderBottom: '1px solid #1f1f1f', display: 'flex', gap: 0 }}>
             {(['evidence', 'explanation'] as const).map(tab => (
