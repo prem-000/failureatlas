@@ -354,6 +354,13 @@ export interface AdversarialTestCase {
   noveltyScore?: number;
   coverageScore?: number;
   
+  // AI Judge Reconstruction System fields
+  judgeDifficulty?: number; // 1 to 5 star rating
+  targets?: string[]; // e.g. ["✓ Cycle Detection", "✓ Pointer Update", "✓ Loop Termination"]
+  whyIncorrectSolutionsFail?: string; // 1-2 sentence explanation
+  category?: string; // Problem-aware category
+  inferredStrategy?: string; // Algorithmic strategy (e.g. "Floyd's Cycle Detection")
+  
   // Tab-specific details
   buggyVersion?: string;
   buggyOutput?: string;

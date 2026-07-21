@@ -120,22 +120,67 @@ function getFallbackAdversarialTestLab(
         {
           input: '[0,0,0,0]',
           expectedOutput: '[0,0,0,0]',
-          purpose: 'Accumulator initialization assumptions.',
-          failureMode: 'Divison by zero or falsey-zero checks.',
-          noveltyScore: 92,
-          coverageScore: 88,
+          purpose: 'Designed to verify that the prefix sum calculation handles zero-element accumulation without division-by-zero or falsey state resets.',
+          failureMode: 'Zero Accumulation Reset',
+          judgeDifficulty: 2,
+          targets: ['✓ Accumulator Initialization', '✓ Zero State Guard', '✓ Boundary State'],
+          whyIncorrectSolutionsFail: 'Implementations that rely on falsey condition checks wrongly skip accumulation on 0 values.',
+          category: 'State Reset',
+          inferredStrategy: 'Prefix Sum',
           confidence: 90,
-          riskScore: 5,
+          riskScore: 15,
         },
         {
-          input: '[999999,-999999,999999,-999999]',
-          expectedOutput: '[999999,0,999999,0]',
-          purpose: 'Cancellation behavior.',
-          failureMode: 'Floating point rounding errors or storage underflow.',
-          noveltyScore: 95,
-          coverageScore: 90,
+          input: '[1000000,-1000000,1000000,-1000000]',
+          expectedOutput: '[1000000,0,1000000,0]',
+          purpose: 'Designed to verify that alternating maximum and minimum bounds do not cause integer overflow or state truncation.',
+          failureMode: 'Alternating Bound Cancellation',
+          judgeDifficulty: 4,
+          targets: ['✓ Large Value Accumulation', '✓ Overflow Prevention', '✓ Sign Alternation'],
+          whyIncorrectSolutionsFail: 'Fixed-width storage or premature type truncation fails when accumulating extreme alternating values.',
+          category: 'Overflow',
+          inferredStrategy: 'Prefix Sum',
+          confidence: 92,
+          riskScore: 35,
+        },
+        {
+          input: '[-5]',
+          expectedOutput: '[-5]',
+          purpose: 'Designed to verify single-element negative prefix sum boundary initialization.',
+          failureMode: 'Single Element Boundary',
+          judgeDifficulty: 1,
+          targets: ['✓ Minimum Constraint', '✓ Single Element Guard'],
+          whyIncorrectSolutionsFail: 'Algorithms expecting at least two elements crash or fail loop guards on n=1.',
+          category: 'Minimum Constraint',
+          inferredStrategy: 'Prefix Sum',
+          confidence: 95,
+          riskScore: 10,
+        },
+        {
+          input: '[1,2,3,4,5]',
+          expectedOutput: '[1,3,6,10,15]',
+          purpose: 'Designed to verify full linear accumulation without early loop termination.',
+          failureMode: 'Off-by-one Loop Boundary',
+          judgeDifficulty: 3,
+          targets: ['✓ Loop Termination', '✓ Full Array Traversal'],
+          whyIncorrectSolutionsFail: 'Implementations using length - 1 bounds omit the final element accumulation.',
+          category: 'Loop Termination',
+          inferredStrategy: 'Prefix Sum',
+          confidence: 88,
+          riskScore: 25,
+        },
+        {
+          input: '[100,200,300,-600]',
+          expectedOutput: '[100,300,600,0]',
+          purpose: 'Designed to verify complete cancellation back to zero state at array boundary.',
+          failureMode: 'Total Cancellation Boundary',
+          judgeDifficulty: 3,
+          targets: ['✓ State Reset', '✓ Zero Boundary Convergence'],
+          whyIncorrectSolutionsFail: 'Algorithms expecting monotonic growth fail to reflect net-zero running sums.',
+          category: 'Transition State',
+          inferredStrategy: 'Prefix Sum',
           confidence: 89,
-          riskScore: 15,
+          riskScore: 20,
         }
       ],
       coverageIntelligence: {
@@ -232,13 +277,68 @@ function getFallbackAdversarialTestLab(
       aiGeneratedCases: [
         {
           input: 'nums = [2,2,2,2,2], target = 2',
-          expectedOutput: '2 (or any valid index)',
-          purpose: 'Duplicate element index resolution.',
-          failureMode: 'Unpredictable index return.',
-          noveltyScore: 88,
-          coverageScore: 84,
+          expectedOutput: '0',
+          purpose: 'Designed to verify that duplicate element searches correctly resolve the first occurrence index.',
+          failureMode: 'Duplicate Resolution Ambiguity',
+          judgeDifficulty: 3,
+          targets: ['✓ Duplicate Values', '✓ Left Boundary Convergence', '✓ Midpoint Shift'],
+          whyIncorrectSolutionsFail: 'Standard binary search returns an arbitrary matching midpoint index instead of converging on the boundary.',
+          category: 'Duplicate Values',
+          inferredStrategy: 'Binary Search',
           confidence: 91,
           riskScore: 40,
+        },
+        {
+          input: 'nums = [1,3,5,7,9], target = 1',
+          expectedOutput: '0',
+          purpose: 'Designed to verify search behavior when the target is located at the exact first index.',
+          failureMode: 'First Index Boundary',
+          judgeDifficulty: 2,
+          targets: ['✓ Boundary Index', '✓ Pointer Update'],
+          whyIncorrectSolutionsFail: 'Implementations initializing left pointer at index 1 omit checking index 0.',
+          category: 'Boundary Index',
+          inferredStrategy: 'Binary Search',
+          confidence: 94,
+          riskScore: 15,
+        },
+        {
+          input: 'nums = [1,3,5,7,9], target = 9',
+          expectedOutput: '4',
+          purpose: 'Designed to verify search behavior when target is at the final index.',
+          failureMode: 'Last Index Boundary',
+          judgeDifficulty: 2,
+          targets: ['✓ Boundary Index', '✓ Right Pointer Update'],
+          whyIncorrectSolutionsFail: 'Using strict less-than loop conditions skips checking the upper bound index.',
+          category: 'Boundary Index',
+          inferredStrategy: 'Binary Search',
+          confidence: 95,
+          riskScore: 15,
+        },
+        {
+          input: 'nums = [10], target = 5',
+          expectedOutput: '-1',
+          purpose: 'Designed to verify that single-element search correctly returns -1 when target is missing.',
+          failureMode: 'Single Element Missing',
+          judgeDifficulty: 1,
+          targets: ['✓ Minimum Constraint', '✓ Base Case'],
+          whyIncorrectSolutionsFail: 'Missing bounds check causes index out-of-bounds or infinite loop on single-element arrays.',
+          category: 'Minimum Constraint',
+          inferredStrategy: 'Binary Search',
+          confidence: 96,
+          riskScore: 10,
+        },
+        {
+          input: 'nums = [1,2,3,4,5,6], target = 4',
+          expectedOutput: '3',
+          purpose: 'Designed to verify integer truncation when calculating midpoints on even-length arrays.',
+          failureMode: 'Midpoint Truncation Shift',
+          judgeDifficulty: 3,
+          targets: ['✓ Midpoint Truncation', '✓ Even-Length Array'],
+          whyIncorrectSolutionsFail: 'Incorrect ceiling or floor rounding of mid shifts search window into wrong half.',
+          category: 'Transition State',
+          inferredStrategy: 'Binary Search',
+          confidence: 92,
+          riskScore: 20,
         }
       ],
       coverageIntelligence: {
@@ -312,13 +412,68 @@ function getFallbackAdversarialTestLab(
       aiGeneratedCases: [
         {
           input: 'nums = [-10^9, 0, 10^9]',
-          expectedOutput: 'Success',
-          purpose: 'Maximum integer distance tracking.',
-          failureMode: 'Integer distance subtraction overflow.',
-          noveltyScore: 91,
-          coverageScore: 87,
-          confidence: 93,
+          expectedOutput: 'Valid convergence',
+          purpose: 'Designed to verify pointer convergence across maximum negative to positive integer range.',
+          failureMode: 'Integer Distance Overflow',
+          judgeDifficulty: 4,
+          targets: ['✓ Pointer Update', '✓ Overflow', '✓ Negative Range'],
+          whyIncorrectSolutionsFail: 'Calculating distance between pointers using direct subtraction triggers 32-bit integer overflow.',
+          category: 'Overflow',
+          inferredStrategy: 'Two Pointer',
+          confidence: 91,
           riskScore: 12,
+        },
+        {
+          input: 'nums = [1,1,1,1,1]',
+          expectedOutput: 'Valid convergence',
+          purpose: 'Designed to verify that identical values do not cause pointer starvation or infinite loops.',
+          failureMode: 'Pointer Starvation',
+          judgeDifficulty: 3,
+          targets: ['✓ Duplicate Values', '✓ Pointer Advancement', '✓ Loop Termination'],
+          whyIncorrectSolutionsFail: 'Implementations that skip pointer increment when values match stall in infinite loop.',
+          category: 'Duplicate Values',
+          inferredStrategy: 'Two Pointer',
+          confidence: 93,
+          riskScore: 25,
+        },
+        {
+          input: 'nums = [1,2]',
+          expectedOutput: 'Valid convergence',
+          purpose: 'Designed to verify correct operation on two-element minimum valid array constraint.',
+          failureMode: 'Minimum Constraint Collision',
+          judgeDifficulty: 2,
+          targets: ['✓ Minimum Constraint', '✓ Base Case'],
+          whyIncorrectSolutionsFail: 'Pointers cross or terminate prematurely before evaluating the single possible pair.',
+          category: 'Minimum Constraint',
+          inferredStrategy: 'Two Pointer',
+          confidence: 95,
+          riskScore: 10,
+        },
+        {
+          input: 'nums = [3,3,3,3,4]',
+          expectedOutput: 'Valid convergence',
+          purpose: 'Designed to verify asymmetric pointer advancement when duplicates cluster at one end.',
+          failureMode: 'Asymmetric Pointer Shift',
+          judgeDifficulty: 4,
+          targets: ['✓ Asymmetric Shift', '✓ Pointer Boundary'],
+          whyIncorrectSolutionsFail: 'Synchronous dual-pointer increments overshoot valid target elements.',
+          category: 'Pointer Update',
+          inferredStrategy: 'Two Pointer',
+          confidence: 89,
+          riskScore: 30,
+        },
+        {
+          input: 'nums = [1,2,3,4,5,6,7]',
+          expectedOutput: 'Valid convergence',
+          purpose: 'Designed to verify exact midpoint convergence without pointer crossover index corruption.',
+          failureMode: 'Pointer Crossover Collision',
+          judgeDifficulty: 3,
+          targets: ['✓ Pointer Crossover', '✓ Loop Termination'],
+          whyIncorrectSolutionsFail: 'Using left <= right instead of left < right evaluates invalid overlapping state.',
+          category: 'Loop Termination',
+          inferredStrategy: 'Two Pointer',
+          confidence: 94,
+          riskScore: 18,
         }
       ],
       coverageIntelligence: {
@@ -391,14 +546,69 @@ function getFallbackAdversarialTestLab(
     },
     aiGeneratedCases: [
       {
-        input: '[0, 0, 0]',
-        expectedOutput: 'Correct zero accumulator handling',
-        purpose: 'Trivial zeroes accumulation.',
-        failureMode: 'Empty or zeroed array loop bypass.',
-        noveltyScore: 85,
-        coverageScore: 82,
+        input: 'nums = [1,2,3,4,5,6,7,8,9,10,5]',
+        expectedOutput: '5',
+        purpose: 'Designed to verify that cycle detection correctly identifies a cycle beginning after a long linear sequence traversal.',
+        failureMode: 'Cycle Entry Point Mismatch',
+        judgeDifficulty: 4,
+        targets: ['✓ Cycle Detection', '✓ Pointer Update', '✓ Loop Termination'],
+        whyIncorrectSolutionsFail: 'Implementations resetting the wrong pointer after the first meeting point fail to detect late cycle entry.',
+        category: 'Cycle Detection',
+        inferredStrategy: "Floyd's Cycle Detection",
+        confidence: 94,
+        riskScore: 35,
+      },
+      {
+        input: 'nums = [1,1]',
+        expectedOutput: '1',
+        purpose: 'Designed to verify cycle detection on minimum length two-element array with self-referencing cycle.',
+        failureMode: 'Minimum Constraint Boundary',
+        judgeDifficulty: 1,
+        targets: ['✓ Minimum Constraint', '✓ Base Case'],
+        whyIncorrectSolutionsFail: 'Fast pointer advances past array boundary when n=2 without proper null checks.',
+        category: 'Minimum Constraint',
+        inferredStrategy: "Floyd's Cycle Detection",
+        confidence: 96,
+        riskScore: 10,
+      },
+      {
+        input: 'nums = [2,2,2,2,2]',
+        expectedOutput: '2',
+        purpose: 'Designed to verify immediate cycle detection when all array elements are identical.',
+        failureMode: 'Immediate Cycle Collision',
+        judgeDifficulty: 2,
+        targets: ['✓ Duplicate Values', '✓ State Initialization'],
+        whyIncorrectSolutionsFail: 'Initialization logic comparing pointers before first step terminates prematurely.',
+        category: 'Duplicate Values',
+        inferredStrategy: "Floyd's Cycle Detection",
+        confidence: 92,
+        riskScore: 15,
+      },
+      {
+        input: 'nums = [1,2,3,4,5,1]',
+        expectedOutput: '1',
+        purpose: 'Designed to verify cycle detection when cycle loops back to the very first head index.',
+        failureMode: 'Head Return Cycle',
+        judgeDifficulty: 3,
+        targets: ['✓ Head Cycle Return', '✓ Pointer Phase 2'],
+        whyIncorrectSolutionsFail: 'Phase 2 pointer traversal stepping from index 1 misses cycles pointing back to index 0.',
+        category: 'Boundary Index',
+        inferredStrategy: "Floyd's Cycle Detection",
         confidence: 90,
-        riskScore: 8,
+        riskScore: 20,
+      },
+      {
+        input: 'nums = [1,3,4,2,2]',
+        expectedOutput: '2',
+        purpose: 'Designed to verify correct phase 2 pointer convergence on non-trivial cycle structures.',
+        failureMode: 'Phase 2 Convergence Shift',
+        judgeDifficulty: 4,
+        targets: ['✓ Phase 2 Pointer Equivalence', '✓ Loop Termination'],
+        whyIncorrectSolutionsFail: 'Stepping fast pointer twice during phase 2 skips the exact cycle entry node.',
+        category: 'Pointer Update',
+        inferredStrategy: "Floyd's Cycle Detection",
+        confidence: 95,
+        riskScore: 25,
       }
     ],
     coverageIntelligence: {
@@ -426,8 +636,14 @@ export async function generateAdversarialTestLab(
     return getFallbackAdversarialTestLab(problemTitle, patternSlug, code);
   }
 
-  const prompt = `You are an expert AI test engineer and reasoning engine specializing in stress-testing algorithmic code solutions.
-Analyze the following solved coding problem and the user's accepted implementation.
+  const prompt = `You are an expert Competitive Programming Problem Setter (like those at LeetCode, Codeforces, HackerRank, and AtCoder).
+Your task is to RECONSTRUCT THE MOST PROBABLE HIDDEN JUDGE SUITE for a problem based on its constraints and the user's submitted solution.
+
+Follow this exact reasoning pipeline before generating any cases:
+1. READ PROBLEM CONSTRAINTS: Understand input/output limits, memory limits, and expected time/space complexity.
+2. INFER USER STRATEGY: Analyze the user's submitted code and infer their exact algorithmic approach (e.g. Binary Search, Floyd's Cycle, Trie, DP, Sliding Window, Graph DFS/BFS, Prefix Sum, Two Pointer, Greedy).
+3. IDENTIFY COMMON INCORRECT IMPLEMENTATIONS: Determine what subtle mistakes or edge-case oversights programmers commonly make with that strategy.
+4. GENERATE ADVERSARIAL JUDGE CASES: Create 5 to 7 high-quality, problem-aware judge cases that specifically stress those failure modes.
 
 Problem: ${problemTitle} (Slug: ${problemSlug})
 Detected Algorithmic Pattern: ${patternSlug}
@@ -437,28 +653,25 @@ User Code:
 ${code}
 \`\`\`
 
-Based on this information, generate realistic, problem-specific adversarial test cases.
-Generate exactly the contents of the four tabs described below and the global metrics.
-
 SCHEMA STRUCTURE:
 Generate a single, valid JSON object containing exactly the fields matching the specifications:
 
 1. "hiddenTests": Array of 2 to 3 objects representing LeetCode-style hidden tests. Each must include:
    - "input": string
    - "expectedOutput": string
-   - "purpose": string (Why this test exists)
-   - "failureMode": string (What mistake it detects)
-   - "whyPassed": string (Why user's implementation survived / succeeded)
+   - "purpose": string
+   - "failureMode": string
+   - "whyPassed": string
    - "confidence": number (1 to 100)
    - "riskScore": number (1 to 100)
 
-2. "breakMySolution": Array of 2 to 3 objects representing potential logical weaknesses of this pattern. Simulates likely mistakes and the test cases that expose them. Include:
-   - "input": string (The breaking input)
-   - "expectedOutput": string (The expected output)
-   - "failureMode": string (Mistake name, e.g. "Off-by-One Loop Boundary")
-   - "buggyVersion": string (Code snippet representing the bug, e.g. "for (let i = 1; i < nums.length - 1; i++)")
-   - "buggyOutput": string (What the buggy version outputs)
-   - "reason": string (Why the logic collapses at this input)
+2. "breakMySolution": Array of 2 to 3 objects representing potential logical weaknesses. Include:
+   - "input": string
+   - "expectedOutput": string
+   - "failureMode": string
+   - "buggyVersion": string
+   - "buggyOutput": string
+   - "reason": string
    - "failureProbability": number (1 to 100)
    - "impactScore": "High" | "Medium" | "Low"
    - "bugSeverity": "Critical" | "High" | "Medium" | "Low"
@@ -467,36 +680,39 @@ Generate a single, valid JSON object containing exactly the fields matching the 
 
 3. "constraintExtremes": An object containing:
    - "tests": Array of 2 stress tests generating inputs close to boundaries. Include:
-     - "input": string (Describe the stress input, e.g. "1000 elements")
+     - "input": string
      - "expectedOutput": string
      - "purpose": string
      - "failureMode": string
-     - "constraint": string (The specific problem constraint tested, e.g. "1 <= nums.length <= 1000")
-     - "checks": string (What it checks, e.g. "O(n) scalability")
+     - "constraint": string
+     - "checks": string
      - "result": "PASSED" | "FAILED" | "WARNING"
      - "confidence": number
      - "riskScore": number
    - "metrics": Object with:
-     - "cpuImpact": string (e.g. "Low (0.12ms)" or similar)
-     - "memoryImpact": string (e.g. "Minimal (0.2MB)")
-     - "complexitySafety": string (e.g. "O(N) safe")
+     - "cpuImpact": string
+     - "memoryImpact": string
+     - "complexitySafety": string
 
-4. "aiGeneratedCases": Array of 2 novel test cases not explicitly standard. Include:
-   - "input": string
-   - "expectedOutput": string
-   - "purpose": string (Detailed reasoning of what it tests)
-   - "failureMode": string
-   - "noveltyScore": number (1 to 100)
-   - "coverageScore": number (1 to 100)
-   - "confidence": number
-   - "riskScore": number
+4. "aiGeneratedCases": Array of 5 to 7 AI RECONSTRUCTED JUDGE CASES. Every case must be meaningful, targeted, and follow this exact structure:
+   - "input": string (Realistic problem input targeting constraints)
+   - "expectedOutput": string (Exact correct output)
+   - "purpose": string (Explains why a problem setter included this test, e.g. "Designed to verify that Floyd's algorithm correctly detects...")
+   - "failureMode": string (Short name of mistake, e.g. "Cycle Entry Mismatch")
+   - "judgeDifficulty": number (Integer from 1 to 5 representing judge difficulty: 1=★☆☆☆☆, 5=★★★★★)
+   - "targets": Array of 2 to 4 strings describing stressed implementation details with checkmarks, e.g. ["✓ Cycle Detection", "✓ Pointer Update", "✓ Loop Termination"]
+   - "whyIncorrectSolutionsFail": string (Concise 1 to 2 sentence explanation of why flawed code fails)
+   - "category": string (Problem-aware category e.g. "Minimum Constraint", "Maximum Constraint", "Boundary Index", "Base Case", "Transition State", "Duplicate Values", "Cycle Detection", "Overflow", "Pointer Update", "Loop Termination", "State Reset", "Greedy Counterexample", "Hash Collision")
+   - "inferredStrategy": string (Inferred user algorithm, e.g. "Floyd's Cycle Detection")
+   - "confidence": number (1 to 100)
+   - "riskScore": number (1 to 100)
 
-5. "coverageIntelligence": Object with 5 metrics (each 1 to 100, representing percentage or count):
-   - "hiddenTestsSurvived": number (usually 2 or 3)
-   - "potentialFailureModesAvoided": number (usually 2 or 3)
-   - "constraintCoverage": number (percentage)
-   - "robustnessScore": number (percentage)
-   - "confidenceScore": number (percentage)
+5. "coverageIntelligence": Object with 5 metrics:
+   - "hiddenTestsSurvived": number
+   - "potentialFailureModesAvoided": number
+   - "constraintCoverage": number
+   - "robustnessScore": number
+   - "confidenceScore": number
 
 Return ONLY a raw JSON string. Do not wrap in markdown blocks like \`\`\`json. Output must be parseable via JSON.parse().`;
 

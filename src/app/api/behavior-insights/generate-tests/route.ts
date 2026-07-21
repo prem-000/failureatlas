@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
     const difficultyDesc = difficultyTiers[difficultyStage as keyof typeof difficultyTiers] || difficultyTiers[3];
 
     // 5. Groq Prompt
-    const prompt = `You are a Senior Security Auditor and QA stress-test engineer specializing in competitive programming.
-Analyze the problem details and user's code below, then generate exactly 20 highly specific synthesized adversarial test cases.
+    const prompt = `You are an expert Competitive Programming Problem Setter (LeetCode, Codeforces, HackerRank, AtCoder).
+Analyze the problem details and user's code below, then reconstruct 20 competitive programming hidden judge cases.
 
 Problem: ${submission.problem.title} (Slug: ${submission.problem.slug})
 Difficulty Tier: Stage ${difficultyStage} - ${difficultyDesc}
@@ -101,12 +101,16 @@ JSON Schema:
 {
   "tests": [
     {
-      "category": "e.g., 'Boundary Overflow' or 'Duplicate Collision'",
-      "input": "e.g., 'nums = [1,1,1,2]'",
-      "expected": "e.g., 'true' or '2'",
-      "purpose": "A concise purpose statement",
-      "reason": "Why this specific case is generated to test the user's weakness",
-      "probability": number (estimated percentage from 0 to 100 of exposing a bug in flawed code)
+      "category": "e.g., 'Boundary Index' or 'Cycle Detection'",
+      "input": "e.g., 'nums = [1,2,3,4,5,1]'",
+      "expected": "e.g., '1'",
+      "expectedOutput": "e.g., '1'",
+      "purpose": "Designed to verify that...",
+      "judgeDifficulty": number (1 to 5),
+      "targets": ["✓ Boundary Conditions", "✓ Pointer Updates"],
+      "whyIncorrectSolutionsFail": "Concise 1-2 sentence explanation of why flawed code fails",
+      "reason": "Why this specific case was generated to test the user's weakness",
+      "probability": number (1 to 100)
     }
   ]
 }
@@ -149,11 +153,16 @@ function getFallbackAdversarialTests(problemTitle: string, stage: number) {
   const list = [];
   for (let i = 1; i <= 20; i++) {
     const cat = fallbackCategories[(i - 1) % fallbackCategories.length];
+    const diff = Math.min(5, Math.max(1, Math.ceil(i / 4)));
     list.push({
-      category: `${cat} Tier ${stage}`,
+      category: `${cat} Stage ${stage}`,
       input: `nums = [${Array.from({ length: Math.min(10, i) }, (_, idx) => idx % 2 === 0 ? i : -i).join(',')}]`,
       expected: i % 2 === 0 ? 'true' : 'false',
-      purpose: `Validates performance and correctness under ${cat} assumptions.`,
+      expectedOutput: i % 2 === 0 ? 'true' : 'false',
+      purpose: `Designed to verify correctness under ${cat} edge conditions at Stage ${stage}.`,
+      judgeDifficulty: diff,
+      targets: [`✓ ${cat}`, '✓ State Boundary', '✓ Condition Guard'],
+      whyIncorrectSolutionsFail: `Implementations failing to handle ${cat} boundaries miscalculate pointer or accumulator state.`,
       reason: `Attacks boundaries of type ${cat} at difficulty level ${stage}.`,
       probability: Math.round(40 + (i * 2.5) % 55)
     });

@@ -389,8 +389,8 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
           >
             <SyntheticCoreIcon size={14} className="hidden sm:inline-block" style={{ color: activeTab === 'ai' ? colors.blue : '#71717a', marginRight: 4 }} />
             <span>
-              <span className="sm:hidden">{activeTab === 'ai' ? '← AI Cases →' : 'AI Cases'}</span>
-              <span className="hidden sm:inline">AI NOVEL CASES</span>
+              <span className="sm:hidden">{activeTab === 'ai' ? '← AI Judge →' : 'AI Judge'}</span>
+              <span className="hidden sm:inline">AI JUDGE RECONSTRUCTION</span>
             </span>
           </button>
 

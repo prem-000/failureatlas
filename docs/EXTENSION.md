@@ -499,7 +499,7 @@ class PrivacyManager {
 npm run build          # Production build (minified, no source maps)
 npm run package        # Creates distributable .zip
 
-# Generates: praxis-extension-v1.0.0.zip
+# Generates: failureatlas-extension-v1.0.0.zip
 ```
 
 #### Chrome Web Store Submission

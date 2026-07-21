@@ -40,12 +40,24 @@ class PrivacyManager {
   }
 
   static validateEvent(event: any): { valid: boolean; missing?: string } {
-    const required = ['eventId', 'sessionId', 'problemSlug', 'submissionStatus', 'timestamp'];
+    const required = ['eventId', 'sessionId', 'problemSlug', 'submissionStatus', 'submissionCode', 'timestamp'];
     for (const key of required) {
       if (event[key] == null || event[key] === '') {
         console.warn(`[FailureAtlas BG] Validation failed: missing "${key}". Event:`, JSON.stringify(event, null, 2));
         return { valid: false, missing: key };
       }
+    }
+    const validStatuses = [
+      'Accepted',
+      'Wrong Answer',
+      'Time Limit Exceeded',
+      'Memory Limit Exceeded',
+      'Runtime Error',
+      'Compilation Error'
+    ];
+    if (!validStatuses.includes(event.submissionStatus)) {
+      console.warn(`[FailureAtlas BG] Validation failed: invalid status "${event.submissionStatus}". Event:`, JSON.stringify(event, null, 2));
+      return { valid: false, missing: `invalid submissionStatus '${event.submissionStatus}'` };
     }
     return { valid: true };
   }
@@ -343,6 +355,8 @@ export class RetryManager {
         const r = results[i];
         if (r.status === 'fulfilled' && r.value.success) {
           sent++;
+        } else if (r.status === 'fulfilled' && r.value.error?.startsWith('Validation:')) {
+          console.warn(`[FailureAtlas BG] Dropping non-retryable invalid event ${batch[i].eventId}: ${r.value.error}`);
         } else {
           stillFailing.push(batch[i]);
         }
@@ -410,7 +424,9 @@ export class MessageHandler {
             this.retry.processPendingQueue();
             return { success: true };
           } else {
-            await this.storage.addPendingEvent(event);
+            if (!apiRes.error?.startsWith('Validation:')) {
+              await this.storage.addPendingEvent(event);
+            }
             return { success: false, error: apiRes.error || 'API ingest failed — queued locally' };
           }
         } else {

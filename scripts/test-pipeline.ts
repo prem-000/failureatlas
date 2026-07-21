@@ -15,7 +15,8 @@
 
 import { PrismaClient } from '@prisma/client';
 
-const BASE = 'http://localhost:3000/api';
+const PORT = process.env.PORT || '3001';
+const BASE = process.env.BASE_URL ? (process.env.BASE_URL.endsWith('/api') ? process.env.BASE_URL : `${process.env.BASE_URL}/api`) : `http://localhost:${PORT}/api`;
 const prisma = new PrismaClient();
 
 function log(tag: string, msg: string) {

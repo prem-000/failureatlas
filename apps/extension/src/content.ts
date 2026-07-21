@@ -313,13 +313,58 @@ class SubmissionMonitor {
     this.onDetectedCallback = onDetected;
   }
 
+  extractMetrics(): { runtime?: number; memory?: number } {
+    let runtime: number | undefined;
+    let memory: number | undefined;
+
+    // Find any element whose text starts with "Runtime" / "Memory" and
+    // extract the adjoining number. Values are concatenated with no
+    // separating whitespace (e.g. "Runtime1840msBeats39.61%"), so match
+    // digits directly followed by "ms"/"MB" without requiring \s*.
+    const candidates = document.querySelectorAll('div, span, p');
+    for (const el of Array.from(candidates)) {
+      if (el.children.length > 5) continue; // skip large wrapper containers
+      const text = el.textContent?.trim() || '';
+      if (text.length > 100) continue; // skip huge blocks
+
+      if (runtime === undefined) {
+        const rMatch = text.match(/Runtime\D*(\d+)\s*ms/i);
+        if (rMatch) runtime = parseInt(rMatch[1], 10);
+      }
+      if (memory === undefined) {
+        const mMatch = text.match(/Memory\D*([\d.]+)\s*MB/i);
+        if (mMatch) memory = parseFloat(mMatch[1]);
+      }
+      if (runtime !== undefined && memory !== undefined) break;
+    }
+
+    // Fallback: scan full body text with the same anchored pattern,
+    // in case the stat is split across text nodes in a way
+    // querySelectorAll('div,span,p') text concatenation misses.
+    if (runtime === undefined || memory === undefined) {
+      const bodyText = document.body.innerText || '';
+      if (runtime === undefined) {
+        const rMatch = bodyText.match(/Runtime\D*(\d+)\s*ms/i);
+        if (rMatch) runtime = parseInt(rMatch[1], 10);
+      }
+      if (memory === undefined) {
+        const mMatch = bodyText.match(/Memory\D*([\d.]+)\s*MB/i);
+        if (mMatch) memory = parseFloat(mMatch[1]);
+      }
+    }
+
+    return {
+      runtime: runtime !== undefined && !isNaN(runtime) ? runtime : undefined,
+      memory: memory !== undefined && !isNaN(memory) ? memory : undefined
+    };
+  }
+
   private parseSubmissionResult(node: Node): DetectedResult | null {
     const container = node instanceof Element ? node : document.body;
 
-    // ✅ IMPROVED: More comprehensive status detection
     const statusSelectors = [
       '[data-cy="submission-result"]',
-      'h3',  // Status text in h3 on result page
+      'h3',
       '.submission-result',
       '.result-state',
       '.css-1jnblbv',
@@ -353,30 +398,17 @@ class SubmissionMonitor {
     const status = this.normalizeStatus(statusText);
     if (!status) return null;
 
-    // Dedup: don't fire twice within 3 seconds for same status
     const now = Date.now();
     if (now - this.lastDetectionTime < 3000) {
       return null;
     }
     this.lastDetectionTime = now;
 
-    // Extract metrics from page text
-    const bodyText = document.body.innerText || '';
+    const { runtime, memory } = this.extractMetrics();
 
-    let runtime: number | undefined;
-    let memory: number | undefined;
+    const bodyText = document.body.innerText || '';
     let testCasesPassed: number | undefined;
     let totalTestCases: number | undefined;
-
-    // "0 ms"
-    const runtimeMatch = bodyText.match(/(\d+)\s*ms/i);
-    if (runtimeMatch) runtime = parseInt(runtimeMatch[1], 10);
-
-    // "12.98 MB"
-    const memMatch = bodyText.match(/([\d.]+)\s*MB/i);
-    if (memMatch) memory = parseFloat(memMatch[1]);
-
-    // "54 / 57 testcases passed"
     const testMatch = bodyText.match(/(\d+)\s*\/\s*(\d+)\s+test\s*cases?\s+passed/i);
     if (testMatch) {
       testCasesPassed = parseInt(testMatch[1], 10);
@@ -385,8 +417,8 @@ class SubmissionMonitor {
 
     return {
       status,
-      runtime: runtime !== undefined && !isNaN(runtime) ? runtime : undefined,
-      memory: memory !== undefined && !isNaN(memory) ? memory : undefined,
+      runtime,
+      memory,
       testCasesPassed,
       totalTestCases,
       failedTestCase: undefined
@@ -431,7 +463,6 @@ class SubmissionMonitor {
 
     this.observer = new MutationObserver(mutations => {
       for (const mutation of mutations) {
-        // Check added nodes
         for (const node of Array.from(mutation.addedNodes)) {
           const result = this.parseSubmissionResult(node);
           if (result) {
@@ -439,7 +470,6 @@ class SubmissionMonitor {
             return;
           }
         }
-        // Check modified attributes
         if (mutation.type === 'attributes') {
           const result = this.parseSubmissionResult(mutation.target);
           if (result) {
@@ -471,7 +501,7 @@ class SubmissionMonitor {
 // ─── FailureAtlasCollector (Orchestrator) ────────────────────────────────────
 class FailureAtlasCollector {
   private metadataExtractor = new ProblemMetadataExtractor();
-  private codeEditor = new CodeEditorHandler();  // ✅ NEW
+  private codeEditor = new CodeEditorHandler();
   private evolutionTracker = new CodeEvolutionTracker();
   private submissionMonitor = new SubmissionMonitor(res => this.onResultDetected(res));
 
@@ -505,7 +535,6 @@ class FailureAtlasCollector {
     this.isActive = true;
     this.currentProblem = this.metadataExtractor.extractAll();
 
-    // ✅ KEY: Start caching code immediately
     this.codeEditor.startCaching();
     this.submissionMonitor.attach();
     this.attachSubmitButtonListener();
@@ -545,7 +574,6 @@ class FailureAtlasCollector {
 
       if (isSubmit) {
         console.log('[FailureAtlas] Submit button clicked — monitoring for result…');
-        // Ensure we have fresh code capture before result page loads
         this.codeEditor.updateCacheNow();
         setTimeout(() => this.submissionMonitor.attach(), 500);
       }
@@ -572,15 +600,34 @@ class FailureAtlasCollector {
       }
     }
 
+    const metricsExpected = result.status === 'Accepted';
+    if (metricsExpected && (result.runtime === undefined || result.memory === undefined)) {
+      console.log(`[TRACE ${traceId}]\nRuntime/memory missing on first read. Retrying...`);
+      for (let attempt = 1; attempt <= 15; attempt++) {
+        if (result.runtime !== undefined && result.memory !== undefined)
+          break;
+        await new Promise(r => setTimeout(r, 500));
+        const retried = this.submissionMonitor.extractMetrics();
+        if (result.runtime === undefined && retried.runtime !== undefined) {
+          result.runtime = retried.runtime;
+        }
+        if (result.memory === undefined && retried.memory !== undefined) {
+          result.memory = retried.memory;
+        }
+        console.log(`[TRACE ${traceId}]\nMetrics attempt ${attempt}: runtime=${result.runtime ?? 'still missing'}, memory=${result.memory ?? 'still missing'}`);
+      }
+      if (result.runtime === undefined || result.memory === undefined) {
+        console.warn(`[TRACE ${traceId}]\nGiving up on runtime/memory after retries — will omit from payload.`);
+      }
+    }
+
     // ── Deduplication ─────────────────────────────────────────────────────────
-    // Key: problem + status + code-hash (NOT attemptNumber — it increments on every
-    // DOM mutation, so two rapid detections of the same submit get different numbers).
-    const codeHash = hashCode(code.slice(0, 500)); // first 500 chars is enough
+    const codeHash = hashCode(code.slice(0, 500));
     const dedupKey = `${this.currentProblem?.slug ?? 'unknown'}-${result.status}-${codeHash}`;
     const now = Date.now();
     if (
       customWindow.__fa_lastSentKey === dedupKey &&
-      now - (customWindow.__fa_lastSentTime || 0) < 30000  // 30s window
+      now - (customWindow.__fa_lastSentTime || 0) < 30000
     ) {
       console.log(`[TRACE ${traceId}]\nDuplicate submission blocked (same code+status within 30s)`);
       return;
@@ -588,7 +635,6 @@ class FailureAtlasCollector {
     customWindow.__fa_lastSentKey = dedupKey;
     customWindow.__fa_lastSentTime = now;
 
-    // Only increment attempt count when we are ACTUALLY sending
     this.attemptCount++;
 
     const event = this.buildSubmissionEvent(result, code, traceId);
@@ -613,7 +659,7 @@ class FailureAtlasCollector {
       this.evolutionTracker.captureSnapshot(code);
     }
 
-    return {
+    const event: SubmissionEvent = {
       eventId: crypto.randomUUID(),
       submissionTraceId: traceId,
       sessionId: this.sessionId,
@@ -637,6 +683,11 @@ class FailureAtlasCollector {
       rapidSubmission: timeSinceLastSubmit > 0 && timeSinceLastSubmit < 30000,
       codeEvolution: this.evolutionTracker.getEvolution(),
     };
+
+    if (event.runtime === undefined) delete (event as any).runtime;
+    if (event.memory === undefined) delete (event as any).memory;
+
+    return event;
   }
 
   private sendToBackground(event: SubmissionEvent, traceId: string): void {

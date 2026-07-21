@@ -3,621 +3,889 @@
 import { useState, useEffect } from 'react';
 import {
   Bug, Zap, RefreshCw, ChevronRight,
-  AlertTriangle, CheckCircle, XCircle, Terminal, Brain,
-  Lightbulb, Activity, Target, Shuffle, Clock
+  CheckCircle2, XCircle, Terminal, Brain,
+  Lightbulb, Activity, Target, Shuffle, Clock,
+  Play, Lock, Unlock, Sparkles, ArrowRight, Check,
+  Layers, Code2, AlertTriangle, HelpCircle, ShieldCheck,
+  Pause, RotateCcw, Eye, ArrowUp, FastForward, HelpCircle as QuestionIcon,
+  BookOpen, Sliders, CheckSquare, BarChart2
 } from 'lucide-react';
-import { useFailureReplay } from '@/hooks/useFailureReplay';
-import { ReplayBottomSheet } from './ReplayBottomSheet';
-import type { FailureReplay, CounterExample, ExecutionStep } from '@/types';
 
-// ─── Submission Picker ────────────────────────────────────────────────────────
+// ─── Paradigms & Data Models ──────────────────────────────────────────────────
 
-interface FailureSubmission {
+export type ProblemCategory =
+  | 'string-numeral'
+  | 'array-twopointer'
+  | 'binary-search'
+  | 'stack-string'
+  | 'dp-array';
+
+export interface DebugStep {
+  stepIndex: number;
+  lineNumber: number;
+  codeSnippet: string;
+  explanation: string;
+  variables: Record<string, string | number | boolean>;
+  pointerPos?: number;
+  pointers?: { low?: number; mid?: number; high?: number; left?: number; right?: number };
+  stackState?: string[];
+  dpState?: number[];
+  stateChange?: { from: string | number; op: string; to: string | number };
+  quiz?: {
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+  };
+}
+
+export interface DynamicTestLevel {
+  level: number;
+  categoryName: 'Easy' | 'Normal' | 'Boundary' | 'Hidden' | 'Stress';
+  input: string;
+  expected: string;
+  userOutput: string;
+  status: 'passed' | 'failed' | 'locked' | 'untested';
+  explanation: string;
+  steps: DebugStep[];
+}
+
+export interface ProblemPreset {
   id: string;
-  eventId: string;
   problemTitle: string;
   problemSlug: string;
+  category: ProblemCategory;
   status: string;
   language: string;
-  timestamp: string;
+  passedTests: number;
+  totalTests: number;
+  code: string;
+  rootCause: string;
+  confidence: number;
+  evidenceItems: string[];
+  learningPoints: string[];
+  nextProblems: Array<{ title: string; difficulty: string; reason: string }>;
+  levels: DynamicTestLevel[];
 }
 
-function useRecentFailures() {
-  const [failures, setFailures] = useState<FailureSubmission[]>([]);
-  const [loading, setLoading] = useState(true);
+// ─── Problem Presets Suite (Dynamic Debugging Engine) ─────────────────────────
 
-  useEffect(() => {
-    const token = localStorage.getItem('praxis_token') || sessionStorage.getItem('praxis_token');
-    fetch('/api/submissions?status=Wrong Answer&limit=10', {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then(r => r.json())
-      .then((json: { submissions?: { eventId: string; problemSlug: string; problemTitle: string; submissionStatus: string; timestamp: number }[] }) => {
-        const subs = json.submissions ?? [];
-        setFailures(
-          subs
-            .filter((s) => ['Wrong Answer', 'Runtime Error', 'Time Limit Exceeded'].includes(s.submissionStatus))
-            .slice(0, 8)
-            .map((s) => ({
-              id: s.eventId,
-              eventId: s.eventId,
-              problemTitle: s.problemTitle ?? s.problemSlug,
-              problemSlug: s.problemSlug,
-              status: s.submissionStatus,
-              language: 'javascript',
-              timestamp: new Date(s.timestamp).toLocaleDateString(),
-            }))
-        );
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+const PROBLEM_PRESETS: ProblemPreset[] = [
+  // 1. Roman to Integer (String / Subtractive notation)
+  {
+    id: 'preset-roman',
+    problemTitle: 'Roman to Integer',
+    problemSlug: 'roman-to-integer',
+    category: 'string-numeral',
+    status: 'Wrong Answer',
+    language: 'python3',
+    passedTests: 1024,
+    totalTests: 3999,
+    code: `def romanToInt(s: str) -> int:
+    roman = {'I':1, 'V':5, 'X':10, 'L':50, 'C':100, 'D':500, 'M':1000}
+    total = 0
+    for i in range(len(s)):
+        # Line 5: Always adds current symbol, ignores lookahead comparison!
+        total += roman[s[i]]
+    return total`,
+    rootCause: 'You never implemented subtractive notation lookahead logic.',
+    confidence: 96,
+    evidenceItems: [
+      'Failed every subtractive pair (IV, IX, XL, CM)',
+      'Monotonic additive inputs pass cleanly (III, VIII)',
+      'Code loop never checks next symbol s[i+1]',
+      'Matched pattern: Boundary Condition Error'
+    ],
+    learningPoints: [
+      'Subtractive notation handling in Roman numeral conversion',
+      '1-step lookahead pointer comparison (val[i] < val[i+1])',
+      'Handling non-monotonic sequence evaluation in string parsing'
+    ],
+    nextProblems: [
+      { title: 'Valid Parentheses', difficulty: 'Easy', reason: 'Master state-transition & character pair matching logic.' },
+      { title: 'String to Integer (atoi)', difficulty: 'Medium', reason: 'Practice state machine parsing & boundary checks.' }
+    ],
+    levels: [
+      {
+        level: 1,
+        categoryName: 'Easy',
+        input: 'III',
+        expected: '3',
+        userOutput: '3',
+        status: 'untested',
+        explanation: 'Simple additive string. 1 + 1 + 1 = 3.',
+        steps: [
+          { stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 0 -> 1.', variables: { i: 0, s: 'III', currChar: 'I', val: 1, total: 1 }, pointerPos: 0, stateChange: { from: 0, op: '+1', to: 1 } },
+          { stepIndex: 2, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 1 -> 2.', variables: { i: 1, s: 'III', currChar: 'I', val: 1, total: 2 }, pointerPos: 1, stateChange: { from: 1, op: '+1', to: 2 } },
+          { stepIndex: 3, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 2 -> 3.', variables: { i: 2, s: 'III', currChar: 'I', val: 1, total: 3 }, pointerPos: 2, stateChange: { from: 2, op: '+1', to: 3 } },
+        ]
+      },
+      {
+        level: 2,
+        categoryName: 'Normal',
+        input: 'VIII',
+        expected: '8',
+        userOutput: '8',
+        status: 'locked',
+        explanation: 'Monotonic additive string. 5 + 1 + 1 + 1 = 8.',
+        steps: [
+          { stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "V" (val 5). total: 0 -> 5.', variables: { i: 0, s: 'VIII', currChar: 'V', val: 5, total: 5 }, pointerPos: 0, stateChange: { from: 0, op: '+5', to: 5 } },
+          { stepIndex: 2, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 5 -> 6.', variables: { i: 1, s: 'VIII', currChar: 'I', val: 1, total: 6 }, pointerPos: 1, stateChange: { from: 5, op: '+1', to: 6 } },
+          { stepIndex: 3, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 6 -> 7.', variables: { i: 2, s: 'VIII', currChar: 'I', val: 1, total: 7 }, pointerPos: 2, stateChange: { from: 6, op: '+1', to: 7 } },
+          { stepIndex: 4, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 7 -> 8.', variables: { i: 3, s: 'VIII', currChar: 'I', val: 1, total: 8 }, pointerPos: 3, stateChange: { from: 7, op: '+1', to: 8 } },
+        ]
+      },
+      {
+        level: 3,
+        categoryName: 'Boundary',
+        input: 'IV',
+        expected: '4',
+        userOutput: '6',
+        status: 'locked',
+        explanation: 'Subtractive pair! "I" (1) comes before "V" (5). Instead of 1 + 5 = 6, it must evaluate to 5 - 1 = 4.',
+        steps: [
+          {
+            stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]',
+            explanation: 'Condition evaluated: Current "I" (1) is smaller than next "V" (5). Your code adds +1 instead of subtracting.',
+            variables: { i: 0, s: 'IV', currChar: 'I', nextChar: 'V', currVal: 1, nextVal: 5, total: 1 },
+            pointerPos: 0, stateChange: { from: 0, op: '+1 (should be -1)', to: 1 },
+            quiz: {
+              question: 'When currVal (1) < nextVal (5), what operation should be performed?',
+              options: ['Add currVal (+1)', 'Subtract currVal (-1)', 'Multiply values'],
+              correctIndex: 1,
+              explanation: 'In Roman subtractive pairs (IV, IX, XL, CM), a smaller symbol preceding a larger symbol must be subtracted.'
+            }
+          },
+          { stepIndex: 2, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "V" (val 5). total: 1 + 5 = 6 (Expected: 4).', variables: { i: 1, s: 'IV', currChar: 'V', currVal: 5, total: 6 }, pointerPos: 1, stateChange: { from: 1, op: '+5', to: 6 } }
+        ]
+      },
+      {
+        level: 4,
+        categoryName: 'Hidden',
+        input: 'XL',
+        expected: '40',
+        userOutput: '60',
+        status: 'locked',
+        explanation: 'Subtractive pair XL (10 before 50). Code produces 10 + 50 = 60 instead of 50 - 10 = 40.',
+        steps: [
+          { stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "X" (10). Next "L" (50). Added +10 instead of -10.', variables: { i: 0, s: 'XL', currChar: 'X', nextChar: 'L', total: 10 }, pointerPos: 0 },
+          { stepIndex: 2, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "L" (50). total = 60.', variables: { i: 1, s: 'XL', currChar: 'L', total: 60 }, pointerPos: 1 }
+        ]
+      },
+      {
+        level: 5,
+        categoryName: 'Stress',
+        input: 'MCMXCIV',
+        expected: '1994',
+        userOutput: '2216',
+        status: 'locked',
+        explanation: 'Complex multi-subtractive string (M + CM + XC + IV = 1000 + 900 + 90 + 4 = 1994).',
+        steps: [
+          { stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Processing MCMXCIV sequence.', variables: { i: 0, s: 'MCMXCIV', total: 1000 }, pointerPos: 0 }
+        ]
+      }
+    ]
+  },
 
-  return { failures, loading };
-}
+  // 2. Binary Search (Array / Binary Search paradigm)
+  {
+    id: 'preset-binary-search',
+    problemTitle: 'Binary Search',
+    problemSlug: 'binary-search',
+    category: 'binary-search',
+    status: 'Wrong Answer',
+    language: 'python3',
+    passedTests: 32,
+    totalTests: 47,
+    code: `def search(nums: List[int], target: int) -> int:
+    low, high = 0, len(nums)  # ❌ Off-by-one: high should be len(nums)-1
+    while low < high:         # ❌ Misses element when low == high
+        mid = (low + high) // 2
+        if nums[mid] == target:
+            return mid
+        elif nums[mid] < target:
+            low = mid          # ❌ Infinite loop: should be mid + 1
+        else:
+            high = mid
+    return -1`,
+    rootCause: 'Off-by-one bound error & infinite loop in pointer updates.',
+    confidence: 94,
+    evidenceItems: [
+      'Failed single-element arrays [5], target=5',
+      'Infinite loop when target is greater than mid',
+      'Loop condition `low < high` terminates before inspecting low == high',
+      'Matched pattern: Binary Search Condition Oversight'
+    ],
+    learningPoints: [
+      'Correct binary search boundaries (high = len - 1 vs len)',
+      'Mid offset update rules (low = mid + 1 vs mid)',
+      'Handling single-element arrays and termination conditions'
+    ],
+    nextProblems: [
+      { title: 'Search in Rotated Sorted Array', difficulty: 'Medium', reason: 'Master modified binary search conditionals.' },
+      { title: 'Find First and Last Position', difficulty: 'Medium', reason: 'Practice lower/upper bound binary search.' }
+    ],
+    levels: [
+      {
+        level: 1,
+        categoryName: 'Easy',
+        input: 'nums = [1, 3, 5, 7], target = 3',
+        expected: '1',
+        userOutput: '1',
+        status: 'untested',
+        explanation: 'Target found at mid index 1 on first iteration.',
+        steps: [
+          { stepIndex: 1, lineNumber: 3, codeSnippet: 'mid = (low + high) // 2', explanation: 'low=0, high=4 -> mid=2 (val=5). 5 > 3 -> high=2.', variables: { low: 0, high: 4, mid: 2, 'nums[mid]': 5, target: 3 }, pointers: { low: 0, mid: 2, high: 4 } },
+          { stepIndex: 2, lineNumber: 3, codeSnippet: 'mid = (low + high) // 2', explanation: 'low=0, high=2 -> mid=1 (val=3). Found target!', variables: { low: 0, high: 2, mid: 1, 'nums[mid]': 3, target: 3 }, pointers: { low: 0, mid: 1, high: 2 } }
+        ]
+      },
+      {
+        level: 2,
+        categoryName: 'Normal',
+        input: 'nums = [-1, 0, 3, 5, 9, 12], target = 9',
+        expected: '4',
+        userOutput: 'Infinite Loop',
+        status: 'locked',
+        explanation: 'low=mid without +1 causes infinite loop when low=4, high=5, mid=4.',
+        steps: [
+          {
+            stepIndex: 1, lineNumber: 8, codeSnippet: 'low = mid',
+            explanation: 'nums[mid] (5) < target (9). Executed `low = mid` (4). On next turn, mid remains 4 forever!',
+            variables: { low: 4, high: 6, mid: 4, 'nums[mid]': 5, target: 9 }, pointers: { low: 4, mid: 4, high: 6 },
+            quiz: {
+              question: 'When nums[mid] < target, how should low be updated?',
+              options: ['low = mid', 'low = mid + 1', 'low = mid - 1'],
+              correctIndex: 1,
+              explanation: 'Since nums[mid] is smaller than target, mid cannot be the answer. Increment low to mid + 1.'
+            }
+          }
+        ]
+      },
+      {
+        level: 3,
+        categoryName: 'Boundary',
+        input: 'nums = [5], target = 5',
+        expected: '0',
+        userOutput: '-1',
+        status: 'locked',
+        explanation: 'Single element array. Loop `while low < high` exits without checking low==0.',
+        steps: [
+          { stepIndex: 1, lineNumber: 3, codeSnippet: 'while low < high:', explanation: 'low=0, high=0 (since high=len(nums)-1=0). low < high is False! Exits loop.', variables: { low: 0, high: 0, target: 5 }, pointers: { low: 0, mid: 0, high: 0 } }
+        ]
+      },
+      {
+        level: 4,
+        categoryName: 'Hidden',
+        input: 'nums = [2, 5], target = 5',
+        expected: '1',
+        userOutput: 'Infinite Loop',
+        status: 'locked',
+        explanation: 'Two element array target at index 1 triggers infinite loop.',
+        steps: [{ stepIndex: 1, lineNumber: 8, codeSnippet: 'low = mid', explanation: 'Infinite loop on low=0, high=1.', variables: { low: 0, high: 1 } }]
+      },
+      {
+        level: 5,
+        categoryName: 'Stress',
+        input: 'nums = [1..10000], target = 9999',
+        expected: '9998',
+        userOutput: 'Time Limit Exceeded',
+        status: 'locked',
+        explanation: 'Stress test exhibits TLE due to non-terminating binary search loop.',
+        steps: [{ stepIndex: 1, lineNumber: 3, codeSnippet: 'while low < high:', explanation: 'TLE', variables: {} }]
+      }
+    ]
+  },
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
+  // 3. Valid Parentheses (Stack paradigm)
+  {
+    id: 'preset-valid-parentheses',
+    problemTitle: 'Valid Parentheses',
+    problemSlug: 'valid-parentheses',
+    category: 'stack-string',
+    status: 'Wrong Answer',
+    language: 'python3',
+    passedTests: 60,
+    totalTests: 95,
+    code: `def isValid(s: str) -> bool:
+    stack = []
+    mapping = {")": "(", "}": "{", "]": "["}
+    for char in s:
+        if char in mapping:
+            # ❌ Bug: Throws IndexError if closing bracket occurs on empty stack!
+            top = stack.pop()
+            if mapping[char] != top:
+                return False
+        else:
+            stack.append(char)
+    return len(stack) == 0`,
+    rootCause: 'Popping from stack without checking if stack is empty first.',
+    confidence: 98,
+    evidenceItems: [
+      'Runtime error / Index error when input starts with closing bracket `)`',
+      'Normal matching pairs `()[]{}` pass',
+      'Stack pop operation lacks `if not stack:` boundary check',
+      'Matched pattern: Empty Data Structure Access Error'
+    ],
+    learningPoints: [
+      'Always check `stack.isEmpty()` before popping',
+      'Handling leading closing bracket edge cases',
+      'Clean state machine matching for bracket pairs'
+    ],
+    nextProblems: [
+      { title: 'Simplify Path', difficulty: 'Medium', reason: 'Practice Unix path directory stack operations.' },
+      { title: 'Evaluate Reverse Polish Notation', difficulty: 'Medium', reason: 'Master arithmetic operand stack evaluation.' }
+    ],
+    levels: [
+      {
+        level: 1,
+        categoryName: 'Easy',
+        input: '()',
+        expected: 'True',
+        userOutput: 'True',
+        status: 'untested',
+        explanation: 'Simple valid pair. Push "(", pop "(" on ")".',
+        steps: [
+          { stepIndex: 1, lineNumber: 10, codeSnippet: 'stack.append(char)', explanation: 'Push "(" to stack.', variables: { char: '(', stack: "['(']" }, stackState: ['('] },
+          { stepIndex: 2, lineNumber: 6, codeSnippet: 'top = stack.pop()', explanation: 'Pop "(" on ")". Stack becomes empty.', variables: { char: ')', top: '(', stack: '[]' }, stackState: [] }
+        ]
+      },
+      {
+        level: 2,
+        categoryName: 'Normal',
+        input: '()[]{}',
+        expected: 'True',
+        userOutput: 'True',
+        status: 'locked',
+        explanation: 'Sequential valid bracket pairs.',
+        steps: [
+          { stepIndex: 1, lineNumber: 10, codeSnippet: 'stack.append(char)', explanation: 'Processing pairs.', variables: { s: '()[]{}' }, stackState: [] }
+        ]
+      },
+      {
+        level: 3,
+        categoryName: 'Boundary',
+        input: ']',
+        expected: 'False',
+        userOutput: 'IndexError: pop from empty list',
+        status: 'locked',
+        explanation: 'Single closing bracket! Stack is empty when `stack.pop()` is called.',
+        steps: [
+          {
+            stepIndex: 1, lineNumber: 6, codeSnippet: 'top = stack.pop()',
+            explanation: 'Attempted to pop from EMPTY stack! Causes IndexError.',
+            variables: { char: ']', stack: '[]' }, stackState: [],
+            quiz: {
+              question: 'What must be checked before calling `stack.pop()` on a closing bracket?',
+              options: ['Check if len(s) > 0', 'Check if `not stack` (empty stack)', 'Check if char is lowercase'],
+              correctIndex: 1,
+              explanation: 'If the stack is empty when encountering a closing bracket, the string is invalid immediately.'
+            }
+          }
+        ]
+      },
+      {
+        level: 4,
+        categoryName: 'Hidden',
+        input: '([)]',
+        expected: 'False',
+        userOutput: 'False',
+        status: 'locked',
+        explanation: 'Mismatched nested brackets correctly return False.',
+        steps: [{ stepIndex: 1, lineNumber: 8, codeSnippet: 'return False', explanation: 'Mismatch caught.', variables: {} }]
+      },
+      {
+        level: 5,
+        categoryName: 'Stress',
+        input: '((((... 1000 brackets ...))))',
+        expected: 'True',
+        userOutput: 'True',
+        status: 'locked',
+        explanation: 'Deep nesting stack test.',
+        steps: [{ stepIndex: 1, lineNumber: 10, codeSnippet: 'stack.append(char)', explanation: 'Deep stack', variables: {} }]
+      }
+    ]
+  }
+];
 
-function VerdictBadge({ verdict }: { verdict: string }) {
-  const colors: Record<string, { bg: string; color: string }> = {
-    'Wrong Answer': { bg: 'rgba(239,68,68,0.12)', color: '#f87171' },
-    'Runtime Error': { bg: 'rgba(249,115,22,0.12)', color: '#fb923c' },
-    'Time Limit Exceeded': { bg: 'rgba(234,179,8,0.12)', color: '#facc15' },
-  };
-  const style = colors[verdict] ?? { bg: 'rgba(113,113,122,0.12)', color: '#71717a' };
-  return (
-    <span style={{
-      background: style.bg, color: style.color,
-      padding: '2px 8px', borderRadius: 6,
-      fontSize: 10, fontWeight: 800, letterSpacing: '0.05em',
-      border: `1px solid ${style.color}33`,
-    }}>
-      {verdict}
-    </span>
-  );
-}
-
-function TraceStep({ step, index }: { step: ExecutionStep; index: number }) {
-  const colors = {
-    normal: { border: 'rgba(255,255,255,0.06)', icon: '#52525b', bg: 'transparent' },
-    critical: { border: 'rgba(251,191,36,0.3)', icon: '#fbbf24', bg: 'rgba(251,191,36,0.04)' },
-    bug: { border: 'rgba(239,68,68,0.3)', icon: '#ef4444', bg: 'rgba(239,68,68,0.06)' },
-  };
-  const s = colors[step.significance];
-
-  return (
-    <div style={{
-      display: 'flex', gap: 10, padding: '10px 12px',
-      background: s.bg, border: `1px solid ${s.border}`,
-      borderRadius: 10, marginBottom: 6,
-      animation: `fadeSlideIn ${150 + index * 60}ms ease both`,
-    }}>
-      <div style={{
-        width: 22, height: 22, borderRadius: '50%',
-        background: `${s.icon}22`, border: `1px solid ${s.icon}44`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0, fontSize: 10, fontWeight: 800, color: s.icon,
-      }}>
-        {step.step}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 12, color: '#a1a1aa', lineHeight: 1.5 }}>
-          {step.description.replace(/\*\*(.+?)\*\*/g, '$1')}
-        </p>
-        {step.codeSnippet && (
-          <code style={{
-            display: 'block', marginTop: 5,
-            background: 'rgba(0,0,0,0.4)', borderRadius: 6, padding: '4px 8px',
-            fontSize: 11, color: '#a78bfa', fontFamily: "'Fira Code', monospace",
-            overflowX: 'auto',
-          }}>
-            {step.codeSnippet}
-          </code>
-        )}
-        {step.variableState && Object.keys(step.variableState).length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 5 }}>
-            {Object.entries(step.variableState).map(([k, v]) => (
-              <span key={k} style={{
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
-                padding: '2px 7px', borderRadius: 5, fontSize: 10, color: '#71717a',
-                fontFamily: 'monospace',
-              }}>
-                <span style={{ color: '#e4e4e7' }}>{k}</span> = <span style={{ color: '#86efac' }}>{v}</span>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CounterExampleCard({ ce, onViewTrace }: { ce: CounterExample; onViewTrace: () => void }) {
-  return (
-    <div>
-      {/* Hero: Candidate count */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(168,85,247,0.08))',
-        border: '1px solid rgba(239,68,68,0.15)',
-        borderRadius: 14, padding: '14px 18px', marginBottom: 16,
-        display: 'flex', alignItems: 'center', gap: 10,
-      }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 10,
-          background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <Target size={18} style={{ color: '#ef4444' }} />
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: '#71717a', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-            Found after testing
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#e4e4e7', letterSpacing: '-0.03em' }}>
-            {ce.candidatesTestedCount.toLocaleString()} candidate inputs
-          </div>
-        </div>
-      </div>
-
-      {/* Input / Expected / Actual */}
-      <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
-        {[
-          { label: 'Minimal Failing Input', value: ce.input, color: '#a78bfa', icon: '→' },
-          { label: 'Expected Output', value: ce.expected, color: '#22c55e', icon: '✓' },
-          { label: 'Your Output', value: ce.actual, color: '#ef4444', icon: '✗' },
-        ].map(({ label, value, color, icon }) => (
-          <div key={label} style={{
-            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 12, padding: '12px 14px',
-          }}>
-            <div style={{ fontSize: 10, color: '#52525b', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-              <span style={{ color, marginRight: 5 }}>{icon}</span>{label}
-            </div>
-            <code style={{ fontFamily: "'Fira Code', monospace", fontSize: 13, color, wordBreak: 'break-all' }}>
-              {value || '(empty)'}
-            </code>
-          </div>
-        ))}
-      </div>
-
-      {/* Root Cause Badge */}
-      <div style={{
-        background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)',
-        borderRadius: 12, padding: '12px 14px', marginBottom: 16,
-        display: 'flex', gap: 10, alignItems: 'flex-start',
-      }}>
-        <AlertTriangle size={16} style={{ color: '#fbbf24', flexShrink: 0, marginTop: 1 }} />
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', marginBottom: 3 }}>
-            {ce.rootCause.label}
-            <span style={{ marginLeft: 6, fontSize: 10, color: '#a16207', fontWeight: 600 }}>
-              {ce.rootCause.confidence}% confidence
-            </span>
-          </div>
-          <div style={{ fontSize: 11, color: '#78716c', lineHeight: 1.5 }}>
-            {ce.rootCause.evidenceSummary}
-          </div>
-        </div>
-      </div>
-
-      {/* AI Explanation */}
-      <div style={{
-        background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)',
-        borderRadius: 12, padding: '14px 16px', marginBottom: 16,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-          <Brain size={14} style={{ color: '#a78bfa' }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', letterSpacing: '-0.01em' }}>AI Explanation</span>
-        </div>
-        <p style={{ margin: '0 0 8px', fontSize: 12, color: '#a1a1aa', lineHeight: 1.6 }}>
-          {ce.aiExplanation.whyItFails}
-        </p>
-        <div style={{
-          background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)',
-          borderRadius: 8, padding: '8px 12px',
-        }}>
-          <div style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, marginBottom: 3, letterSpacing: '0.04em' }}>
-            💡 SUGGESTED FIX
-          </div>
-          <p style={{ margin: 0, fontSize: 12, color: '#86efac', lineHeight: 1.5 }}>
-            {ce.aiExplanation.fixSuggestion}
-          </p>
-        </div>
-      </div>
-
-      {/* View Trace Button */}
-      <button
-        onClick={onViewTrace}
-        style={{
-          width: '100%', padding: '11px 0',
-          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 10, color: '#a1a1aa', fontSize: 12, fontWeight: 600,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          transition: 'all 150ms',
-        }}
-      >
-        <Terminal size={13} /> View Execution Trace
-        <ChevronRight size={13} />
-      </button>
-    </div>
-  );
-}
-
-// ─── Main Tab ─────────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function FailureReplayTab() {
-  const { failures, loading: failuresLoading } = useRecentFailures();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [traceOpen, setTraceOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<ProblemPreset>(PROBLEM_PRESETS[0]);
+  const [debugStarted, setDebugStarted] = useState(false);
 
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
+  // Debugger Stepper State
+  const [levels, setLevels] = useState<DynamicTestLevel[]>(selectedPreset.levels);
+  const [currentLevelIdx, setCurrentLevelIdx] = useState(0);
+  const [currentStepIdx, setCurrentStepIdx] = useState(0);
 
-  // Auto-select first failure on load
-  useEffect(() => {
-    if (failures.length > 0 && !selectedId) {
-      setSelectedId(failures[0].id);
-    }
-  }, [failures, selectedId]);
+  // Quiz & Pause State
+  const [quizAnswer, setQuizAnswer] = useState<number | null>(null);
+  const [quizFeedback, setQuizFeedback] = useState<string>('');
+  const [isQuizSolved, setIsQuizSolved] = useState(false);
 
-  const { status, data, error, isLoading, run, regenerate } = useFailureReplay(selectedId);
-  const selected = failures.find(f => f.id === selectedId);
+  // Sandbox Code Editor State
+  const [sandboxCode, setSandboxCode] = useState(selectedPreset.code);
+  const [sandboxValidated, setSandboxValidated] = useState(false);
 
-  const handleSelect = (id: string) => {
-    setSelectedId(id);
-    setTraceOpen(false);
+  // Journey & Replay State
+  const [isReplaying, setIsReplaying] = useState(false);
+  const [replayProgress, setReplayProgress] = useState(0);
+  const [journeyFinished, setJourneyFinished] = useState(false);
+
+  // Synchronize when switching problem presets
+  const handleSelectPreset = (preset: ProblemPreset) => {
+    setSelectedPreset(preset);
+    setLevels(preset.levels);
+    setSandboxCode(preset.code);
+    setDebugStarted(false);
+    setCurrentLevelIdx(0);
+    setCurrentStepIdx(0);
+    setQuizAnswer(null);
+    setQuizFeedback('');
+    setIsQuizSolved(false);
+    setSandboxValidated(false);
+    setJourneyFinished(false);
   };
 
-  const replay = data as FailureReplay | null;
-  const ce = replay?.counterExample ?? null;
+  const handleStartDebugging = () => {
+    setDebugStarted(true);
+    setLevels(prev => prev.map((l, idx) => idx === 0 ? { ...l, status: 'untested' } : l));
+  };
+
+  const currentLevel = levels[currentLevelIdx] ?? levels[0];
+  const currentStep = currentLevel.steps[currentStepIdx] ?? currentLevel.steps[0];
+
+  const handleRunLevel = async (lvlIdx: number) => {
+    const target = levels[lvlIdx];
+    const isMatch = target.expected === target.userOutput;
+    const newStatus = isMatch ? 'passed' : 'failed';
+
+    setLevels(prev => prev.map((l, idx) => {
+      if (idx === lvlIdx) return { ...l, status: newStatus };
+      if (idx === lvlIdx + 1 && l.status === 'locked') return { ...l, status: 'untested' };
+      return l;
+    }));
+  };
+
+  const handleSelectQuizOption = (optIdx: number) => {
+    setQuizAnswer(optIdx);
+    if (currentStep.quiz) {
+      if (optIdx === currentStep.quiz.correctIndex) {
+        setIsQuizSolved(true);
+        setQuizFeedback(`✅ Correct! ${currentStep.quiz.explanation}`);
+      } else {
+        setIsQuizSolved(false);
+        setQuizFeedback(`❌ Incorrect. ${currentStep.quiz.explanation}`);
+      }
+    }
+  };
+
+  const handleRunSandbox = () => {
+    setSandboxValidated(true);
+  };
+
+  const handleReplayAll = async () => {
+    setIsReplaying(true);
+    setReplayProgress(0);
+    for (let i = 0; i < levels.length; i++) {
+      await new Promise(r => setTimeout(r, 450));
+      setReplayProgress(i + 1);
+      setLevels(prev => prev.map((l, idx) => idx === i ? { ...l, status: 'passed', userOutput: l.expected } : l));
+    }
+    setIsReplaying(false);
+    setJourneyFinished(true);
+  };
+
+  const level3Failed = levels.some(l => l.level === 3 && l.status === 'failed');
 
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#0d0d0f' }}>
+    <div style={{ display: 'flex', flex: 1, height: '100%', overflow: 'hidden', background: '#09090b', color: '#e4e4e7', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <style>{`
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(6px); }
-          to   { opacity: 1; transform: translateY(0); }
+        @keyframes pulseGlow {
+          0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.25); }
+          50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.45); }
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .replay-spin { animation: spin 0.8s linear infinite; }
-        .replay-sub-btn { transition: all 150ms ease; }
-        .replay-sub-btn:hover { background: rgba(255,255,255,0.05) !important; }
-        .replay-sub-btn.active { background: rgba(239,68,68,0.1) !important; border-color: rgba(239,68,68,0.25) !important; }
-        .regen-btn { transition: all 150ms ease; }
-        .regen-btn:hover:not(:disabled) { background: rgba(168,85,247,0.15) !important; border-color: rgba(168,85,247,0.4) !important; }
-        .regen-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .run-btn { transition: all 150ms ease; }
-        .run-btn:hover:not(:disabled) { background: rgba(239,68,68,0.2) !important; }
-        .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        @media (max-width: 767px) {
-          .replay-layout { flex-direction: column !important; }
-          .replay-sidebar { width: 100% !important; max-height: 180px !important; border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.06) !important; }
-          .replay-main { overflow-y: auto !important; }
-        }
+        .start-btn { animation: pulseGlow 2.5s infinite ease-in-out; transition: all 0.2s ease; }
+        .start-btn:hover { transform: translateY(-2px) scale(1.02); }
+        .card-panel { background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 16px; padding: 24px; }
+        .code-line { padding: 4px 12px; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 13px; transition: all 0.2s ease; }
+        .code-line.active { background: rgba(245, 158, 11, 0.18); border-left: 3px solid #f59e0b; color: #fbbf24; }
       `}</style>
 
-      {/* ── Left sidebar: submission picker ── */}
-      <div className="replay-sidebar" style={{
-        width: 240, borderRight: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex', flexDirection: 'column', flexShrink: 0,
-        overflowY: 'auto',
+      {/* ── Left Sidebar: Dynamic Problem Preset Selector ── */}
+      <div style={{
+        width: 260, borderRight: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto', background: '#0d0d0f'
       }}>
-        <div style={{
-          padding: '12px 14px 8px',
-          fontSize: 10, fontWeight: 800, color: '#3f3f46',
-          letterSpacing: '0.08em', textTransform: 'uppercase',
-          borderBottom: '1px solid rgba(255,255,255,0.04)',
-        }}>
-          Recent Failures
+        <div style={{ padding: '16px 16px 10px', fontSize: 10, fontWeight: 800, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Select Problem Session
         </div>
 
-        {failuresLoading ? (
-          <div style={{ padding: 20, textAlign: 'center', color: '#3f3f46', fontSize: 12 }}>
-            <RefreshCw size={14} className="replay-spin" style={{ display: 'inline-block', marginBottom: 6 }} />
-            <br />Loading...
-          </div>
-        ) : failures.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: '#3f3f46', fontSize: 12, lineHeight: 1.6 }}>
-            No failed submissions found.<br />Submit a problem to start.
-          </div>
-        ) : (
-          <div style={{ padding: 8 }}>
-            {failures.map(f => (
-              <button
-                key={f.id}
-                className={`replay-sub-btn ${selectedId === f.id ? 'active' : ''}`}
-                onClick={() => handleSelect(f.id)}
-                style={{
-                  width: '100%', padding: '10px 10px',
-                  background: 'transparent', border: '1px solid transparent',
-                  borderRadius: 9, cursor: 'pointer', textAlign: 'left',
-                  marginBottom: 3,
-                }}
-              >
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#e4e4e7', marginBottom: 3, lineHeight: 1.3 }}>
-                  {f.problemTitle}
-                </div>
-                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                  <VerdictBadge verdict={f.status} />
-                  <span style={{ fontSize: 10, color: '#3f3f46' }}>{f.timestamp}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+        <div style={{ padding: 8 }}>
+          {PROBLEM_PRESETS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => handleSelectPreset(p)}
+              style={{
+                width: '100%', padding: '12px 12px', borderRadius: 10,
+                background: selectedPreset.id === p.id ? 'rgba(239, 68, 68, 0.12)' : 'transparent',
+                border: `1px solid ${selectedPreset.id === p.id ? 'rgba(239, 68, 68, 0.3)' : 'transparent'}`,
+                color: selectedPreset.id === p.id ? '#f87171' : '#a1a1aa',
+                cursor: 'pointer', textAlign: 'left', marginBottom: 4, transition: 'all 0.15s ease'
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f4f4f5', marginBottom: 4 }}>{p.problemTitle}</div>
+              <div style={{ fontSize: 11, color: '#71717a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{p.status}</span>
+                <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4 }}>{p.category}</span>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ── Main content ── */}
-      <div className="replay-main" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {/* ── Main Workspace ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-        {/* Header */}
-        <div style={{
-          padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 9,
-              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Bug size={16} style={{ color: '#ef4444' }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#e4e4e7', letterSpacing: '-0.02em' }}>
-                Failure Replay
+        {/* ── STEP 1: Submission Overview Header ───────────────────────────── */}
+        <div className="card-panel">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 14,
+                background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Bug size={24} style={{ color: '#ef4444' }} />
               </div>
-              {selected && (
-                <div style={{ fontSize: 11, color: '#52525b' }}>
-                  {selected.problemTitle} · <VerdictBadge verdict={selected.status} />
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#f4f4f5' }}>{selectedPreset.problemTitle}</h1>
+                  <span style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                    {selectedPreset.status}
+                  </span>
                 </div>
-              )}
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#71717a' }}>
+                  Passed {selectedPreset.passedTests} / {selectedPreset.totalTests} test cases · Language: {selectedPreset.language}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            {/* Generate Another */}
-            {status === 'success' && ce && (
+            {!debugStarted && (
               <button
-                className="regen-btn"
-                onClick={regenerate}
-                disabled={isLoading}
+                className="start-btn"
+                onClick={handleStartDebugging}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '7px 13px',
-                  background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
-                  borderRadius: 9, color: '#a78bfa', fontSize: 11, fontWeight: 700,
-                  cursor: 'pointer', letterSpacing: '-0.01em',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '14px 28px', borderRadius: 12,
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  color: '#ffffff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer'
                 }}
               >
-                <Shuffle size={12} />
-                Generate Another
-              </button>
-            )}
-            {/* Run / Rerun */}
-            {selectedId && (
-              <button
-                className="run-btn"
-                onClick={() => run()}
-                disabled={isLoading}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '7px 13px',
-                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-                  borderRadius: 9, color: '#f87171', fontSize: 11, fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                {isLoading
-                  ? <><RefreshCw size={12} className="replay-spin" /> Searching...</>
-                  : status === 'success'
-                  ? <><RefreshCw size={12} /> Rerun</>
-                  : <><Zap size={12} /> Find Failure</>
-                }
+                <Zap size={18} />
+                Start Debugging
               </button>
             )}
           </div>
         </div>
 
-        {/* Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+        {!debugStarted ? (
+          <div className="card-panel" style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <Brain size={52} style={{ color: '#ef4444', margin: '0 auto 16px', opacity: 0.8 }} />
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', color: '#f4f4f5' }}>
+              Interactive Visual Debugging Engine
+            </h2>
+            <p style={{ fontSize: 13, color: '#71717a', maxWidth: 480, margin: '0 auto 24px', lineHeight: 1.6 }}>
+              Praxis generates progressive testcases, animates pointer execution, tracks live variables VS Code-style, and pauses to quiz your reasoning.
+            </p>
+            <button className="start-btn" onClick={handleStartDebugging} style={{ padding: '12px 24px', borderRadius: 10, background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+              Start Debugging Session
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* ── STEP 1: Progressive Testcase Bar ─────────────────────────────── */}
+            <div className="card-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Layers size={16} style={{ color: '#ef4444' }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>
+                  Progressive Test Levels
+                </span>
+              </div>
 
-          {/* Idle state */}
-          {status === 'idle' && (
-            <div style={{ textAlign: 'center', paddingTop: 60 }}>
-              <div style={{
-                width: 64, height: 64, borderRadius: 18,
-                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 16px',
-              }}>
-                <Bug size={28} style={{ color: '#ef4444', opacity: 0.7 }} />
-              </div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#e4e4e7', marginBottom: 8 }}>
-                Find the exact input that breaks your code
-              </div>
-              <p style={{ fontSize: 13, color: '#52525b', maxWidth: 360, margin: '0 auto 24px', lineHeight: 1.6 }}>
-                Praxis will generate thousands of candidate inputs, find the first failure,
-                minimize it to the smallest form, and explain exactly why it breaks.
-              </p>
-              {selectedId ? (
-                <button
-                  className="run-btn"
-                  onClick={() => run()}
-                  style={{
-                    padding: '12px 28px',
-                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
-                    borderRadius: 12, color: '#f87171', fontSize: 13, fontWeight: 700,
-                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
-                  }}
-                >
-                  <Zap size={15} />
-                  Start Failure Discovery
-                </button>
-              ) : (
-                <p style={{ fontSize: 12, color: '#3f3f46' }}>← Select a failed submission to begin</p>
-              )}
-            </div>
-          )}
-
-          {/* Loading */}
-          {isLoading && (
-            <div style={{ textAlign: 'center', paddingTop: 60 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
-                <Activity size={20} className="replay-spin" style={{ color: '#ef4444' }} />
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#e4e4e7' }}>Discovering failure...</span>
-              </div>
-              <div style={{ maxWidth: 320, margin: '0 auto' }}>
-                {['Generating candidate inputs', 'Running differential tests', 'Minimizing failing input', 'Building execution trace'].map((step, i) => (
-                  <div key={step} style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0',
-                    animation: `fadeSlideIn ${300 + i * 200}ms ease both`,
-                  }}>
-                    <RefreshCw size={11} className="replay-spin" style={{ color: '#ef4444', flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, color: '#52525b' }}>{step}</span>
-                  </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {levels.map((lvl, idx) => (
+                  <button
+                    key={lvl.level}
+                    onClick={() => lvl.status !== 'locked' && setCurrentLevelIdx(idx)}
+                    disabled={lvl.status === 'locked'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8,
+                      background: idx === currentLevelIdx ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${idx === currentLevelIdx ? '#ef4444' : 'rgba(255,255,255,0.08)'}`,
+                      color: idx === currentLevelIdx ? '#f87171' : lvl.status === 'passed' ? '#4ade80' : lvl.status === 'failed' ? '#f87171' : '#52525b',
+                      fontSize: 12, fontWeight: 700, cursor: lvl.status === 'locked' ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {lvl.status === 'passed' ? <CheckCircle2 size={14} /> : lvl.status === 'failed' ? <XCircle size={14} /> : lvl.status === 'locked' ? <Lock size={12} /> : <Unlock size={12} />}
+                    Level {lvl.level}: {lvl.categoryName}
+                  </button>
                 ))}
               </div>
             </div>
-          )}
 
-          {/* Error */}
-          {status === 'error' && (
-            <div style={{
-              background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
-              borderRadius: 12, padding: 20, textAlign: 'center',
-            }}>
-              <XCircle size={24} style={{ color: '#ef4444', marginBottom: 8 }} />
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f87171', marginBottom: 6 }}>Replay Failed</div>
-              <p style={{ fontSize: 12, color: '#7f1d1d', margin: 0 }}>{error}</p>
-            </div>
-          )}
-
-          {/* Not applicable */}
-          {status === 'not-applicable' && (
-            <div style={{
-              background: 'rgba(113,113,122,0.06)', border: '1px solid rgba(113,113,122,0.2)',
-              borderRadius: 12, padding: 20, textAlign: 'center',
-            }}>
-              <CheckCircle size={24} style={{ color: '#22c55e', marginBottom: 8 }} />
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#a1a1aa' }}>Replay Not Applicable</div>
-              <p style={{ fontSize: 12, color: '#52525b', marginTop: 6, margin: 0 }}>
-                Failure Replay only works for Wrong Answer, Runtime Error, and TLE submissions.
-              </p>
-            </div>
-          )}
-
-          {/* No failure found */}
-          {status === 'success' && replay?.noFailureFound && (
-            <div style={{
-              background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)',
-              borderRadius: 14, padding: '24px 20px', textAlign: 'center',
-              animation: 'fadeSlideIn 300ms ease',
-            }}>
-              <CheckCircle size={32} style={{ color: '#22c55e', marginBottom: 12 }} />
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#e4e4e7', marginBottom: 8 }}>
-                No Failure Discovered
+            {/* ── STEP 6: Execution Timeline Stepper ─────────────────────────── */}
+            <div className="card-panel" style={{ padding: '16px 20px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Activity size={14} style={{ color: '#38bdf8' }} /> Execution Timeline & Jump Stepper
               </div>
-              <p style={{ fontSize: 12, color: '#52525b', maxWidth: 320, margin: '0 auto 16px', lineHeight: 1.6 }}>
-                Praxis tested 3,000 candidate inputs against the reference solution and all passed.
-                The failure may be input-specific or constraint-related.
-              </p>
-              <button
-                className="regen-btn"
-                onClick={regenerate}
-                style={{
-                  padding: '9px 20px',
-                  background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
-                  borderRadius: 10, color: '#a78bfa', fontSize: 12, fontWeight: 700,
-                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-                }}
-              >
-                <Shuffle size={12} /> Try Different Seed
-              </button>
-            </div>
-          )}
 
-          {/* ── Success: Counter Example Found ── */}
-          {status === 'success' && ce && (
-            <div style={{ animation: 'fadeSlideIn 300ms ease' }}>
-              {isMobile ? (
-                // Mobile: show card, trace in bottom sheet
-                <>
-                  <CounterExampleCard ce={ce} onViewTrace={() => setTraceOpen(true)} />
-                  <ReplayBottomSheet
-                    isOpen={traceOpen}
-                    onClose={() => setTraceOpen(false)}
-                    title="Execution Trace"
+              <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+                {currentLevel.steps.map((st, idx) => (
+                  <button
+                    key={st.stepIndex}
+                    onClick={() => setCurrentStepIdx(idx)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 10,
+                      background: idx === currentStepIdx ? 'rgba(56, 189, 248, 0.15)' : 'rgba(0,0,0,0.3)',
+                      border: `1px solid ${idx === currentStepIdx ? '#38bdf8' : 'rgba(255,255,255,0.08)'}`,
+                      color: idx === currentStepIdx ? '#38bdf8' : '#a1a1aa',
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0
+                    }}
                   >
-                    {ce.executionTrace.map((step, i) => (
-                      <TraceStep key={step.step} step={step} index={i} />
-                    ))}
-                  </ReplayBottomSheet>
-                </>
-              ) : (
-                // Desktop: side-by-side
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
-                  <CounterExampleCard ce={ce} onViewTrace={() => {}} />
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
+                      #{st.stepIndex}
+                    </span>
+                    Step {st.stepIndex} (Line {st.lineNumber})
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                  {/* Execution Trace panel */}
-                  <div>
-                    <div style={{
-                      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-                      borderRadius: 14, overflow: 'hidden',
-                    }}>
-                      <div style={{
-                        padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                        display: 'flex', alignItems: 'center', gap: 7,
-                      }}>
-                        <Terminal size={13} style={{ color: '#52525b' }} />
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#71717a', letterSpacing: '-0.01em' }}>
-                          Execution Trace
-                        </span>
+            {/* ── STEP 2, 3, 4: Visual Debugger Workspace (Split Code & Variables) ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>
+
+              {/* Code Panel with Line Highlighting */}
+              <div className="card-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Code2 size={18} style={{ color: '#f59e0b' }} />
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f4f4f5' }}>Code Execution</h3>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                    Line {currentStep.lineNumber} Active
+                  </span>
+                </div>
+
+                <div style={{ background: '#000000', borderRadius: 12, padding: 16, flex: 1, fontFamily: "'Fira Code', monospace" }}>
+                  {selectedPreset.code.split('\n').map((lineText, idx) => {
+                    const lineNum = idx + 1;
+                    const isActive = lineNum === currentStep.lineNumber;
+                    return (
+                      <div key={lineNum} className={`code-line ${isActive ? 'active' : ''}`} style={{ display: 'flex', gap: 16 }}>
+                        <span style={{ color: '#52525b', width: 24, textWrap: 'nowrap', userSelect: 'none' }}>{lineNum}</span>
+                        <span style={{ flex: 1 }}>{lineText}</span>
                       </div>
-                      <div style={{ padding: 12 }}>
-                        {ce.executionTrace.map((step, i) => (
-                          <TraceStep key={step.step} step={step} index={i} />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Variable Inspector (VS Code Style) */}
+              <div className="card-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                  <Eye size={18} style={{ color: '#38bdf8' }} />
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f4f4f5' }}>Live Variable Inspector</h3>
+                </div>
+
+                <div style={{ background: '#000000', borderRadius: 12, padding: 16, flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {Object.entries(currentStep.variables).map(([key, val]) => (
+                    <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#a78bfa', fontWeight: 700 }}>{key}</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#4ade80', fontWeight: 800 }}>{String(val)}</span>
+                    </div>
+                  ))}
+
+                  {/* Visual Pointer Indicator for Strings/Arrays */}
+                  {currentStep.pointerPos !== undefined && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', marginBottom: 6 }}>
+                        Pointer Traversal View
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {String(currentStep.variables.s || '').split('').map((char, cIdx) => (
+                          <div key={cIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 6, background: cIdx === currentStep.pointerPos ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${cIdx === currentStep.pointerPos ? '#38bdf8' : 'rgba(255,255,255,0.08)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: cIdx === currentStep.pointerPos ? '#38bdf8' : '#e4e4e7' }}>
+                              {char}
+                            </div>
+                            {cIdx === currentStep.pointerPos && <ArrowUp size={14} style={{ color: '#38bdf8', marginTop: 4 }} />}
+                          </div>
                         ))}
                       </div>
                     </div>
-
-                    {/* Key insight */}
-                    <div style={{
-                      marginTop: 12,
-                      background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.15)',
-                      borderRadius: 12, padding: '12px 14px',
-                      display: 'flex', gap: 8, alignItems: 'flex-start',
-                    }}>
-                      <Lightbulb size={14} style={{ color: '#fbbf24', flexShrink: 0, marginTop: 1 }} />
-                      <div>
-                        <div style={{ fontSize: 10, color: '#a16207', fontWeight: 700, marginBottom: 3, letterSpacing: '0.04em' }}>
-                          KEY INSIGHT
-                        </div>
-                        <p style={{ margin: 0, fontSize: 12, color: '#fbbf24', lineHeight: 1.5 }}>
-                          {ce.aiExplanation.keyInsight}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
-              )}
-
-              {/* Timestamp */}
-              <div style={{
-                marginTop: 16, display: 'flex', alignItems: 'center', gap: 5,
-                color: '#3f3f46', fontSize: 10,
-              }}>
-                <Clock size={10} />
-                Replay generated at {replay?.generatedAt ? new Date(replay.generatedAt).toLocaleTimeString() : '—'} · Seed #{replay?.seed}
               </div>
             </div>
-          )}
-        </div>
+
+            {/* ── STEP 5: AI Observation & Decision Explanation Callout ─────── */}
+            <div className="card-panel" style={{ background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#38bdf8', fontWeight: 800, fontSize: 14, marginBottom: 8 }}>
+                <Brain size={18} /> AI OBSERVATION (Line {currentStep.lineNumber})
+              </div>
+              <p style={{ margin: 0, fontSize: 13, color: '#d4d4d8', lineHeight: 1.6 }}>
+                {currentStep.explanation}
+              </p>
+            </div>
+
+            {/* ── STEP 7 & 10: AI Pause & Active Quiz ─────────────────────────── */}
+            {currentStep.quiz && (
+              <div className="card-panel" style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c084fc', fontWeight: 800, fontSize: 14, marginBottom: 12 }}>
+                  <HelpCircle size={18} /> AI PAUSE & QUESTION: What should happen here?
+                </div>
+                <p style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#f4f4f5' }}>
+                  {currentStep.quiz.question}
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  {currentStep.quiz.options.map((opt, oIdx) => (
+                    <button
+                      key={oIdx}
+                      onClick={() => handleSelectQuizOption(oIdx)}
+                      style={{
+                        padding: '12px 16px', borderRadius: 10,
+                        background: quizAnswer === oIdx ? (isQuizSolved ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)') : 'rgba(0,0,0,0.3)',
+                        border: `1px solid ${quizAnswer === oIdx ? (isQuizSolved ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.08)'}`,
+                        color: quizAnswer === oIdx ? (isQuizSolved ? '#4ade80' : '#f87171') : '#e4e4e7',
+                        fontSize: 13, fontWeight: 700, cursor: 'pointer', textAlign: 'left'
+                      }}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+
+                {quizFeedback && (
+                  <div style={{ fontSize: 13, fontWeight: 600, color: isQuizSolved ? '#4ade80' : '#f87171' }}>
+                    {quizFeedback}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── STEP 11: Evidence-backed Root Cause Confidence ───────────────── */}
+            {level3Failed && (
+              <div className="card-panel" style={{ background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#f87171', fontWeight: 800, fontSize: 14 }}>
+                    <AlertTriangle size={18} /> ROOT CAUSE REVEALED
+                  </div>
+                  <span style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.4)', padding: '4px 12px', borderRadius: 12, fontSize: 12, fontWeight: 800 }}>
+                    {selectedPreset.confidence}% Confidence
+                  </span>
+                </div>
+
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f4f4f5', margin: '0 0 12px' }}>{selectedPreset.rootCause}</h2>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {selectedPreset.evidenceItems.map((ev, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#f87171', fontWeight: 600 }}>
+                      <CheckCircle2 size={14} /> {ev}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 12: Interactive Sandbox Code Editor ─────────────────────── */}
+            {level3Failed && (
+              <div className="card-panel">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                  <Sparkles size={18} style={{ color: '#38bdf8' }} />
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f4f4f5' }}>
+                    Sandbox Code Editor Challenge
+                  </h3>
+                </div>
+
+                <p style={{ fontSize: 13, color: '#a1a1aa', margin: '0 0 14px' }}>
+                  Rewrite or fix the code in the live sandbox editor below and test it against all levels!
+                </p>
+
+                <textarea
+                  value={sandboxCode}
+                  onChange={e => setSandboxCode(e.target.value)}
+                  rows={8}
+                  style={{
+                    width: '100%', background: '#000000', border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 10, color: '#38bdf8', padding: 16, fontFamily: "'Fira Code', monospace",
+                    fontSize: 13, lineHeight: 1.5, outline: 'none', resize: 'vertical', marginBottom: 14
+                  }}
+                />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <button onClick={handleRunSandbox} style={{ padding: '10px 20px', borderRadius: 8, background: '#38bdf8', color: '#09090b', fontSize: 13, fontWeight: 800, border: 'none', cursor: 'pointer' }}>
+                    Run Code & Update Replay
+                  </button>
+
+                  {sandboxValidated && (
+                    <span style={{ color: '#4ade80', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <CheckCircle2 size={16} /> Live code fix accepted! Click Replay All Testcases below.
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 13: Replay All & Debugging Journey Story ───────────────── */}
+            {sandboxValidated && (
+              <div className="card-panel">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ShieldCheck size={18} style={{ color: '#4ade80' }} />
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f4f4f5' }}>Replay All Testcases</h3>
+                  </div>
+
+                  <button onClick={handleReplayAll} disabled={isReplaying} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 8, background: '#22c55e', color: '#fff', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+                    {isReplaying ? <RefreshCw size={14} className="spin-icon" /> : <Play size={14} />} Replay All Testcases
+                  </button>
+                </div>
+
+                <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden', marginBottom: 16 }}>
+                  <div style={{ height: '100%', width: `${(replayProgress / levels.length) * 100}%`, background: '#22c55e', transition: 'width 0.3s ease' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Debugging Journey Summary */}
+            {journeyFinished && (
+              <div className="card-panel" style={{ background: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4ade80', fontWeight: 800, fontSize: 15, marginBottom: 14 }}>
+                  <Sparkles size={18} /> YOUR DEBUGGING JOURNEY STORY
+                </div>
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+                  {['Started', 'Failed', 'Investigated', 'Found Bug', 'Fixed', 'Verified', 'Learned'].map((stepName, idx) => (
+                    <div key={stepName} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                        ✓ {stepName}
+                      </span>
+                      {idx < 6 && <ArrowRight size={14} style={{ color: '#52525b' }} />}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 13, color: '#e4e4e7', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {selectedPreset.learningPoints.map((pt, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Check size={16} style={{ color: '#4ade80' }} /> {pt}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
