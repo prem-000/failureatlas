@@ -8,6 +8,7 @@ import { generatePracticeDigest } from './practiceDigest';
 import { generateDailyMissionDigest } from './dailyMissionDigest';
 import { generateWeeklyDigest } from './weeklyDigest';
 import { generateEngagementDigest } from './engagementDigest';
+import { generateIncompleteSubmissionDigest } from './incompleteSubmissionDigest';
 
 import * as welcomeTemplate from '../email/templates/welcome';
 import * as dailyFailureTemplate from '../email/templates/dailyFailureSummary';
@@ -15,6 +16,10 @@ import * as dailyMissionTemplate from '../email/templates/dailyMission';
 import * as practiceReminderTemplate from '../email/templates/practiceReminder';
 import * as weeklyDigestTemplate from '../email/templates/weeklyDigest';
 import * as engagementTemplate from '../email/templates/engagementReminder';
+import * as passwordResetTemplate from '../email/templates/passwordReset';
+import * as verificationTemplate from '../email/templates/verification';
+import * as incompleteSubmissionTemplate from '../email/templates/incompleteSubmission';
+import type { SendEmailParams } from '../email/types';
 
 export class NotificationService {
   /**
@@ -293,6 +298,49 @@ export class NotificationService {
           break;
         }
 
+        case NotificationType.PASSWORD_RESET: {
+          templateVersion = passwordResetTemplate.TEMPLATE_VERSION;
+          const payload = notif.payload as any;
+          const resetToken = payload?.resetToken || 'demo-reset-token';
+          const data = { name: notif.user.name || undefined, resetToken };
+          subject = '🔒 Reset Your Praxis Password';
+          html = passwordResetTemplate.generateHtml(data);
+          text = passwordResetTemplate.generateText(data);
+          break;
+        }
+
+        case NotificationType.VERIFICATION: {
+          templateVersion = verificationTemplate.TEMPLATE_VERSION;
+          const payload = notif.payload as any;
+          const verificationToken = payload?.verificationToken || 'demo-verification-token';
+          const data = { name: notif.user.name || undefined, verificationToken };
+          subject = '✉️ Verify Your Praxis Email';
+          html = verificationTemplate.generateHtml(data);
+          text = verificationTemplate.generateText(data);
+          break;
+        }
+
+        case NotificationType.INCOMPLETE_SUBMISSION: {
+          templateVersion = incompleteSubmissionTemplate.TEMPLATE_VERSION;
+          const digest = await generateIncompleteSubmissionDigest(notif.userId);
+          if (!digest) {
+            logger.info('ℹ️ No incomplete submissions yesterday for user. Skipping incomplete submission email.');
+            await prisma.notification.update({
+              where: { id: notificationId },
+              data: {
+                status: NotificationStatus.SKIPPED,
+                processingFinishedAt: new Date(),
+                error: 'No incomplete submissions yesterday',
+              },
+            });
+            return false;
+          }
+          subject = 'Continue Your Practice Journey 🚀';
+          html = incompleteSubmissionTemplate.generateHtml(digest);
+          text = incompleteSubmissionTemplate.generateText(digest);
+          break;
+        }
+
         default:
           throw new Error(`Unsupported NotificationType: ${notif.type}`);
       }
@@ -346,6 +394,79 @@ export class NotificationService {
       });
       return false;
     }
+  }
+
+  // ─── Public Convenience Methods ─────────────────────────────────────────────
+
+  public async sendEmail(params: SendEmailParams) {
+    return emailService.sendEmail(params);
+  }
+
+  public async sendWelcomeEmail(target: string | { userId: string; email?: string; name?: string }) {
+    const userId = typeof target === 'string' ? target : target.userId;
+    return this.createAndProcess({
+      userId,
+      type: NotificationType.WELCOME,
+      category: NotificationCategory.WELCOME,
+      title: 'Welcome to Praxis 🚀',
+      dedupeKey: `welcome-${userId}`,
+    });
+  }
+
+  public async sendPasswordResetEmail(target: string, resetToken: string) {
+    let userId = target;
+    if (target.includes('@')) {
+      const user = await prisma.user.findUnique({ where: { email: target } });
+      if (!user) throw new Error(`User not found with email: ${target}`);
+      userId = user.id;
+    }
+    return this.createAndProcess({
+      userId,
+      type: NotificationType.PASSWORD_RESET,
+      category: NotificationCategory.SYSTEM,
+      title: '🔒 Reset Your Praxis Password',
+      payload: { resetToken },
+      dedupeKey: `password-reset-${userId}-${Date.now()}`,
+    });
+  }
+
+  public async sendVerificationEmail(target: string, verificationToken: string) {
+    let userId = target;
+    if (target.includes('@')) {
+      const user = await prisma.user.findUnique({ where: { email: target } });
+      if (!user) throw new Error(`User not found with email: ${target}`);
+      userId = user.id;
+    }
+    return this.createAndProcess({
+      userId,
+      type: NotificationType.VERIFICATION,
+      category: NotificationCategory.SYSTEM,
+      title: '✉️ Verify Your Praxis Email',
+      payload: { verificationToken },
+      dedupeKey: `verification-${userId}-${Date.now()}`,
+    });
+  }
+
+  public async sendDailyReminder(userId: string) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return this.createAndProcess({
+      userId,
+      type: NotificationType.PRACTICE_REMINDER,
+      category: NotificationCategory.REMINDER,
+      title: '🧠 Time To Practice',
+      dedupeKey: `daily-reminder-${userId}-${todayStr}`,
+    });
+  }
+
+  public async sendIncompleteSubmissionReminder(userId: string) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return this.createAndProcess({
+      userId,
+      type: NotificationType.INCOMPLETE_SUBMISSION,
+      category: NotificationCategory.REMINDER,
+      title: 'Continue Your Practice Journey 🚀',
+      dedupeKey: `incomplete-submission-${userId}-${todayStr}`,
+    });
   }
 }
 

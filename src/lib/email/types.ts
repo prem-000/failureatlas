@@ -1,10 +1,12 @@
-export type NotificationType =
-  | 'WELCOME'
-  | 'FAILURE_SUMMARY'
-  | 'DAILY_MISSION'
-  | 'PRACTICE_REMINDER'
-  | 'WEEKLY_DIGEST'
-  | 'ENGAGEMENT_REMINDER';
+import type {
+  NotificationType as PrismaNotificationType,
+  NotificationCategory as PrismaNotificationCategory,
+  NotificationStatus as PrismaNotificationStatus,
+} from '@prisma/client';
+
+export type NotificationType = PrismaNotificationType;
+export type NotificationCategory = PrismaNotificationCategory;
+export type NotificationStatus = PrismaNotificationStatus;
 
 export const NotificationType = {
   WELCOME: 'WELCOME' as NotificationType,
@@ -13,9 +15,10 @@ export const NotificationType = {
   PRACTICE_REMINDER: 'PRACTICE_REMINDER' as NotificationType,
   WEEKLY_DIGEST: 'WEEKLY_DIGEST' as NotificationType,
   ENGAGEMENT_REMINDER: 'ENGAGEMENT_REMINDER' as NotificationType,
+  PASSWORD_RESET: 'PASSWORD_RESET' as NotificationType,
+  VERIFICATION: 'VERIFICATION' as NotificationType,
+  INCOMPLETE_SUBMISSION: 'INCOMPLETE_SUBMISSION' as NotificationType,
 };
-
-export type NotificationCategory = 'SYSTEM' | 'LEARNING' | 'REMINDER' | 'REPORT' | 'WELCOME';
 
 export const NotificationCategory = {
   SYSTEM: 'SYSTEM' as NotificationCategory,
@@ -24,8 +27,6 @@ export const NotificationCategory = {
   REPORT: 'REPORT' as NotificationCategory,
   WELCOME: 'WELCOME' as NotificationCategory,
 };
-
-export type NotificationStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED' | 'RETRYING' | 'SKIPPED';
 
 export const NotificationStatus = {
   PENDING: 'PENDING' as NotificationStatus,

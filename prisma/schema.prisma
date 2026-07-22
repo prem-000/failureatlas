@@ -1,6 +1,5 @@
 generator client {
   provider      = "prisma-client-js"
-  output        = "../node_modules/.prisma/client"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
@@ -554,6 +553,9 @@ enum NotificationType {
   PRACTICE_REMINDER
   WEEKLY_DIGEST
   ENGAGEMENT_REMINDER
+  PASSWORD_RESET
+  VERIFICATION
+  INCOMPLETE_SUBMISSION
 }
 
 enum NotificationCategory {

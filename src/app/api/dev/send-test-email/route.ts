@@ -156,6 +156,39 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case NotificationType.PASSWORD_RESET: {
+        const passwordResetTemplate = await import('@/lib/email/templates/passwordReset');
+        category = NotificationCategory.SYSTEM;
+        templateVersion = passwordResetTemplate.TEMPLATE_VERSION;
+        const sampleData = { name: 'Developer', resetToken: 'demo-reset-token-123' };
+        subject = '🔒 Reset Your Praxis Password';
+        html = passwordResetTemplate.generateHtml(sampleData);
+        text = passwordResetTemplate.generateText(sampleData);
+        break;
+      }
+
+      case NotificationType.VERIFICATION: {
+        const verificationTemplate = await import('@/lib/email/templates/verification');
+        category = NotificationCategory.SYSTEM;
+        templateVersion = verificationTemplate.TEMPLATE_VERSION;
+        const sampleData = { name: 'Developer', verificationToken: 'demo-verify-token-456' };
+        subject = '✉️ Verify Your Praxis Email';
+        html = verificationTemplate.generateHtml(sampleData);
+        text = verificationTemplate.generateText(sampleData);
+        break;
+      }
+
+      case NotificationType.INCOMPLETE_SUBMISSION: {
+        const incompleteSubmissionTemplate = await import('@/lib/email/templates/incompleteSubmission');
+        category = NotificationCategory.REMINDER;
+        templateVersion = incompleteSubmissionTemplate.TEMPLATE_VERSION;
+        const sampleData = { userName: 'Developer', problemCount: 2 };
+        subject = 'Continue Your Practice Journey 🚀';
+        html = incompleteSubmissionTemplate.generateHtml(sampleData);
+        text = incompleteSubmissionTemplate.generateText(sampleData);
+        break;
+      }
+
       default:
         return NextResponse.json({ success: false, error: `Invalid email type: ${type}` }, { status: 400 });
     }
