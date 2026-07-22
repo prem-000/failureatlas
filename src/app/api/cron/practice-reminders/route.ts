@@ -8,37 +8,34 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    logger.info('⏰ Daily Mission Cron Job triggered (07:30 AM default).');
+    logger.info('⏰ Practice Reminder Cron Job triggered (08:00 AM default).');
 
-    // Fetch all active users
     const users = await prisma.user.findMany();
-    logger.info(`👥 Found ${users.length} total users for daily mission evaluation.`);
-
     const todayStr = new Date().toISOString().split('T')[0];
     const results = [];
 
     for (const user of users) {
       try {
-        const dedupeKey = `daily-mission-${user.id}-${todayStr}`;
+        const dedupeKey = `practice-reminder-${user.id}-${todayStr}`;
         const res = await notificationService.createAndProcess({
           userId: user.id,
-          type: NotificationType.DAILY_MISSION,
-          category: NotificationCategory.LEARNING,
-          title: "🎯 Today's Praxis Mission",
+          type: NotificationType.PRACTICE_REMINDER,
+          category: NotificationCategory.REMINDER,
+          title: '🧠 Time To Practice',
           scheduledAt: new Date(),
           dedupeKey,
         });
 
         results.push({ userId: user.id, email: user.email, ...res });
       } catch (userErr: any) {
-        logger.error(`❌ Failed daily mission for user ${user.id}:`, { error: userErr.message });
+        logger.error(`❌ Failed practice reminder for user ${user.id}:`, { error: userErr.message });
         results.push({ userId: user.id, email: user.email, error: userErr.message });
       }
     }
 
     return NextResponse.json({ success: true, processedCount: users.length, results });
   } catch (error: any) {
-    logger.error('❌ Daily Mission Cron execution failed:', { error: error.message });
+    logger.error('❌ Practice Reminder Cron execution failed:', { error: error.message });
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

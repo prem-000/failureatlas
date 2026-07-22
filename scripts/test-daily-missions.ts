@@ -1,6 +1,6 @@
 import { prisma } from '../src/lib/db/prisma';
-import { generateDailyMission } from '../src/lib/missions/generator';
-import { compileMissionEmailHtml } from '../src/lib/email/resend';
+import { generateHtml } from '../src/lib/email/templates/dailyMission';
+import { generateDailyMissionDigest } from '../src/lib/notifications/dailyMissionDigest';
 
 async function runTest() {
   console.log('🧪 Starting Daily Mission Coach Test Workflow...');
@@ -19,6 +19,11 @@ async function runTest() {
   });
 
   if (!user) {
+    console.log('⚠️ No Google OAuth test user found. Fetching first available user...');
+    user = await prisma.user.findFirst();
+  }
+
+  if (!user) {
     console.log('👤 Creating a Google OAuth test user...');
     user = await prisma.user.create({
       data: {
@@ -30,95 +35,17 @@ async function runTest() {
       }
     });
   } else {
-    console.log(`👤 Found existing Google user: ${user.email} (id=${user.id})`);
+    console.log(`👤 Found existing user: ${user.email} (id=${user.id})`);
   }
 
-  // 3. Ensure some failure history exists for realistic risk and hints calculation
-  const testProblem = await prisma.problem.findFirst({ where: { slug: 'two-sum' } });
-  if (testProblem) {
-    // Add a couple of failures
-    const existingFailure = await prisma.submissionEvent.findFirst({
-      where: { userId: user.id, problemId: testProblem.id, NOT: { status: 'Accepted' } }
-    });
-
-    if (!existingFailure) {
-      console.log('📊 Seeding dummy failures to verify AI hint / weakness graph calculation...');
-      
-      const boundaryWeakness = await prisma.systemicWeakness.upsert({
-        where: { name: 'boundary-condition-error' },
-        update: {},
-        create: {
-          name: 'boundary-condition-error',
-          type: 'edge-case-reasoning',
-          severity: 'high',
-          confidence: 0.85,
-          frequency: 5,
-          riskIndex: 7.5,
-          pageRankScore: 0.42
-        }
-      });
-
-      const submission = await prisma.submissionEvent.create({
-        data: {
-          userId: user.id,
-          problemId: testProblem.id,
-          eventId: `test-event-${Date.now()}`,
-          sessionId: 'test-session',
-          timestamp: new Date(),
-          status: 'Wrong Answer',
-          language: 'python3',
-          code: 'def twoSum(nums, target): return [0, 0]',
-          timeSpent: 300,
-          attemptNumber: 1,
-          testCasesPassed: 10,
-          totalTestCases: 50,
-          failedTestCase: '[2,7,11,15]\nTarget: 9',
-          rapidSubmission: false
-        }
-      });
-
-      const evidence = await prisma.evidence.create({
-        data: {
-          submissionId: submission.id,
-          type: 'code_diff',
-          description: 'Boundary error checking empty arrays',
-          confidence: 0.9,
-          source: 'ast_diff'
-        }
-      });
-
-      await prisma.rootCauseHypothesis.create({
-        data: {
-          evidenceId: evidence.id,
-          rootCauseType: 'boundary-condition-error',
-          name: 'Off-by-one boundary error',
-          confidence: 0.95
-        }
-      });
-
-      await prisma.diagnosisResult.create({
-        data: {
-          userId: user.id,
-          submissionId: submission.id,
-          primaryWeaknessId: boundaryWeakness.id,
-          progressMetrics: {
-            estimatedRecoveryTime: '2 weeks'
-          }
-        }
-      });
-    }
-  }
-
-  // 4. Generate the daily mission!
-  console.log('⚡ Generating daily mission...');
   try {
-    const mission = await generateDailyMission(user.id);
+    const digestData = await generateDailyMissionDigest(user.id);
     console.log('\n👑 Generated Mission Results:');
-    console.log(JSON.stringify(mission, null, 2));
+    console.log(JSON.stringify(digestData, null, 2));
 
     // Compile email HTML to verify it renders without errors
     console.log('\n✉️ Compiling preview HTML email...');
-    const html = compileMissionEmailHtml(1, mission.primaryProblem.stage, 45, mission);
+    const html = generateHtml(digestData);
     console.log(`✅ Email HTML compiled successfully. Size: ${html.length} bytes.`);
 
   } catch (error) {

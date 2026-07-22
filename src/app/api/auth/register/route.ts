@@ -46,9 +46,38 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword, name },
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        notificationPreference: {
+          create: {
+            dailyMission: true,
+            practiceReminder: true,
+            failureSummary: true,
+            weeklyDigest: true,
+            timezone: 'UTC',
+          },
+        },
+      },
       select: { id: true, email: true, name: true, createdAt: true },
     });
+
+    // Trigger Welcome notification asynchronously
+    try {
+      const { notificationService } = await import('@/lib/notifications/notification.service');
+      const { NotificationType, NotificationCategory } = await import('@/lib/email/types');
+      notificationService.createAndProcess({
+        userId: user.id,
+        type: NotificationType.WELCOME,
+        category: NotificationCategory.WELCOME,
+        title: 'Welcome to Praxis 🚀',
+        scheduledAt: new Date(),
+        dedupeKey: `welcome-${user.id}`,
+      }).catch(err => console.error('[Register] Failed to send welcome notification:', err));
+    } catch (e) {
+      console.error('[Register] Error initializing notification service:', e);
+    }
 
     const token = await generateToken({ userId: user.id, email: user.email });
 

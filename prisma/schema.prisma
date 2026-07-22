@@ -1,5 +1,6 @@
 generator client {
   provider      = "prisma-client-js"
+  output        = "../node_modules/.prisma/client"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
@@ -29,6 +30,9 @@ model User {
   practiceReviews  PracticeReviewState[]
   practiceSessions PracticeSession[]
   practiceExports  PracticeExport[]
+  notifications          Notification[]
+  emailLogs              EmailLog[]
+  notificationPreference NotificationPreference?
 
   @@map("users")
 }
@@ -539,4 +543,106 @@ model PracticeExport {
 
   @@index([userId])
   @@map("practice_exports")
+}
+
+// ─── Notification & Email Dispatch System ────────────────────────────────────
+
+enum NotificationType {
+  WELCOME
+  FAILURE_SUMMARY
+  DAILY_MISSION
+  PRACTICE_REMINDER
+  WEEKLY_DIGEST
+  ENGAGEMENT_REMINDER
+}
+
+enum NotificationCategory {
+  SYSTEM
+  LEARNING
+  REMINDER
+  REPORT
+  WELCOME
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  RETRYING
+  SKIPPED
+}
+
+model Notification {
+  id                   String             @id @default(cuid())
+  userId               String
+  type                 NotificationType
+  category             NotificationCategory
+  title                String
+  payload              Json               @default("{}")
+  version              Int                @default(1)
+  scheduledAt          DateTime
+  processingStartedAt  DateTime?
+  processingFinishedAt DateTime?
+  sentAt               DateTime?
+  status               NotificationStatus @default(PENDING)
+  error                String?
+  retryCount           Int                @default(0)
+  dedupeKey            String?            @unique
+  createdAt            DateTime           @default(now())
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs EmailLog[]
+
+  @@unique([userId, type, scheduledAt])
+  @@index([userId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("notifications")
+}
+
+model EmailLog {
+  id                String               @id @default(cuid())
+  userId            String?
+  notificationId    String?
+  recipient         String
+  emailType         NotificationType
+  category          NotificationCategory
+  subject           String
+  status            NotificationStatus
+  providerMessageId String?
+  failedReason      String?
+  providerLatency   Int?
+  retryCount        Int                  @default(0)
+  templateVersion   Int
+  createdAt         DateTime             @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notification Notification? @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([notificationId])
+  @@index([recipient])
+  @@index([createdAt])
+  @@map("email_logs")
+}
+
+model NotificationPreference {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  dailyMission       Boolean  @default(true)
+  practiceReminder   Boolean  @default(true)
+  failureSummary     Boolean  @default(true)
+  weeklyDigest       Boolean  @default(true)
+  engagementReminder Boolean  @default(true)
+  marketing          Boolean  @default(false)
+  timezone           String   @default("UTC")
+  quietHoursStart    String   @default("22:00") // Local-time HH:mm
+  quietHoursEnd      String   @default("07:00") // Local-time HH:mm
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
