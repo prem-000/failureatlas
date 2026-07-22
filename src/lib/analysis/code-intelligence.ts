@@ -499,3 +499,64 @@ export function buildMLFeatures(opts: {
     success_level: opts.successLevel,
   };
 }
+
+// ─── Computed Category Coverage ───────────────────────────────────────────────
+
+export interface CategoryCheck {
+  name: string;
+  covered: boolean;
+}
+
+export interface ComputedCategoryCoverage {
+  categories: CategoryCheck[];
+  coveredCount: number;
+  totalCategories: number;
+  coveragePercent: number;
+}
+
+export function computeCategoryCoverage(
+  cases: Array<{ category?: string; failureMode?: string; purpose?: string; targets?: string[] }>
+): ComputedCategoryCoverage {
+  const STANDARD_CATEGORIES = [
+    'Boundary',
+    'Duplicates',
+    'Empty Input',
+    'Maximum Constraints',
+    'Overflow',
+    'Zero State',
+    'Off-by-One',
+    'Negative Values',
+  ];
+
+  const categoryMatches = new Set<string>();
+
+  for (const c of cases) {
+    const text = `${c.category || ''} ${c.failureMode || ''} ${c.purpose || ''} ${(c.targets || []).join(' ')}`.toLowerCase();
+
+    if (/boundary|minimum|min bound|base case/i.test(text)) categoryMatches.add('Boundary');
+    if (/duplicate|clustered|identical|freq/i.test(text)) categoryMatches.add('Duplicates');
+    if (/empty|zero length|null|head/i.test(text)) categoryMatches.add('Empty Input');
+    if (/maximum|max constraint|stress|large|10\^5|10\^6|load/i.test(text)) categoryMatches.add('Maximum Constraints');
+    if (/overflow|int max|large value|clipping|cancellation/i.test(text)) categoryMatches.add('Overflow');
+    if (/zero state|zero|neutral/i.test(text)) categoryMatches.add('Zero State');
+    if (/off-by-one|loop boundary|termination|crossover/i.test(text)) categoryMatches.add('Off-by-One');
+    if (/negative|sign|minus/i.test(text)) categoryMatches.add('Negative Values');
+  }
+
+  const categories: CategoryCheck[] = STANDARD_CATEGORIES.map(name => ({
+    name,
+    covered: categoryMatches.has(name),
+  }));
+
+  const coveredCount = categories.filter(c => c.covered).length;
+  const totalCategories = STANDARD_CATEGORIES.length;
+  const coveragePercent = Math.round((coveredCount / totalCategories) * 100);
+
+  return {
+    categories,
+    coveredCount,
+    totalCategories,
+    coveragePercent,
+  };
+}
+

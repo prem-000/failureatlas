@@ -14,13 +14,13 @@ import {
   NeuralProbeIcon,
   FractureMatrixIcon,
   BoundaryFieldIcon,
-  SyntheticCoreIcon,
 } from './AdversarialIcons';
 
 import { HiddenTestsTab } from './AdversarialTestLabCard/HiddenTestsTab';
 import { BreakMySolutionTab } from './AdversarialTestLabCard/BreakMySolutionTab';
 import { ConstraintsTab } from './AdversarialTestLabCard/ConstraintsTab';
-import { AiGeneratedTab, AttackLabTab } from './AdversarialTestLabCard/AiAttackTab';
+import { AttackLabTab } from './AdversarialTestLabCard/AiAttackTab';
+import { TargetsMatrix } from './AdversarialTestLabCard/TargetsMatrix';
 
 interface Props {
   data: AdversarialTestLab;
@@ -28,7 +28,7 @@ interface Props {
   submissionId?: string;
 }
 
-type TabType = 'hidden' | 'break' | 'constraints' | 'ai' | 'attack';
+type TabType = 'hidden' | 'break' | 'constraints' | 'attack' | 'matrix';
 
 export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('hidden');
@@ -60,6 +60,7 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
           body: JSON.stringify({
             problemSlug,
             submissionId,
+            mode: 'more',
             difficultyStage
           })
         }
@@ -69,14 +70,14 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
         setDifficultyStage(res.data.difficultyStage);
       }
     } catch (err) {
-      console.error('Failed to generate tests:', err);
+      console.error('Failed to generate hidden judge tests:', err);
     } finally {
       setLoadingGenerated(false);
     }
   };
 
   const handleGenerateHarder = async () => {
-    const nextStage = difficultyStage >= 5 ? 1 : difficultyStage + 1;
+    const nextStage = difficultyStage >= 5 ? 4 : difficultyStage + 1;
     setDifficultyStage(nextStage);
     setActiveTab('attack');
     setLoadingGenerated(true);
@@ -88,6 +89,7 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
           body: JSON.stringify({
             problemSlug,
             submissionId,
+            mode: 'harder',
             difficultyStage: nextStage
           })
         }
@@ -97,7 +99,7 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
         setDifficultyStage(res.data.difficultyStage);
       }
     } catch (err) {
-      console.error('Failed to generate harder tests:', err);
+      console.error('Failed to generate adversarial judge tests:', err);
     } finally {
       setLoadingGenerated(false);
     }
@@ -107,7 +109,6 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
     hiddenTests = [],
     breakMySolution = [],
     constraintExtremes = { tests: [], metrics: { cpuImpact: 'N/A', memoryImpact: 'N/A', complexitySafety: 'N/A' } },
-    aiGeneratedCases = [],
     coverageIntelligence = {
       hiddenTestsSurvived: 0,
       potentialFailureModesAvoided: 0,
@@ -376,25 +377,7 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
             </span>
           </button>
 
-          {/* Tab 4 */}
-          <button
-            ref={el => { tabRefs.current['ai'] = el; }}
-            onClick={() => setActiveTab('ai')}
-            className={`secondary-nav-tab compact ${activeTab === 'ai' ? 'active' : ''}`}
-            style={{
-              '--active-bg': 'rgba(59, 130, 246, 0.08)',
-              '--active-border': colors.borderActiveBlue,
-              '--active-color': colors.blue,
-            } as React.CSSProperties}
-          >
-            <SyntheticCoreIcon size={14} className="hidden sm:inline-block" style={{ color: activeTab === 'ai' ? colors.blue : '#71717a', marginRight: 4 }} />
-            <span>
-              <span className="sm:hidden">{activeTab === 'ai' ? '← AI Judge →' : 'AI Judge'}</span>
-              <span className="hidden sm:inline">AI JUDGE RECONSTRUCTION</span>
-            </span>
-          </button>
-
-          {/* Tab 5 (Attack Lab) */}
+          {/* Tab 4 (Attack Lab) */}
           {(generatedTests.length > 0 || loadingGenerated) && (
             <button
               ref={el => { tabRefs.current['attack'] = el; }}
@@ -413,6 +396,24 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
               </span>
             </button>
           )}
+
+          {/* Tab 5 (Targets Matrix) */}
+          <button
+            ref={el => { tabRefs.current['matrix'] = el; }}
+            onClick={() => setActiveTab('matrix')}
+            className={`secondary-nav-tab compact ${activeTab === 'matrix' ? 'active' : ''}`}
+            style={{
+              '--active-bg': 'rgba(16, 185, 129, 0.08)',
+              '--active-border': 'rgba(16, 185, 129, 0.3)',
+              '--active-color': '#10b981',
+            } as React.CSSProperties}
+          >
+            <span className="hidden sm:inline-block" style={{ fontSize: 13, marginRight: 4 }}>🎯</span>
+            <span>
+              <span className="sm:hidden">{activeTab === 'matrix' ? '← Matrix →' : 'Matrix'}</span>
+              <span className="hidden sm:inline">TARGETS MATRIX</span>
+            </span>
+          </button>
         </div>
       </div>
 
@@ -457,7 +458,7 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
               cursor: 'pointer',
             }}
           >
-            ⚡ Generate Harder Tests
+            ⚡ Generate Adversarial Judge Tests
           </button>
           <button
             onClick={handleGenerateMore}
@@ -474,7 +475,7 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
               cursor: 'pointer',
             }}
           >
-            💥 Generate More Tests
+            💥 Generate Hidden Judge Tests
           </button>
         </div>
       </div>
@@ -497,12 +498,7 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
           <ConstraintsTab constraintExtremes={constraintExtremes} colors={colors} />
         )}
 
-        {/* 4. AI Generated Cases Content */}
-        {activeTab === 'ai' && (
-          <AiGeneratedTab aiGeneratedCases={aiGeneratedCases} colors={colors} />
-        )}
-
-        {/* 5. Attack Lab Content */}
+        {/* 4. Attack Lab Content */}
         {activeTab === 'attack' && (
           <AttackLabTab
             loadingGenerated={loadingGenerated}
@@ -510,6 +506,16 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
             difficultyStage={difficultyStage}
             colors={colors}
           />
+        )}
+
+        {/* 5. Targets Matrix Content */}
+        {activeTab === 'matrix' && (
+          <div style={{ width: '100%', gridColumn: '1 / -1' }}>
+            <TargetsMatrix
+              cases={generatedTests.length > 0 ? generatedTests : hiddenTests}
+              colors={colors}
+            />
+          </div>
         )}
 
       </div>

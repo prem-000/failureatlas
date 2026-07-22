@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { BehaviorInsightPanel } from '@/components/intelligence/BehaviorInsightPanel';
 import { SuccessInsightPanel } from '@/components/intelligence/SuccessInsightPanel';
+import { AiJudgeRepairPanel } from '@/components/intelligence/AiJudgeRepairPanel';
 import { MobileBottomSheet } from '@/components/ui/MobileBottomSheet';
 import {
   Menu,
@@ -154,16 +155,27 @@ export default function ProblemDetailPage() {
   const sectionIds = useMemo(() => {
     if (!allData.length) return [];
     const isAccepted = allData[0].submission.status === 'Accepted';
+    const isWrongAnswer = allData[0].submission.status === 'Wrong Answer';
     const ids: string[] = [];
-    if (isAccepted) ids.push('success');
+    if (isAccepted) {
+      ids.push('success', 'timeline');
+      return ids;
+    }
+    if (isWrongAnswer) {
+      ids.push('repair');
+      const evidences = allData.flatMap(d => d.evidences);
+      if (evidences.length > 0) ids.push('evidence');
+      ids.push('timeline');
+      return ids;
+    }
     ids.push('timeline');
     const evidences = allData.flatMap(d => d.evidences);
-    if (!isAccepted && evidences.length > 0) ids.push('evidence');
+    if (evidences.length > 0) ids.push('evidence');
     const hypotheses = allData.flatMap(d => d.rootCauseHypotheses);
-    if (hypotheses.length > 0 && !isAccepted) ids.push('root-cause');
+    if (hypotheses.length > 0) ids.push('root-cause');
     const diag = allData.find(d => d.diagnosis)?.diagnosis;
-    if (diag?.primaryWeakness && !isAccepted) ids.push('growth');
-    if (diag?.recommendations?.length && !isAccepted) ids.push('practice');
+    if (diag?.primaryWeakness) ids.push('growth');
+    if (diag?.recommendations?.length) ids.push('practice');
     return ids;
   }, [allData]);
 
@@ -172,9 +184,25 @@ export default function ProblemDetailPage() {
     if (!allData.length) return [];
     const latest = allData[0];
     const isLatestAccepted = latest.submission.status === 'Accepted';
+    const isLatestWrongAnswer = latest.submission.status === 'Wrong Answer';
     const latestDiagnosis = allData.find(d => d.diagnosis)?.diagnosis;
     const allHypotheses = allData.flatMap(d => d.rootCauseHypotheses);
     const allEvidences = allData.flatMap(d => d.evidences);
+
+    if (isLatestAccepted) {
+      return [
+        { id: 'success', label: 'Success Intelligence', accent: '#22c55e' },
+        { id: 'timeline', label: 'Attempt Timeline', accent: '#3b82f6' }
+      ];
+    }
+
+    if (isLatestWrongAnswer) {
+      return [
+        { id: 'repair', label: 'AI Judge Repair', accent: '#ef4444' },
+        ...(allEvidences.length > 0 ? [{ id: 'evidence', label: 'Evidence Collected', accent: '#f59e0b' }] : []),
+        { id: 'timeline', label: 'Attempt Timeline', accent: '#3b82f6' }
+      ];
+    }
 
     const hypothesisMap = new Map<string, Hypothesis>();
     for (const h of allHypotheses) {
@@ -184,11 +212,10 @@ export default function ProblemDetailPage() {
     const topHypotheses = Array.from(hypothesisMap.values()).sort((a, b) => b.confidence - a.confidence).slice(0, 6);
 
     return [
-      ...(isLatestAccepted ? [{ id: 'success', label: 'Success Intelligence', accent: '#22c55e' }] : []),
-      ...(latestDiagnosis?.primaryWeakness && !isLatestAccepted ? [{ id: 'growth', label: 'Primary Growth Area', accent: '#a855f7' }] : []),
-      ...(topHypotheses.length > 0 && !isLatestAccepted ? [{ id: 'root-cause', label: 'Root Cause Analysis', accent: '#ff5f52' }] : []),
-      ...(!isLatestAccepted && allEvidences.length > 0 ? [{ id: 'evidence', label: 'Evidence Collected', accent: '#f59e0b' }] : []),
-      ...(latestDiagnosis?.recommendations?.length && !isLatestAccepted ? [{ id: 'practice', label: 'Targeted Practice', accent: '#22c55e' }] : []),
+      ...(latestDiagnosis?.primaryWeakness ? [{ id: 'growth', label: 'Primary Growth Area', accent: '#a855f7' }] : []),
+      ...(topHypotheses.length > 0 ? [{ id: 'root-cause', label: 'Root Cause Analysis', accent: '#ff5f52' }] : []),
+      ...(allEvidences.length > 0 ? [{ id: 'evidence', label: 'Evidence Collected', accent: '#f59e0b' }] : []),
+      ...(latestDiagnosis?.recommendations?.length ? [{ id: 'practice', label: 'Targeted Practice', accent: '#22c55e' }] : []),
       { id: 'timeline', label: 'Attempt Timeline', accent: '#3b82f6' }
     ];
   }, [allData]);
@@ -249,11 +276,9 @@ export default function ProblemDetailPage() {
     if (!existing || h.confidence > existing.confidence) hypothesisMap.set(h.rootCauseType, h);
   }
   const topHypotheses = Array.from(hypothesisMap.values()).sort((a, b) => b.confidence - a.confidence).slice(0, 6);
-
   const isLatestAccepted = latest.submission.status === 'Accepted';
+  const isLatestWrongAnswer = latest.submission.status === 'Wrong Answer';
   const latestEventId = latest.submission.eventId;
-
-  // Section references already computed eagerly above
 
   // ── Bottom sheet nav content ──────────────────────────────────────────────────
   const menuSheetContent = (
@@ -338,6 +363,14 @@ export default function ProblemDetailPage() {
                       ✓ Accepted
                     </span>
                   )}
+                  {isLatestWrongAnswer && (
+                    <span className="compact" style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6,
+                      color: '#ef4444', background: '#450a0a', border: '1px solid #991b1b', flexShrink: 0,
+                    }}>
+                      ✖ Wrong Answer
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {(problem.topics || []).map(t => (
@@ -393,9 +426,49 @@ export default function ProblemDetailPage() {
                 </SectionCard>
               </div>
             </>
+          ) : isLatestWrongAnswer ? (
+            <>
+              {/* AI Judge Repair Panel for Wrong Answer Submissions */}
+              <div id={`section-repair`} className="analysis-section-anchor w-full min-w-0">
+                <AiJudgeRepairPanel submissionId={latestEventId} problemSlug={slug} problemTitle={problem.title} />
+              </div>
+
+              {allEvidences.length > 0 && (
+                <div id={`section-evidence`} className="analysis-section-anchor w-full min-w-0">
+                  <SectionCard title="Evidence Collected" accent="#f59e0b">
+                    <div className="p-4 sm:p-5 flex flex-col gap-3">
+                      {allEvidences.slice(0, 8).map(ev => (
+                        <div key={ev.id} style={{ background: '#141414', borderRadius: 8, padding: '10px 14px', border: '1px solid #1f1f1f' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+                              color: EVIDENCE_TYPE_COLORS[ev.type] || '#71717a',
+                              background: `${EVIDENCE_TYPE_COLORS[ev.type] || '#71717a'}22`,
+                              letterSpacing: '0.06em',
+                            }}>
+                              {ev.type.replace('_', ' ').toUpperCase()}
+                            </span>
+                            <span style={{ fontSize: 10, color: '#52525b' }}>{ev.source}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.5, marginBottom: 6 }}>{ev.description}</div>
+                          <ConfidenceBar value={ev.confidence} color={EVIDENCE_TYPE_COLORS[ev.type] || '#71717a'} />
+                        </div>
+                      ))}
+                    </div>
+                  </SectionCard>
+                </div>
+              )}
+
+              {/* Attempt Timeline */}
+              <div id={`section-timeline`} className="analysis-section-anchor w-full min-w-0">
+                <SectionCard title="Attempt Timeline" accent="#3b82f6">
+                  <AttemptTimeline submissions={allData} />
+                </SectionCard>
+              </div>
+            </>
           ) : (
             <>
-              {/* Failed Solution Layout: 2-column grid on larger screens, stacks on mobile */}
+              {/* Other Failed Solution Layout */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start">
                 <div className="flex flex-col gap-6 w-full min-w-0">
                   {latestDiagnosis?.primaryWeakness && (

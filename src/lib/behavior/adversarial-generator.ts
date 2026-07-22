@@ -1,5 +1,8 @@
 import type { AdversarialTestLab } from '@/types';
 import { groqClient } from '../api/groq-client';
+import { extractStructuralEvidence } from '../analysis/structural-analyzer';
+import { computeCategoryCoverage } from '../analysis/code-intelligence';
+import { verifyTestSuite } from '../analysis/test-verifier';
 
 // Pattern-specific fallback generators to ensure rich, realistic data even when Groq is unavailable
 function getFallbackAdversarialTestLab(
@@ -631,24 +634,39 @@ export async function generateAdversarialTestLab(
 ): Promise<AdversarialTestLab> {
   const hasKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_1;
 
+  // Extract structural evidence with problem context & fingerprint confidence scores
+  const evidence = extractStructuralEvidence({
+    code,
+    problemTitle,
+    problemSlug,
+  });
+
   if (!hasKey || hasKey === 'your_groq_key_here') {
     console.log('⚠️ No GROQ API key configured. Falling back to pattern templates.');
-    return getFallbackAdversarialTestLab(problemTitle, patternSlug, code);
+    const fallback = getFallbackAdversarialTestLab(problemTitle, patternSlug, code);
+    // Verify fallback outputs
+    fallback.aiGeneratedCases = verifyTestSuite(fallback.aiGeneratedCases, code, patternSlug);
+    return fallback;
   }
 
   const prompt = `You are an expert Competitive Programming Problem Setter (like those at LeetCode, Codeforces, HackerRank, and AtCoder).
-Your task is to RECONSTRUCT THE MOST PROBABLE HIDDEN JUDGE SUITE for a problem based on its constraints and the user's submitted solution.
+Your task is to RECONSTRUCT THE MOST PROBABLE HIDDEN JUDGE SUITE for a problem based on its problem context, constraints, and the user's submitted solution.
 
 Follow this exact reasoning pipeline before generating any cases:
-1. READ PROBLEM CONSTRAINTS: Understand input/output limits, memory limits, and expected time/space complexity.
-2. INFER USER STRATEGY: Analyze the user's submitted code and infer their exact algorithmic approach (e.g. Binary Search, Floyd's Cycle, Trie, DP, Sliding Window, Graph DFS/BFS, Prefix Sum, Two Pointer, Greedy).
-3. IDENTIFY COMMON INCORRECT IMPLEMENTATIONS: Determine what subtle mistakes or edge-case oversights programmers commonly make with that strategy.
-4. GENERATE ADVERSARIAL JUDGE CASES: Create 5 to 7 high-quality, problem-aware judge cases that specifically stress those failure modes.
+1. PROBLEM CONTEXT & DOMAIN CONSTRAINTS:
+   - Summary: ${evidence.problem.summary}
+   - Input Format: ${evidence.problem.inputFormat}
+   - Output Format: ${evidence.problem.outputFormat}
+   - Constraints: ${evidence.problem.constraints}
+2. ALGORITHMIC FINGERPRINT & CONFIDENCE:
+   - Fingerprint Details: ${JSON.stringify(evidence.implementationFingerprint, null, 2)}
+   - Inferred Strategy: ${evidence.algorithm.type} (Confidence: ${evidence.algorithm.confidence})
+   - Targeted Logic Concepts: ${JSON.stringify(evidence.criticalSnippets)}
+3. IDENTIFY COMMON INCORRECT IMPLEMENTATIONS: Determine what subtle mistakes or edge-case oversights programmers make with this strategy.
+4. GENERATE ADVERSARIAL JUDGE CASES: Create high-quality, problem-aware judge cases that specifically stress those failure modes.
+   IMPORTANT: For "targets", use concise human-understandable concept statements with checkmark badges (e.g. ["✓ Boundary comparison", "✓ Right pointer update", "✓ Duplicate handling", "✓ Early exit"]) rather than raw code snippets!
 
-Problem: ${problemTitle} (Slug: ${problemSlug})
-Detected Algorithmic Pattern: ${patternSlug}
-Complexity Characteristics: ${complexity.time} Time, ${complexity.space} Space
-User Code:
+User Solution Code:
 \`\`\`
 ${code}
 \`\`\`
@@ -694,16 +712,16 @@ Generate a single, valid JSON object containing exactly the fields matching the 
      - "memoryImpact": string
      - "complexitySafety": string
 
-4. "aiGeneratedCases": Array of 5 to 7 AI RECONSTRUCTED JUDGE CASES. Every case must be meaningful, targeted, and follow this exact structure:
+4. "aiGeneratedCases": Array of 5 to 7 AI RECONSTRUCTED JUDGE CASES. Every case must follow this exact structure:
    - "input": string (Realistic problem input targeting constraints)
    - "expectedOutput": string (Exact correct output)
-   - "purpose": string (Explains why a problem setter included this test, e.g. "Designed to verify that Floyd's algorithm correctly detects...")
-   - "failureMode": string (Short name of mistake, e.g. "Cycle Entry Mismatch")
-   - "judgeDifficulty": number (Integer from 1 to 5 representing judge difficulty: 1=★☆☆☆☆, 5=★★★★★)
-   - "targets": Array of 2 to 4 strings describing stressed implementation details with checkmarks, e.g. ["✓ Cycle Detection", "✓ Pointer Update", "✓ Loop Termination"]
+   - "purpose": string (Explains why a problem setter included this test)
+   - "failureMode": string (Short name of mistake)
+   - "judgeDifficulty": number (Integer from 1 to 5)
+   - "targets": Array of 2 to 4 concept statements with checkmarks, e.g. ["✓ Boundary comparison", "✓ Right pointer update", "✓ Duplicate handling", "✓ Early exit"]
    - "whyIncorrectSolutionsFail": string (Concise 1 to 2 sentence explanation of why flawed code fails)
-   - "category": string (Problem-aware category e.g. "Minimum Constraint", "Maximum Constraint", "Boundary Index", "Base Case", "Transition State", "Duplicate Values", "Cycle Detection", "Overflow", "Pointer Update", "Loop Termination", "State Reset", "Greedy Counterexample", "Hash Collision")
-   - "inferredStrategy": string (Inferred user algorithm, e.g. "Floyd's Cycle Detection")
+   - "category": string (Problem-aware category e.g. "Boundary", "Duplicates", "Empty Input", "Maximum Constraints", "Overflow", "Zero State", "Off-by-One", "Negative Values")
+   - "inferredStrategy": string (Inferred user algorithm)
    - "confidence": number (1 to 100)
    - "riskScore": number (1 to 100)
 
@@ -724,7 +742,6 @@ Return ONLY a raw JSON string. Do not wrap in markdown blocks like \`\`\`json. O
     });
 
     const parsed = JSON.parse(response.content.trim());
-    // Validate structure to make sure essential elements exist
     if (
       parsed.hiddenTests &&
       parsed.breakMySolution &&
@@ -732,12 +749,26 @@ Return ONLY a raw JSON string. Do not wrap in markdown blocks like \`\`\`json. O
       parsed.aiGeneratedCases &&
       parsed.coverageIntelligence
     ) {
+      // 5. EXPECTED OUTPUT VERIFICATION: Verify generated test cases against reference execution logic
+      parsed.aiGeneratedCases = verifyTestSuite(parsed.aiGeneratedCases, code, patternSlug);
+      parsed.hiddenTests = verifyTestSuite(parsed.hiddenTests, code, patternSlug);
+
+      // 4. COMPUTED CATEGORY COVERAGE: Calculate deterministic category coverage ratio
+      const computedCov = computeCategoryCoverage(parsed.aiGeneratedCases);
+      parsed.coverageIntelligence.constraintCoverage = computedCov.coveragePercent;
+      (parsed.coverageIntelligence as any).categoryCoverage = computedCov.categories;
+
       return parsed as AdversarialTestLab;
     }
     throw new Error('Groq response lacked required keys');
   } catch (error) {
     console.error('❌ Error generating Adversarial Test Lab from Groq:', error);
-    // Fall back to rule-based generation
-    return getFallbackAdversarialTestLab(problemTitle, patternSlug, code);
+    const fallback = getFallbackAdversarialTestLab(problemTitle, patternSlug, code);
+    fallback.aiGeneratedCases = verifyTestSuite(fallback.aiGeneratedCases, code, patternSlug);
+    const computedCov = computeCategoryCoverage(fallback.aiGeneratedCases);
+    fallback.coverageIntelligence.constraintCoverage = computedCov.coveragePercent;
+    (fallback.coverageIntelligence as any).categoryCoverage = computedCov.categories;
+    return fallback;
   }
 }
+
