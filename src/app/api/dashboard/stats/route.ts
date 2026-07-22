@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { Prisma } from '@prisma/client';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
 import { getDashboardCache, setDashboardCache } from '@/lib/cache/dashboard';
+
+// Derive exact Prisma return type for recentSubmissions so map callbacks are fully typed
+type RecentSubmission = Prisma.SubmissionEventGetPayload<{
+  include: { problem: { select: { title: true; difficulty: true; slug: true } } };
+}>;
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,18 +32,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch all counts in parallel
+    // Fetch all counts in parallel; recentSubmissions typed explicitly to preserve inference
+    const recentSubmissionQuery = prisma.submissionEvent.findMany({
+      where: { userId },
+      orderBy: { timestamp: 'desc' },
+      take: 10,
+      include: { problem: { select: { title: true, difficulty: true, slug: true } } },
+    });
+
     const [totalSubmissions, acceptedSubmissions, weaknesses, recentSubmissions] = await Promise.all([
       prisma.submissionEvent.count({ where: { userId } }),
       prisma.submissionEvent.count({ where: { userId, status: 'Accepted' } }),
       prisma.systemicWeakness.count({ where: { severity: { in: ['high', 'critical'] } } }),
-      prisma.submissionEvent.findMany({
-        where: { userId },
-        orderBy: { timestamp: 'desc' },
-        take: 10,
-        include: { problem: { select: { title: true, difficulty: true, slug: true } } },
-      }),
-    ]);
+      recentSubmissionQuery,
+    ] as const);
 
     const acceptanceRate =
       totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
@@ -49,7 +57,7 @@ export async function GET(request: NextRequest) {
         weaknesses,
         acceptanceRate,
       },
-      recentSubmissions: recentSubmissions.map((s) => ({
+      recentSubmissions: recentSubmissions.map((s: RecentSubmission) => ({
         id: s.id,
         problemTitle: s.problem?.title ?? 'Unknown Problem',
         problemSlug: s.problem?.slug ?? '',
