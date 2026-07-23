@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db/prisma';
 import { logger } from '@/lib/logger';
 import { emailService } from '../email/email.service';
 import { NotificationType, NotificationCategory, NotificationStatus } from '../email/types';
+import { isValidEmail } from '../email/security';
 
 import { generateDailyFailureDigest } from './dailyFailureDigest';
 import { generatePracticeDigest } from './practiceDigest';
@@ -76,8 +77,42 @@ export class NotificationService {
     }
   }
 
+  // ─── Structured log for every notification attempt ──────────────────────────
+  private logNotificationAttempt(fields: {
+    userId: string;
+    email: string;
+    provider: string;
+    notificationType: NotificationType;
+    eligible: boolean;
+    reason: string;
+    notificationCreated: boolean;
+    smtpSent: boolean;
+    smtpStatus: 'SENT' | 'FAILED' | 'SKIPPED' | 'NOT_ATTEMPTED';
+  }): void {
+    logger.info(
+      [
+        '[Notification]',
+        `  User ID:              ${fields.userId}`,
+        `  Email:                ${fields.email}`,
+        `  Provider:             ${fields.provider}`,
+        `  Notification Type:    ${fields.notificationType}`,
+        `  Eligible:             ${fields.eligible}`,
+        `  Reason:               ${fields.reason}`,
+        `  Notification Created: ${fields.notificationCreated}`,
+        `  SMTP Sent:            ${fields.smtpSent}`,
+        `  SMTP Status:          ${fields.smtpStatus}`,
+      ].join('\n')
+    );
+  }
+
   /**
    * Enqueues a notification and triggers immediate processing.
+   *
+   * Provider eligibility gate (runs first, before any DB write or email):
+   *   - user.provider must be "google"
+   *   - user.email must exist and be a valid address
+   * Non-Google accounts are silently skipped — no Notification row is created,
+   * no EmailService call is made, and no SMTP traffic is generated.
    */
   public async createAndProcess(params: {
     userId: string;
@@ -88,6 +123,49 @@ export class NotificationService {
     scheduledAt?: Date;
     dedupeKey?: string;
   }): Promise<{ notificationId: string; processed: boolean }> {
+
+    // ── 0. Provider + email eligibility gate ────────────────────────────────
+    const user = await prisma.user.findUnique({
+      where: { id: params.userId },
+      select: { email: true, provider: true },
+    });
+
+    const userEmail   = user?.email   ?? '';
+    const userProvider = user?.provider ?? 'unknown';
+
+    const emailOk    = !!userEmail && isValidEmail(userEmail);
+    const googleOnly = userProvider === 'google';
+    const eligible   = googleOnly && emailOk;
+
+    if (!eligible) {
+      const reason = !googleOnly
+        ? 'Non-Google account'
+        : !userEmail
+          ? 'User email is null'
+          : 'User email is invalid';
+
+      this.logNotificationAttempt({
+        userId:            params.userId,
+        email:             userEmail || '(none)',
+        provider:          userProvider,
+        notificationType:  params.type,
+        eligible:          false,
+        reason,
+        notificationCreated: false,
+        smtpSent:          false,
+        smtpStatus:        'NOT_ATTEMPTED',
+      });
+
+      logger.info(`[Notifications] Skipped: ${reason}.`, {
+        userId:   params.userId,
+        type:     params.type,
+        provider: userProvider,
+      });
+
+      return { notificationId: 'skipped-non-google', processed: false };
+    }
+    // ── end eligibility gate ─────────────────────────────────────────────────
+
     const scheduledAt = params.scheduledAt || new Date();
 
     let notification;
@@ -120,7 +198,33 @@ export class NotificationService {
       throw createErr;
     }
 
+    this.logNotificationAttempt({
+      userId:              params.userId,
+      email:               userEmail,
+      provider:            userProvider,
+      notificationType:    params.type,
+      eligible:            true,
+      reason:              'Google account with valid email',
+      notificationCreated: true,
+      smtpSent:            false,           // updated after process() returns
+      smtpStatus:          'NOT_ATTEMPTED', // process() will handle actual send
+    });
+
     const processed = await this.process(notification.id);
+
+    // Emit final SMTP-outcome log
+    this.logNotificationAttempt({
+      userId:              params.userId,
+      email:               userEmail,
+      provider:            userProvider,
+      notificationType:    params.type,
+      eligible:            true,
+      reason:              'Google account with valid email',
+      notificationCreated: true,
+      smtpSent:            processed,
+      smtpStatus:          processed ? 'SENT' : 'FAILED',
+    });
+
     return { notificationId: notification.id, processed };
   }
 

@@ -13,15 +13,17 @@ async function runVerification() {
       data: {
         email: 'test-user@example.com',
         name: 'Test User',
-        notificationPreference: {
-          create: {
-            dailyMission: true,
-            practiceReminder: true,
-            failureSummary: true,
-            weeklyDigest: true,
-            engagementReminder: true,
-          },
-        },
+      },
+    });
+    // Create notification preferences separately
+    await prisma.notificationPreference.create({
+      data: {
+        userId: user.id,
+        dailyMission: true,
+        practiceReminder: true,
+        failureSummary: true,
+        weeklyDigest: true,
+        engagementReminder: true,
       },
     });
   }

@@ -1,5 +1,6 @@
 'use client';
 import { AppShell } from '@/components/layout/AppShell';
+import { signIn } from 'next-auth/react';
 import { useUpdateProfile, useUserProfile, useUserPreferences, useUpdateUserPreferences, type ProfileData } from '@/hooks/usePhase3Queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
@@ -117,138 +118,247 @@ function ProfileEditor({ user }: { user: UserProfile }) {
   );
 }
 
-// ─── Daily Coach Preferences ───────────────────────────────────────────────────
-function DailyCoachPreferences() {
-  const queryClient = useQueryClient();
-  const { data: preferences, isLoading: loading, error: fetchError } = useUserPreferences();
-  const updatePreferences = useUpdateUserPreferences();
+// ─── Email Notifications Card (read-only) ──────────────────────────────────────
+const EMAIL_NOTIFICATION_TYPES = [
+  { label: 'Welcome Email',          detail: null },
+  { label: 'Daily Mission',          detail: null },
+  { label: 'SM-2 Practice Reminder', detail: null },
+  {
+    label:  'Daily Failure Summary',
+    detail: 'Only when you have failed submissions',
+  },
+  {
+    label:  'Engagement Reminder',
+    detail: "Only when you don't practice for a day",
+  },
+  { label: 'Weekly Progress Report', detail: null },
+] as const;
 
-  const [dailyMissionEmail, setDailyMissionEmail] = useState<boolean>(true);
-  const [preferredTime, setPreferredTime] = useState<string>('08:00');
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Sync state with query data when loaded
-  useEffect(() => {
-    if (preferences) {
-      setDailyMissionEmail(preferences.dailyMissionEmail);
-      setPreferredTime(preferences.preferredTime);
-    }
-  }, [preferences]);
-
-  const save = async () => {
-    setError(null);
-    try {
-      await updatePreferences.mutateAsync({
-        dailyMissionEmail,
-        preferredTime
-      });
-      await queryClient.invalidateQueries({ queryKey: ['user', 'preferences'] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } catch (e: any) {
-      setError(e.message || 'Failed to update preferences');
-    }
-  };
-
-  if (loading) {
-    return (
-      <div style={{ padding: 20, color: '#71717a', fontSize: 13 }}>
-        Loading coach preferences...
-      </div>
-    );
-  }
-
-  if (fetchError) {
-    return (
-      <div style={{ padding: 20, color: '#ef4444', fontSize: 13 }}>
-        Error loading preferences: {(fetchError as Error).message}
-      </div>
-    );
-  }
+function EmailNotificationsCard({ user }: { user: UserProfile }) {
+  const isGoogle = user.provider === 'google';
 
   return (
-    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ fontSize: 13, color: '#a1a1aa', lineHeight: 1.6 }}>
-        Configure your daily learning coach settings. Praxis automatically computes your roadmap progression and weakness graph to email you personalized missions.
-      </div>
+    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-      <div style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: 8, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#e5e7eb', marginBottom: 4 }}>Enable Daily Mission Emails</div>
-          <div style={{ fontSize: 12, color: '#71717a' }}>Receive your personalized problem set, failure predictions, and AI hints every morning.</div>
+      {/* ── Account identity row ─────────────────────────────────────────── */}
+      <div style={{
+        background: isGoogle
+          ? 'linear-gradient(135deg, rgba(66,133,244,0.06) 0%, rgba(66,133,244,0.02) 100%)'
+          : '#141414',
+        border: `1px solid ${isGoogle ? 'rgba(66,133,244,0.2)' : '#1f1f1f'}`,
+        borderRadius: 12,
+        padding: '16px 20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+      }}>
+        {/* envelope icon */}
+        <div style={{
+          width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+          background: isGoogle ? 'rgba(66,133,244,0.12)' : '#1a1a1a',
+          border: `1px solid ${isGoogle ? 'rgba(66,133,244,0.25)' : '#2a2a2a'}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 18,
+        }}>
+          📧
         </div>
-        <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', position: 'relative' }}>
-          <input
-            type="checkbox"
-            checked={dailyMissionEmail}
-            onChange={e => setDailyMissionEmail(e.target.checked)}
-            style={{ display: 'none' }}
-          />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 600, color: '#52525b',
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}>
+            Connected Google Account
+          </span>
+          <span style={{
+            fontSize: 14, fontWeight: 700,
+            color: isGoogle ? '#e5e7eb' : '#52525b',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {user.email}
+          </span>
+        </div>
+
+        {/* Status badge */}
+        {isGoogle ? (
           <div style={{
-            width: 44, height: 24, borderRadius: 12,
-            background: dailyMissionEmail ? '#a855f7' : '#27272a',
-            position: 'relative', transition: 'background-color 0.2s',
-            border: '1px solid #3f3f46'
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'rgba(66,133,244,0.1)',
+            border: '1px solid rgba(66,133,244,0.25)',
+            borderRadius: 20, padding: '5px 12px', flexShrink: 0,
           }}>
             <div style={{
-              width: 18, height: 18, borderRadius: '50%',
-              background: '#ffffff', position: 'absolute', top: 2,
-              left: dailyMissionEmail ? 22 : 2, transition: 'left 0.2s',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+              width: 7, height: 7, borderRadius: '50%',
+              background: '#4285f4',
+              boxShadow: '0 0 6px rgba(66,133,244,0.8)',
             }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#4285f4' }}>
+              Google Connected
+            </span>
           </div>
-        </label>
+        ) : (
+          <span style={{
+            fontSize: 11, fontWeight: 600, color: '#52525b',
+            background: '#1a1a1a', border: '1px solid #2a2a2a',
+            borderRadius: 20, padding: '5px 12px', flexShrink: 0,
+          }}>
+            Not Connected
+          </span>
+        )}
       </div>
 
-      <div>
-        <label style={{ fontSize: 11, color: '#71717a', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-          Preferred Delivery Time (24h format)
-        </label>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <select
-            value={preferredTime}
-            onChange={e => setPreferredTime(e.target.value)}
+      {isGoogle ? (
+        <>
+          {/* ── Description ──────────────────────────────────────────────── */}
+          <div style={{
+            background: '#141414',
+            border: '1px solid #1f1f1f',
+            borderRadius: 10,
+            padding: '14px 18px',
+          }}>
+            <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>
+              Automatic email delivery — no setup required
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: '#71717a', lineHeight: 1.65 }}>
+              Praxis automatically sends personalized learning emails to your connected Google
+              account. You don&apos;t need to enable anything manually.
+            </p>
+          </div>
+
+          {/* ── Notification checklist ────────────────────────────────────── */}
+          <div>
+            <p style={{
+              margin: '0 0 10px',
+              fontSize: 11, fontWeight: 600, color: '#52525b',
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+            }}>
+              You&apos;ll automatically receive
+            </p>
+
+            <div style={{
+              border: '1px solid #1f1f1f',
+              borderRadius: 12,
+              overflow: 'hidden',
+            }}>
+              {EMAIL_NOTIFICATION_TYPES.map((item, idx) => (
+                <div
+                  key={item.label}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 14,
+                    padding: '14px 20px',
+                    background: idx % 2 === 0 ? '#111111' : '#141414',
+                    borderBottom:
+                      idx < EMAIL_NOTIFICATION_TYPES.length - 1
+                        ? '1px solid #1a1a1a'
+                        : 'none',
+                  }}
+                >
+                  {/* Check circle */}
+                  <div style={{
+                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0, marginTop: 1,
+                    background: 'rgba(34,197,94,0.1)',
+                    border: '1px solid rgba(34,197,94,0.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 800, lineHeight: 1 }}>✓</span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#e5e7eb' }}>
+                      {item.label}
+                    </span>
+                    {item.detail && (
+                      <span style={{ fontSize: 11, color: '#52525b' }}>
+                        {item.detail}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Footer ────────────────────────────────────────────────────── */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 14px',
+            background: '#0d0d0d',
+            border: '1px solid #1a1a1a',
+            borderRadius: 8,
+          }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>🔒</span>
+            <span style={{ fontSize: 12, color: '#3f3f46' }}>
+              Emails are securely delivered using Google&apos;s infrastructure.
+            </span>
+          </div>
+        </>
+      ) : (
+        /* ── Non-Google upgrade prompt ─────────────────────────────────── */
+        <div style={{
+          background: '#141414',
+          border: '1px solid #1f1f1f',
+          borderRadius: 12,
+          padding: '28px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 16,
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%',
+            background: 'rgba(168,85,247,0.1)',
+            border: '1px solid rgba(168,85,247,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22,
+          }}>
+            ✉️
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 400 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#e5e7eb' }}>
+              Email notifications are currently unavailable
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: '#71717a', lineHeight: 1.65 }}>
+              Personalized Praxis learning emails are available exclusively for
+              Google-connected accounts. To receive them, sign in or connect using
+              your Google account.
+            </p>
+          </div>
+
+          <button
+            onClick={() => signIn('google', { callbackUrl: '/auth/sync' })}
             style={{
-              background: '#111111', border: '1px solid #2a2a2a', borderRadius: 8,
-              padding: '10px 14px', color: '#f4f4f5', fontSize: 13, outline: 'none',
-              width: 120, cursor: 'pointer'
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: '#4285f4',
+              border: 'none',
+              borderRadius: 9,
+              padding: '10px 22px',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(66,133,244,0.3)',
+              transition: 'opacity 0.15s',
             }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
           >
-            {Array.from({ length: 24 }).map((_, hour) => {
-              const hStr = hour.toString().padStart(2, '0');
-              const timeVal = `${hStr}:00`;
-              return (
-                <option key={timeVal} value={timeVal}>
-                  {timeVal} UTC
-                </option>
-              );
-            })}
-          </select>
-          <span style={{ fontSize: 12, color: '#71717a' }}>Emails will be queued for delivery at this hour daily.</span>
-        </div>
-      </div>
-
-      {error && (
-        <div style={{ fontSize: 12, color: '#ef4444', background: '#450a0a', border: '1px solid #991b1b', borderRadius: 6, padding: '8px 12px' }}>
-          {error}
+            {/* Minimal Google G */}
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#fff" fillOpacity=".9"/>
+              <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#fff" fillOpacity=".8"/>
+              <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#fff" fillOpacity=".7"/>
+              <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#fff" fillOpacity=".9"/>
+            </svg>
+            Connect Google Account
+          </button>
         </div>
       )}
-
-      <button
-        onClick={save}
-        disabled={updatePreferences.isPending}
-        style={{
-          background: saved ? '#052e16' : '#a855f7',
-          border: 'none', borderRadius: 9, padding: '11px 20px',
-          color: '#fff', fontSize: 13, fontWeight: 600,
-          cursor: updatePreferences.isPending ? 'wait' : 'pointer',
-          transition: 'background 0.2s', alignSelf: 'flex-start',
-          boxShadow: saved ? 'none' : '0 4px 10px rgba(168, 85, 247, 0.2)'
-        }}
-      >
-        {updatePreferences.isPending ? 'Saving…' : saved ? '✓ Saved' : 'Save Preferences'}
-      </button>
     </div>
   );
 }
@@ -421,7 +531,7 @@ export default function SettingsPage() {
   const TABS = [
     { key: 'profile', label: 'Profile' },
     { key: 'stats',   label: 'Statistics' },
-    { key: 'missions', label: 'Daily Coach' },
+    { key: 'missions', label: 'Email Notifications' },
     { key: 'accounts', label: 'Connected Accounts' },
     { key: 'api',     label: 'API Access' },
     { key: 'extension', label: 'Extension Setup' },
@@ -511,10 +621,10 @@ export default function SettingsPage() {
             </SectionCard>
           )}
 
-          {/* ── Daily Coach Tab ── */}
+          {/* ── Email Notifications Tab (read-only) ── */}
           {activeTab === 'missions' && (
-            <SectionCard title="Daily Coach Preferences" accent="#a855f7">
-              <DailyCoachPreferences />
+            <SectionCard title="Email Notifications" accent="#4285f4">
+              <EmailNotificationsCard user={user} />
             </SectionCard>
           )}
 

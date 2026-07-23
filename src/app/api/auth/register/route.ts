@@ -63,7 +63,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       select: { id: true, email: true, name: true, createdAt: true },
     });
 
-    // Trigger Welcome notification asynchronously
+    // NOTE: The WELCOME notification call below is intentionally left in place but will
+    // be silently skipped by NotificationService.createAndProcess() for credentials
+    // (email/password) users. The provider eligibility gate inside createAndProcess()
+    // checks user.provider === "google" before any DB write or email dispatch.
+    // Only Google OAuth users will receive the Welcome email.
     try {
       const { notificationService } = await import('@/lib/notifications/notification.service');
       const { NotificationType, NotificationCategory } = await import('@/lib/email/types');
