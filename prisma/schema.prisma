@@ -252,6 +252,36 @@ model TextEmbedding {
   @@map("text_embeddings")
 }
 
+// ─── PRAXIS Judge Memory ────────────────────────────────────────────────────────
+
+model JudgeTest {
+  id               String   @id @default(cuid())
+  problemSlug      String
+  patternSlug      String
+  judgePersona     String   // 'leetcode' | 'codeforces' | 'icpc' | 'hackerrank'
+  difficultyStage  Int      @default(3)
+  input            String
+  expectedOutput   String
+  referenceOutput  String?  // output from VM executor (ground truth)
+  verified         Boolean  @default(false)
+  mismatchCorrected Boolean @default(false)
+  bugPatternId     String?
+  category         String?
+  mutation         String?
+  invariant        String?
+  confidence       Float?
+  coverageGain     Float?
+  permanentTest    Boolean  @default(false)
+  fullJson         Json     // full PraxisJudgeCase object
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([problemSlug])
+  @@index([patternSlug, judgePersona])
+  @@index([problemSlug, judgePersona, difficultyStage])
+  @@map("judge_tests")
+}
+
 model ApiKey {
   id        String   @id @default(cuid())
   key       String   @unique

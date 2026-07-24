@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { AdversarialTestLab } from '@/types';
+import type { AdversarialTestLab, JudgePersona, CoverageHeatmap } from '@/types';
 import { apiFetch } from '@/lib/api/client';
 
 // Imported modular components & icons
@@ -21,6 +21,7 @@ import { BreakMySolutionTab } from './AdversarialTestLabCard/BreakMySolutionTab'
 import { ConstraintsTab } from './AdversarialTestLabCard/ConstraintsTab';
 import { AttackLabTab } from './AdversarialTestLabCard/AiAttackTab';
 import { TargetsMatrix } from './AdversarialTestLabCard/TargetsMatrix';
+import { JudgePersonaSelector } from './AdversarialTestLabCard/JudgePersonaSelector';
 
 interface Props {
   data: AdversarialTestLab;
@@ -33,8 +34,10 @@ type TabType = 'hidden' | 'break' | 'constraints' | 'attack' | 'matrix';
 export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('hidden');
   const [generatedTests, setGeneratedTests] = useState<any[]>([]);
+  const [heatmapData, setHeatmapData] = useState<CoverageHeatmap | undefined>(undefined);
   const [loadingGenerated, setLoadingGenerated] = useState(false);
   const [difficultyStage, setDifficultyStage] = useState(3);
+  const [selectedPersona, setSelectedPersona] = useState<JudgePersona>('leetcode');
 
   const tabRefs = useRef<Record<TabType, HTMLButtonElement | null>>({} as any);
 
@@ -49,60 +52,55 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
     }
   }, [activeTab]);
 
-  const handleGenerateMore = async () => {
+  const executeGeneration = async (mode: 'more' | 'harder', persona: JudgePersona, stage: number) => {
     setActiveTab('attack');
     setLoadingGenerated(true);
     try {
-      const res = await apiFetch<{ success: boolean; data: { tests: any[]; difficultyStage: number } }>(
-        '/api/behavior-insights/generate-tests',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            problemSlug,
-            submissionId,
-            mode: 'more',
-            difficultyStage
-          })
+      const res = await apiFetch<{
+        success: boolean;
+        data: {
+          judgeSuite?: any[];
+          tests?: any[];
+          heatmap?: CoverageHeatmap;
+          difficultyStage: number;
+        };
+      }>('/api/behavior-insights/generate-tests', {
+        method: 'POST',
+        body: JSON.stringify({
+          problemSlug,
+          submissionId,
+          mode,
+          difficultyStage: stage,
+          judgePersona: persona,
+        }),
+      });
+
+      const testsList = res.data?.judgeSuite || res.data?.tests || [];
+      if (testsList.length > 0) {
+        setGeneratedTests(testsList);
+        setHeatmapData(res.data?.heatmap);
+        if (res.data?.difficultyStage) {
+          setDifficultyStage(res.data.difficultyStage);
         }
-      );
-      if (res.data?.tests) {
-        setGeneratedTests(res.data.tests);
-        setDifficultyStage(res.data.difficultyStage);
       }
     } catch (err) {
-      console.error('Failed to generate hidden judge tests:', err);
+      console.error('[PRAXIS] Failed to generate judge tests:', err);
     } finally {
       setLoadingGenerated(false);
     }
   };
 
-  const handleGenerateHarder = async () => {
+  const handleGenerateMore = () => executeGeneration('more', selectedPersona, difficultyStage);
+
+  const handleGenerateHarder = () => {
     const nextStage = difficultyStage >= 5 ? 4 : difficultyStage + 1;
     setDifficultyStage(nextStage);
-    setActiveTab('attack');
-    setLoadingGenerated(true);
-    try {
-      const res = await apiFetch<{ success: boolean; data: { tests: any[]; difficultyStage: number } }>(
-        '/api/behavior-insights/generate-tests',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            problemSlug,
-            submissionId,
-            mode: 'harder',
-            difficultyStage: nextStage
-          })
-        }
-      );
-      if (res.data?.tests) {
-        setGeneratedTests(res.data.tests);
-        setDifficultyStage(res.data.difficultyStage);
-      }
-    } catch (err) {
-      console.error('Failed to generate adversarial judge tests:', err);
-    } finally {
-      setLoadingGenerated(false);
-    }
+    executeGeneration('harder', selectedPersona, nextStage);
+  };
+
+  const handleGenerateWithPersona = (persona: JudgePersona) => {
+    setSelectedPersona(persona);
+    executeGeneration(persona === 'codeforces' ? 'harder' : 'more', persona, difficultyStage);
   };
 
   const {
@@ -417,6 +415,15 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
         </div>
       </div>
 
+      {/* Judge Persona Selector */}
+      <JudgePersonaSelector
+        selectedPersona={selectedPersona}
+        onSelectPersona={setSelectedPersona}
+        onGenerate={handleGenerateWithPersona}
+        loading={loadingGenerated}
+        colors={colors}
+      />
+
       {/* Control buttons */}
       <div style={{
         display: 'flex',
@@ -428,7 +435,7 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
         background: '#111',
         border: '1px solid #1f1f1f',
         borderRadius: 8,
-        marginTop: -8,
+        marginTop: -4,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#71717a', fontWeight: 600 }}>
           <span>TARGET STAGE:</span>
@@ -504,6 +511,8 @@ export function AdversarialTestLabCard({ data, problemSlug, submissionId }: Prop
             loadingGenerated={loadingGenerated}
             generatedTests={generatedTests}
             difficultyStage={difficultyStage}
+            selectedPersona={selectedPersona}
+            heatmap={heatmapData}
             colors={colors}
           />
         )}

@@ -603,4 +603,110 @@ export interface FailureExplanation {
   recurringPatterns: RecurringPattern[];
 
   generatedAt: string; // ISO timestamp
-}
+}
+
+// ─── PRAXIS Judge Engine v1.0 Types ──────────────────────────────────────────
+
+export type JudgePersona = 'leetcode' | 'codeforces' | 'icpc' | 'hackerrank';
+
+export interface WeaknessDistribution {
+  boundary: number;
+  constraint: number;
+  implementation: number;
+  pattern: number;
+  overflow: number;
+  binarySearch: number;
+  slidingWindow: number;
+  greedy: number;
+  dp: number;
+  hashing: number;
+  graphs: number;
+  trees: number;
+  recursion: number;
+  math: number;
+  strings: number;
+  sorting: number;
+}
+
+export interface JudgeProfile {
+  judgeRating: number;
+  judgeTier: 'Beginner' | 'Intermediate' | 'Expert' | 'Research';
+  overallConfidence: number;       // 0–100 (recent acceptance rate)
+  growthVelocity: number;          // rating delta vs 30 days ago
+  currentStreak: number;           // consecutive days solved
+  totalSolved: number;
+  weaknessDistribution: WeaknessDistribution;
+  recentFailures: string[];        // last 5 root cause types
+  repeatedMistakes: string[];      // root causes with occurrence > 2
+  learningProgress: string;        // "Accelerating" | "Stable" | "Declining"
+}
+
+export interface PraxisJudgeCase {
+  judgeId: string;
+  judgeRating: string;
+  difficulty: string;
+  targetLevel: string;
+  bugPatternId: string;
+  implementationAssumption: string;
+  reason: string;
+  input: string;
+  expectedOutput: string;
+  referenceOutput?: string;        // VM executor ground truth
+  explanation: string;
+  minimalCounterexample: boolean;
+  mutation: string;
+  algorithmicProperty: string;
+  invariant: string;
+  constraintCategory: string;
+  complexityCategory: string;
+  concepts: string[];
+  weakConcepts: string[];
+  historicalFrequency: string;
+  coverageGain: string;
+  confidence: string;
+  permanentHiddenTest: boolean;
+  verified?: boolean;
+  mismatchCorrected?: boolean;
+  originalLLMOutput?: string;
+  // UI compat fields (mapped from PRAXIS fields)
+  category?: string;
+  why?: string;
+  targets?: string[];
+  judgeDifficulty?: number;
+  coverageContribution?: number;
+  whyIncorrectSolutionsFail?: string;
+  judgePersona?: JudgePersona;
+}
+
+export interface PraxisCoverageSummary {
+  implementationCoverage: string;
+  conceptCoverage: string;
+  constraintCoverage: string;
+  mutationCoverage: string;
+  difficultyDistribution: string;
+  overallJudgeScore: string;
+}
+
+export interface CoverageHeatmapBar {
+  concept: string;
+  coverage: number;    // 0–100 normalized
+  count: number;
+  color: string;
+}
+
+export interface CoverageHeatmap {
+  bars: CoverageHeatmapBar[];
+  weakestConcept: string;
+  strongestConcept: string;
+  overallScore: number;
+}
+
+export interface PraxisJudgeSuite {
+  judgeSuite: PraxisJudgeCase[];
+  coverageSummary: PraxisCoverageSummary;
+  heatmap?: CoverageHeatmap;
+  difficultyStage: number;
+  judgePersona: JudgePersona;
+  mode: string;
+}
+

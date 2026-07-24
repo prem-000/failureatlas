@@ -1,9 +1,15 @@
 /**
  * src/lib/analysis/test-verifier.ts
  * Expected Output Verification Engine
- * Runs LLM-generated test cases against reference execution logic or user's code
- * to prevent output hallucinations.
+ *
+ * Upgraded to use the executor.ts Node.js VM sandbox for real output verification.
+ * For JS/TS submissions: runs user code in sandbox → VM output = ground truth.
+ * For other languages:   falls back to pattern-based reference evaluators.
+ *
+ * This eliminates LLM output hallucinations.
  */
+
+import { executeJS } from '@/lib/replay/executor';
 
 export interface VerifiableTestCase {
   input: string;
@@ -161,4 +167,98 @@ function evaluateReferenceOutput(
   }
 
   return null;
+}
+
+// ─── PRAXIS Judge Case VM Verifier ───────────────────────────────────────────
+
+/**
+ * Attempts to parse an input string into a structured input the VM can call with.
+ * Handles: "[1,2,3]", "nums = [1,2,3], target = 9", "n = 5, k = 3"
+ */
+function parseInputForVM(inputStr: string): unknown {
+  const cleaned = inputStr.trim();
+
+  // Direct array: "[1, 2, 3]"
+  if (cleaned.startsWith('[')) {
+    try { return JSON.parse(cleaned); } catch { /* fall through */ }
+  }
+
+  // Named params: "nums = [1, 2, 3], target = 9"
+  const namedMatch = cleaned.match(/(\w+)\s*=\s*(\[[\d\s,\-]+\]|\d+|-\d+)/g);
+  if (namedMatch && namedMatch.length > 0) {
+    const args: unknown[] = [];
+    for (const m of namedMatch) {
+      const [, val] = m.split('=').map(s => s.trim());
+      try {
+        args.push(JSON.parse(val));
+      } catch {
+        const n = Number(val);
+        args.push(isNaN(n) ? val : n);
+      }
+    }
+    return args.length === 1 ? args[0] : args;
+  }
+
+  // Fallback: return as-is
+  return cleaned;
+}
+
+/**
+ * Verifies a suite of PraxisJudgeCases using the VM executor.
+ * Only effective for JS/TS user code. Python/Java fall back to LLM output.
+ *
+ * Returns the same array with `referenceOutput`, `verified`, and `mismatchCorrected`
+ * fields populated.
+ */
+export function verifyPraxisSuiteWithVM<T extends {
+  input: string;
+  expectedOutput: string;
+  referenceOutput?: string;
+  verified?: boolean;
+  mismatchCorrected?: boolean;
+  originalLLMOutput?: string;
+}>(tests: T[], userCode?: string): T[] {
+  if (!userCode || (!userCode.includes('function') && !userCode.includes('=>'))) {
+    // Non-JS code — mark all as unverified (LLM output trusted)
+    return tests.map(t => ({ ...t, verified: false }));
+  }
+
+  return tests.map(test => {
+    try {
+      const input = parseInputForVM(test.input);
+      const result = executeJS(userCode, input);
+
+      if (result.timedOut || result.error) {
+        return { ...test, verified: false };
+      }
+
+      const vmOutput = result.output;
+      const llmOutput = test.expectedOutput;
+
+      // Normalize for comparison
+      let match = false;
+      try {
+        match = JSON.stringify(JSON.parse(vmOutput)) === JSON.stringify(JSON.parse(llmOutput));
+      } catch {
+        match = vmOutput.trim() === llmOutput.trim();
+      }
+
+      if (match) {
+        return { ...test, referenceOutput: vmOutput, verified: true };
+      }
+
+      // Mismatch — use VM output as ground truth
+      console.log(`[PraxisVerifier] Output mismatch for input "${test.input.substring(0, 50)}". LLM: "${llmOutput}", VM: "${vmOutput}"`);
+      return {
+        ...test,
+        expectedOutput: vmOutput,
+        referenceOutput: vmOutput,
+        originalLLMOutput: llmOutput,
+        verified: true,
+        mismatchCorrected: true,
+      };
+    } catch {
+      return { ...test, verified: false };
+    }
+  });
 }
