@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
+import { ChatGPTIcon } from '@/components/icons/ChatGPTIcon';
+import { useChatGPTIntegration } from '@/hooks/useChatGPTIntegration';
 import {
   BookOpen,
   Target,
@@ -73,6 +75,7 @@ function timeAgo(dateStr: string) {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { data: chatgptData } = useChatGPTIntegration();
   const [user, setUser] = useState<UserData | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentSubmissions, setRecentSubmissions] = useState<RecentSubmission[]>([]);
@@ -215,34 +218,69 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* User Badge in Header */}
-            {user && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 10, padding: '6px 12px',
-              }}>
-                {user.image ? (
-                  <img src={user.image} alt={user.name || 'User'} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{
-                    width: 28, height: 28, borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #ff5f52, #ff8a80)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 700, color: '#fff',
-                  }}>
-                    {getInitials(user.name || user.email)}
+            {/* User & Integration Badge in Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Compact ChatGPT Integration Status */}
+              <Link
+                href="/settings"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: '#191919',
+                  border: `1px solid ${chatgptData?.connected ? '#22c55e40' : '#3f3f46'}`,
+                  borderRadius: 20,
+                  padding: '6px 14px',
+                  textDecoration: 'none',
+                  transition: 'border-color 0.2s',
+                }}
+              >
+                <ChatGPTIcon size={16} color={chatgptData?.connected ? '#22c55e' : '#a1a1aa'} />
+                <span style={{ fontSize: 12, color: '#f8fafc', fontWeight: 500 }}>
+                  Praxis + ChatGPT
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: chatgptData?.connected ? '#22c55e' : '#a1a1aa',
+                    background: chatgptData?.connected ? '#22c55e1a' : '#27272a',
+                    borderRadius: 10,
+                    padding: '1px 7px',
+                  }}
+                >
+                  {chatgptData?.connected ? 'Connected' : 'Connect'}
+                </span>
+              </Link>
+
+              {user && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 10, padding: '6px 12px',
+                }}>
+                  {user.image ? (
+                    <img src={user.image} alt={user.name || 'User'} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #ff5f52, #ff8a80)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700, color: '#fff',
+                    }}>
+                      {getInitials(user.name || user.email)}
+                    </div>
+                  )}
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>
+                      {user.name || 'User'}
+                    </p>
+                    <p style={{ fontSize: 10, color: '#6b7280' }}>{user.email}</p>
                   </div>
-                )}
-                <div>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb' }}>
-                    {user.name || 'User'}
-                  </p>
-                  <p style={{ fontSize: 10, color: '#6b7280' }}>{user.email}</p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </header>
 
           <div style={{ padding: 'clamp(16px, 3vw, 32px)', flex: 1 }}>

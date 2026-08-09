@@ -14,7 +14,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
-    "test:phase3": "tsx scripts/test-phase3-api.ts"
+    "test:phase3": "tsx scripts/test-phase3-api.ts",
+    "mcp:dev": "tsx mcp/src/server.ts",
+    "mcp:test": "tsx mcp/tests/auth.test.ts && tsx mcp/tests/tools.test.ts && tsx mcp/tests/http-flow.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.11.0",

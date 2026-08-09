@@ -343,6 +343,8 @@ model UserPreferences {
   codeforcesUsername String?
   codechefUsername   String?
   atcoderUsername    String?
+  chatgptConnected   Boolean  @default(false)
+  chatgptConnectedAt DateTime?
   createdAt          DateTime @default(now())
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
