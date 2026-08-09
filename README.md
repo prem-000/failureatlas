@@ -71,6 +71,20 @@ The extension uses a lightweight content script injected into LeetCode to gather
 
 ---
 
+## 🤖 ChatGPT MCP Integration
+
+Praxis MCP integration lives in `/mcp`.
+
+See [`mcp/README.md`](./mcp/README.md) for:
+- Architecture
+- Setup
+- Authentication
+- Testing
+- Deployment
+- ChatGPT integration
+
+---
+
 ## 🛠 Tech Stack
 
 | Layer | Technology |
