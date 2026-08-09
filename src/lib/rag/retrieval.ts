@@ -127,7 +127,8 @@ async function hybridRetrieval(
       const sim = cosineSimilarity(queryEmbedding, candidateVec);
       const sub = submissionsMap.get(emb.sourceId);
       if (sub) {
-        semanticScores.push({ id: sub.eventId, score: sim });
+        const subAny = sub as any;
+        semanticScores.push({ id: subAny.eventId || subAny.id || '', score: sim });
       }
     }
   }
