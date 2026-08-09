@@ -36,7 +36,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Prisma
-prisma/migrations
+# migrations are tracked in git for production deployment
 
 # OS
 .DS_Store
