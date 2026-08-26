@@ -14,6 +14,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
+    "test": "tsx tests/intelligence/run-all-tests.ts",
     "test:phase3": "tsx scripts/test-phase3-api.ts"
   },
   "dependencies": {

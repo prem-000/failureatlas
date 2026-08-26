@@ -2,7 +2,6 @@ import type { AdversarialTestLab } from '@/types';
 import { groqClient } from '../api/groq-client';
 import { extractStructuralEvidence } from '../analysis/structural-analyzer';
 import { computeCategoryCoverage } from '../analysis/code-intelligence';
-import { verifyTestSuite } from '../analysis/test-verifier';
 
 // Pattern-specific fallback generators to ensure rich, realistic data even when Groq is unavailable
 function getFallbackAdversarialTestLab(
@@ -644,8 +643,6 @@ export async function generateAdversarialTestLab(
   if (!hasKey || hasKey === 'your_groq_key_here') {
     console.log('⚠️ No GROQ API key configured. Falling back to pattern templates.');
     const fallback = getFallbackAdversarialTestLab(problemTitle, patternSlug, code);
-    // Verify fallback outputs
-    fallback.aiGeneratedCases = verifyTestSuite(fallback.aiGeneratedCases, code, patternSlug);
     return fallback;
   }
 
@@ -749,11 +746,6 @@ Return ONLY a raw JSON string. Do not wrap in markdown blocks like \`\`\`json. O
       parsed.aiGeneratedCases &&
       parsed.coverageIntelligence
     ) {
-      // 5. EXPECTED OUTPUT VERIFICATION: Verify generated test cases against reference execution logic
-      parsed.aiGeneratedCases = verifyTestSuite(parsed.aiGeneratedCases, code, patternSlug);
-      parsed.hiddenTests = verifyTestSuite(parsed.hiddenTests, code, patternSlug);
-
-      // 4. COMPUTED CATEGORY COVERAGE: Calculate deterministic category coverage ratio
       const computedCov = computeCategoryCoverage(parsed.aiGeneratedCases);
       parsed.coverageIntelligence.constraintCoverage = computedCov.coveragePercent;
       (parsed.coverageIntelligence as any).categoryCoverage = computedCov.categories;
@@ -764,7 +756,6 @@ Return ONLY a raw JSON string. Do not wrap in markdown blocks like \`\`\`json. O
   } catch (error) {
     console.error('❌ Error generating Adversarial Test Lab from Groq:', error);
     const fallback = getFallbackAdversarialTestLab(problemTitle, patternSlug, code);
-    fallback.aiGeneratedCases = verifyTestSuite(fallback.aiGeneratedCases, code, patternSlug);
     const computedCov = computeCategoryCoverage(fallback.aiGeneratedCases);
     fallback.coverageIntelligence.constraintCoverage = computedCov.coveragePercent;
     (fallback.coverageIntelligence as any).categoryCoverage = computedCov.categories;
