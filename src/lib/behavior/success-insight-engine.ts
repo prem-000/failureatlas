@@ -280,6 +280,22 @@ export async function generateSuccessInsight(
     // Non-fatal: graph update failure never blocks the response
   }
 
+  // ── Phase 7: SSM Code Quality enrichment ───────────────────────────────────
+  let ssmQuality: any = undefined;
+  try {
+    const { runSolutionStressModel } = await import('@/lib/adversarial/solution-stress-model');
+    const ssm = await runSolutionStressModel({
+      code,
+      language: submission.language,
+      problemTitle: submission.problem.title,
+      problemSlug: submission.problem.slug,
+      problemDifficulty: submission.problem.difficulty,
+    });
+    ssmQuality = ssm.codeQuality;
+  } catch (e) {
+    console.warn('[SuccessInsight] SSM enrichment failed, using static quality score:', e);
+  }
+
   return {
     successLevel: level,
     successLevelLabel: label,
@@ -298,10 +314,12 @@ export async function generateSuccessInsight(
     futureRisks,
     constraintIntelligence,
     codeQuality: {
-      strengths: qualityResult.strengths,
-      improvements: qualityResult.improvements,
-      overallScore: qualityResult.score,
+      strengths: ssmQuality?.strengths || qualityResult.strengths,
+      improvements: ssmQuality?.improvements || qualityResult.improvements,
+      overallScore: ssmQuality?.overallScore !== undefined ? ssmQuality.overallScore / 100 : qualityResult.score,
+      dimensions: ssmQuality?.dimensions,
     },
     mlFeatures,
   };
 }
+

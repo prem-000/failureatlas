@@ -24,8 +24,6 @@ export async function GET(request: NextRequest) {
         codeforcesUsername: null,
         codechefUsername: null,
         atcoderUsername: null,
-        chatgptConnected: false,
-        chatgptConnectedAt: null,
         createdAt: new Date()
       };
     }

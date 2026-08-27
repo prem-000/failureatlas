@@ -98,15 +98,24 @@ class MultiKeyGroqClient {
    * Selection strategy to get the next healthy key.
    */
   private getNextHealthyKey(): KeyConfig | null {
+    if (this.keys.length === 0) {
+      this.initKeys();
+    }
     this.checkCooldowns();
     const healthyKeys = this.keys.filter(k => k.isHealthy);
 
     if (healthyKeys.length === 0) {
+      if (this.keys.length === 0) {
+        this.initKeys();
+      }
+      const recheck = this.keys.filter(k => k.isHealthy);
+      if (recheck.length > 0) return recheck[0];
+
       console.warn('[GroqClient] No healthy keys available! Attempting to use oldest cooldown key.');
-      // Find key with earliest cooldown expiry
       const sortedByCooldown = [...this.keys].sort((a, b) => a.cooldownUntil - b.cooldownUntil);
       return sortedByCooldown[0] || null;
     }
+
 
     if (this.strategy === 'failover') {
       // Always select first healthy key

@@ -354,6 +354,18 @@ export interface AdversarialTestCase {
   noveltyScore?: number;
   coverageScore?: number;
   
+  // Evidence-driven CP fields
+  id?: string; // HT-01 .. HT-05
+  targetId?: string; // ST-01 .. ST-05
+  kind?: string;
+  riskTitle?: string;
+  verificationStatus?: string;
+  verificationBadgeText?: string;
+  evidence?: Array<{ source: string; description: string; codeLocation?: { snippet?: string }; confidence: number }>;
+  whyExists?: string;
+  whatItAttacks?: string;
+  constraintRelevance?: string;
+  
   // AI Judge Reconstruction System fields
   judgeDifficulty?: number; // 1 to 5 star rating
   targets?: string[]; // e.g. ["✓ Cycle Detection", "✓ Pointer Update", "✓ Loop Termination"]
@@ -387,9 +399,85 @@ export interface CoverageIntelligence {
   confidenceScore: number;
 }
 
+export interface SourceCodeBlock {
+  step: number;
+  title: string;
+  code: string;
+  startLine?: number;
+  endLine?: number;
+  explanation: string;
+  variables?: Array<{
+    name: string;
+    role: string;
+    change?: string;
+  }>;
+  controlFlow?: {
+    type: 'branch' | 'loop' | 'return' | 'call' | 'mutation';
+    description: string;
+  };
+  contribution: string;
+}
+
+export interface BreakSolutionPayload {
+  approach: {
+    detected: string;
+    confidence: number;
+    evidence: Array<{ source: string; description: string; codeLocation?: { snippet?: string }; confidence: number }>;
+  };
+  yourComplexity: {
+    time: string;
+    space: string;
+  };
+  expectedComplexity: {
+    time: string;
+    space: string;
+    acceptableRange: string[];
+    preferredTime?: string;
+    optimalTechnique?: string;
+  };
+  codeWalkthrough: Array<{
+    stepNumber: string;
+    stepTitle: string;
+    explanation: string;
+    codeSnippet?: string;
+    variablesReferenced?: string[];
+    variables?: Array<{
+      name: string;
+      role: string;
+      change?: string;
+    }>;
+    controlFlow?: {
+      type: 'branch' | 'loop' | 'return' | 'call' | 'mutation';
+      description: string;
+    };
+    contribution?: string;
+  }>;
+  sourceCodeBlocks?: SourceCodeBlock[];
+  weaknessOrRisk: {
+    hasWeakness: boolean;
+    potentialIssue?: string;
+    evidence?: string;
+    impact?: string;
+    expectedDirection?: string;
+    evidenceChain: Array<{ source: string; description: string; codeLocation?: { snippet?: string }; confidence: number }>;
+  };
+  optimalPath: {
+    hints: Array<{
+      level: number;
+      title: string;
+      hint: string;
+    }>;
+    targetComplexity: {
+      time: string;
+      space: string;
+    };
+  };
+}
+
 export interface AdversarialTestLab {
   hiddenTests: AdversarialTestCase[];
   breakMySolution: AdversarialTestCase[];
+  breakSolutionData?: BreakSolutionPayload;
   constraintExtremes: {
     tests: AdversarialTestCase[];
     metrics: ConstraintMetrics;
@@ -420,10 +508,24 @@ export interface FutureRisk {
   severity: ImpactLevel;
 }
 
+export interface CodeQualityDimension {
+  score: number;
+  maxScore: number;
+  evidence: Array<{ source: string; description: string; confidence: number }>;
+  context?: string;
+}
+
 export interface CodeQuality {
   strengths: string[];
   improvements: string[];
-  overallScore: number;  // 0-1 heuristic score
+  overallScore: number;  // 0-1 heuristic or 0-100 score
+  dimensions?: {
+    correctnessAlignment: CodeQualityDimension;
+    algorithmicEfficiency: CodeQualityDimension;
+    robustness: CodeQualityDimension;
+    implementationClarity: CodeQualityDimension;
+    problemPrecision: CodeQualityDimension;
+  };
 }
 
 export interface MLFeatures {

@@ -10,7 +10,6 @@ import { StatTile } from './components/StatTile';
 import { MiniBar } from './components/MiniBar';
 import { ActivityHeatmap } from './components/ActivityHeatmap';
 import { ApiKeyField } from './components/ApiKeyField';
-import { ChatGPTConnectionCard } from '@/components/integrations/ChatGPTConnectionCard';
 
 type UserProfile = ProfileData['user'];
 type Stats = ProfileData['stats'];
@@ -487,7 +486,7 @@ export default function SettingsPage() {
   const user  = data?.user  ?? null;
   const stats = data?.stats ?? null;
   const error = queryError ? (queryError as Error).message : null;
-  const [activeTab, setActiveTab]           = useState<'profile' | 'stats' | 'integrations' | 'missions' | 'accounts' | 'api' | 'extension'>('profile');
+  const [activeTab, setActiveTab]           = useState<'profile' | 'stats' | 'missions' | 'accounts' | 'api' | 'extension'>('profile');
   const [regenError,   setRegenError]       = useState<string | null>(null);
   const [regenSuccess, setRegenSuccess]     = useState(false);
 
@@ -532,7 +531,6 @@ export default function SettingsPage() {
   const TABS = [
     { key: 'profile', label: 'Profile' },
     { key: 'stats',   label: 'Statistics' },
-    { key: 'integrations', label: 'Integrations' },
     { key: 'missions', label: 'Email Notifications' },
     { key: 'accounts', label: 'Connected Accounts' },
     { key: 'api',     label: 'API Access' },
@@ -620,13 +618,6 @@ export default function SettingsPage() {
           {activeTab === 'profile' && (
             <SectionCard title="Profile Information" accent="#ff5f52">
               <ProfileEditor user={user} />
-            </SectionCard>
-          )}
-
-          {/* ── Integrations Tab ── */}
-          {activeTab === 'integrations' && (
-            <SectionCard title="Praxis + ChatGPT Integration" accent="#ff5f52">
-              <ChatGPTConnectionCard />
             </SectionCard>
           )}
 

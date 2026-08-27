@@ -4,8 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
-import { ChatGPTIcon } from '@/components/icons/ChatGPTIcon';
-import { useChatGPTIntegration } from '@/hooks/useChatGPTIntegration';
 import {
   BookOpen,
   Target,
@@ -75,7 +73,6 @@ function timeAgo(dateStr: string) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: chatgptData } = useChatGPTIntegration();
   const [user, setUser] = useState<UserData | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentSubmissions, setRecentSubmissions] = useState<RecentSubmission[]>([]);
@@ -218,40 +215,8 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* User & Integration Badge in Header */}
+            {/* User Profile in Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {/* Compact ChatGPT Integration Status */}
-              <Link
-                href="/settings"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: '#191919',
-                  border: `1px solid ${chatgptData?.connected ? '#22c55e40' : '#3f3f46'}`,
-                  borderRadius: 20,
-                  padding: '6px 14px',
-                  textDecoration: 'none',
-                  transition: 'border-color 0.2s',
-                }}
-              >
-                <ChatGPTIcon size={16} color={chatgptData?.connected ? '#22c55e' : '#a1a1aa'} />
-                <span style={{ fontSize: 12, color: '#f8fafc', fontWeight: 500 }}>
-                  Praxis + ChatGPT
-                </span>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: chatgptData?.connected ? '#22c55e' : '#a1a1aa',
-                    background: chatgptData?.connected ? '#22c55e1a' : '#27272a',
-                    borderRadius: 10,
-                    padding: '1px 7px',
-                  }}
-                >
-                  {chatgptData?.connected ? 'Connected' : 'Connect'}
-                </span>
-              </Link>
 
               {user && (
                 <div style={{
