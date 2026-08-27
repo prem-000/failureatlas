@@ -14,7 +14,8 @@ import { extractAlgorithmicInvariants } from '@/lib/analysis/invariant-extractor
 import { detectCodeAssumptions } from '@/lib/analysis/assumption-detector';
 import { extractCodeBlocks } from '@/lib/analysis/code-block-extractor';
 import { generateCodeMutations } from './mutation-engine';
-import { rankStressTargets } from './risk-ranker';
+import { generateFailureHypotheses } from './stress-target-pool';
+import { buildProblemSemanticModel } from './problem-semantic-model';
 import { synthesizeHiddenTests } from './test-synthesizer';
 import { groqClient } from '@/lib/api/groq-client';
 
@@ -50,25 +51,34 @@ export async function runSolutionStressModel(params: RunSSMParams): Promise<Solu
   // 1. Language-Aware Source Code Analysis
   const facts = analyzeSource(code, language);
 
-  // 2. Algorithm Detection
+  // 2. Problem Semantic Model (understand what the problem requires)
+  const semantic = buildProblemSemanticModel({
+    title: problemTitle,
+    slug: problemSlug,
+    difficulty: problemDifficulty,
+    constraints: problemConstraints,
+    statement: problemStatement,
+    facts,
+  });
+
+  // 3. Algorithm Detection (supporting evidence, not the primary driver)
   const algorithm = detectAlgorithmApproach(code, facts, problemTopics);
 
-  // 3. Complexity Analysis vs Problem Constraints
+  // 4. Complexity Analysis vs Problem Constraints
   const complexity = analyzeComplexity(code, facts, algorithm.patternSlug, problemConstraints, problemDifficulty);
 
-  // 4. Invariant Extraction
+  // 5. Code-Grounded Invariant Extraction
   const invariants = extractAlgorithmicInvariants(code, facts, algorithm.patternSlug);
 
-  // 5. Assumption Detection vs Constraints
+  // 6. Assumption Detection vs Constraints
   const assumptions = detectCodeAssumptions(code, facts, problemConstraints);
 
-  // 6. Mutation Analysis
+  // 7. Code-Grounded Mutation Analysis
   const mutations = generateCodeMutations(code, facts, algorithm.patternSlug);
 
-  // 7. Stress Target Pool & Ranking (Top 5 distinct stress targets)
-  const stressTargets = rankStressTargets({
-    problemTitle,
-    constraints: problemConstraints,
+  // 8. Failure Hypothesis Discovery (problem-specific stress targets)
+  const stressTargets = generateFailureHypotheses({
+    semantic,
     facts,
     algorithm,
     complexity,
@@ -78,7 +88,7 @@ export async function runSolutionStressModel(params: RunSSMParams): Promise<Solu
     knownWeakness,
   });
 
-  // 8. Build Structured Evidence Pack
+  // 9. Build Structured Evidence Pack
   const evidencePack: EvidencePack = {
     problem: {
       title: problemTitle,
@@ -106,8 +116,8 @@ export async function runSolutionStressModel(params: RunSSMParams): Promise<Solu
     },
   };
 
-  // 9. Synthesize 5 Evidence-Based Hidden Tests
-  const hiddenTests = await synthesizeHiddenTests(evidencePack);
+  // 10. Synthesize 5 Evidence-Based Hidden Tests (with semantic context)
+  const hiddenTests = await synthesizeHiddenTests(evidencePack, semantic);
 
   // 10. Generate Break Solution Data (Sections A, B, C, D)
   // Section B: Split submitted code into logical execution blocks

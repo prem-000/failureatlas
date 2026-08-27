@@ -1,3 +1,15 @@
+/**
+ * src/lib/adversarial/mutation-engine.ts
+ *
+ * Code-Grounded Mutation Analysis
+ *
+ * Generates mutations from the actual submitted source code.
+ * Each mutation description references real variable names, real expressions,
+ * and real code constructs — never generic labels.
+ *
+ * Removed: hardcoded sliding-window index mutation, generic "Scale stress mutation".
+ */
+
 import type {
   EvidenceItem,
   MutationCandidate,
@@ -7,7 +19,7 @@ import type {
 export function generateCodeMutations(
   code: string,
   facts: NormalizedCodeFacts,
-  patternSlug: string
+  _patternSlug: string       // kept for interface compatibility; NOT used for template selection
 ): MutationCandidate[] {
   const mutations: MutationCandidate[] = [];
 
@@ -31,7 +43,7 @@ export function generateCodeMutations(
       evidence: [
         {
           source: 'source_code',
-          description: `Mutation of "${orig}" to "${mut}" targets ${targetHypo}`,
+          description: `Mutation: "${orig}" → "${mut}" — ${desc}`,
           codeLocation: { snippet: orig },
           confidence: 0.90,
         },
@@ -39,7 +51,7 @@ export function generateCodeMutations(
     });
   };
 
-  // 1. Comparison Mutations (< ↔ <=, > ↔ >=, == ↔ !=)
+  // 1. Comparison Mutations (from actual conditions in the code)
   for (let i = 0; i < facts.conditions.length; i++) {
     const cond = facts.conditions[i].condition;
     if (cond.includes('>=')) {
@@ -48,8 +60,8 @@ export function generateCodeMutations(
         'comparison',
         cond,
         cond.replace('>=', '>'),
-        'Strict equality boundary check alteration',
-        'Tests whether boundary values exactly matching the threshold produce false negatives',
+        `Changing "${cond}" to use strict > instead of >= could miss values exactly at the boundary`,
+        `If the condition "${cond}" is changed to strict >, inputs where the compared values are exactly equal would be excluded`,
         0.85
       );
     } else if (cond.includes('<=')) {
@@ -58,93 +70,89 @@ export function generateCodeMutations(
         'comparison',
         cond,
         cond.replace('<=', '<'),
-        'Strict equality boundary check alteration',
-        'Tests whether boundary values exactly matching the upper limit produce false negatives',
+        `Changing "${cond}" to use strict < instead of <= could miss the upper boundary value`,
+        `If the condition "${cond}" is changed to strict <, the maximum valid value would be incorrectly excluded`,
         0.85
       );
     } else if (cond.includes('===') || cond.includes('==')) {
+      const operator = cond.includes('===') ? '===' : '==';
       addMut(
         `mut_comp_${i}`,
         'comparison',
         cond,
-        cond.replace(/===|==/, '!=='),
-        'Equality polarity inversion',
-        'Tests whether single-element or null-identity checks alter execution flow',
+        cond.replace(operator, operator === '===' ? '!==' : '!='),
+        `Inverting "${cond}" would negate the match condition, accepting wrong values and rejecting correct ones`,
+        `If "${cond}" is negated, the logic flow is reversed — previously matching inputs would be skipped`,
         0.80
       );
     }
   }
 
-  // 2. Loop Bound Mutations (i < n vs i < n - 1, or start offset)
+  // 2. Loop Bound Mutations (from actual loops in the code)
   for (let i = 0; i < facts.loops.length; i++) {
     const loop = facts.loops[i];
+    if (loop.type === 'recursion') continue;
+
     if (loop.bounds.includes('<') && !loop.bounds.includes('<=')) {
       addMut(
         `mut_loop_${i}`,
         'loop',
         loop.bounds,
         loop.bounds.replace('<', '<='),
-        'Loop boundary expansion mutation',
-        'Tests whether iterating beyond length bounds triggers index out of range',
+        `Expanding loop bound "${loop.bounds}" from < to <= would iterate one extra time, potentially causing an out-of-bounds access`,
+        `If "${loop.bounds}" uses <= instead of <, the loop processes one additional element beyond the valid range`,
         0.88
+      );
+    } else if (loop.bounds.includes('<=')) {
+      addMut(
+        `mut_loop_${i}`,
+        'loop',
+        loop.bounds,
+        loop.bounds.replace('<=', '<'),
+        `Shrinking loop bound "${loop.bounds}" from <= to < would skip the last valid element`,
+        `If "${loop.bounds}" uses < instead of <=, the final valid iteration is missed`,
+        0.87
       );
     }
   }
 
-  // 3. Index Mutations (i - k vs i - k + 1)
-  if (patternSlug === 'sliding_window') {
+  // 3. State Update Mutations (from actual state mutations in the code)
+  for (let i = 0; i < Math.min(facts.stateMutations.length, 3); i++) {
+    const mut = facts.stateMutations[i];
     addMut(
-      'mut_idx_sw',
-      'index',
-      'nums[i - k]',
-      'nums[i - k + 1]',
-      'Window outgoing index off-by-one mutation',
-      'Tests whether window eviction shifts the window size out of alignment',
-      0.92
-    );
-  }
-
-  // 4. State Update Mutations (Accumulator reverse or skip)
-  if (facts.stateMutations.length > 0) {
-    const mut = facts.stateMutations[0];
-    addMut(
-      'mut_state_1',
+      `mut_state_${i}`,
       'state_update',
       mut.operation,
-      `/* omitted */ ${mut.target}`,
-      'State accumulation disruption',
-      'Tests whether partial updates or omitted state components leave stale state',
+      `/* removed: ${mut.target} update */`,
+      `Removing the state update "${mut.operation}" on "${mut.target}" would leave stale values from previous iterations`,
+      `If the update "${mut.operation}" is removed, "${mut.target}" retains its old value, causing incorrect accumulation`,
       0.86
     );
   }
 
-  // 5. Initialization Mutations
+  // 4. Initialization Mutations (from actual variable initializations)
   for (let i = 0; i < facts.variables.length; i++) {
     const v = facts.variables[i];
-    if (v.isAccumulator && v.initialValue === '0') {
+    if (v.isAccumulator && v.initialValue !== undefined) {
+      const altInit = v.initialValue === '0' ? '-Infinity'
+        : v.initialValue === 'Infinity' ? '0'
+        : v.initialValue === '-Infinity' ? '0'
+        : v.initialValue === 'true' ? 'false'
+        : v.initialValue === 'false' ? 'true'
+        : '0';
+
       addMut(
         `mut_init_${i}`,
         'initialization',
-        `${v.name} = 0`,
-        `${v.name} = -Infinity`,
-        'Accumulator initialization polarity check',
-        'Tests whether negative input ranges produce incorrect zero outputs',
+        `${v.name} = ${v.initialValue}`,
+        `${v.name} = ${altInit}`,
+        `Changing the initial value of "${v.name}" from ${v.initialValue} to ${altInit} could produce incorrect results for edge inputs`,
+        `If "${v.name}" starts at ${altInit} instead of ${v.initialValue}, inputs where all values are negative (or at the boundary) would return the wrong answer`,
         0.82
       );
-      break;
+      break; // Only mutate the first accumulator
     }
   }
-
-  // 6. Scale / Complexity Pressure
-  addMut(
-    'mut_scale_1',
-    'scale',
-    'N = small',
-    'N = maximum constraint',
-    'Scale stress mutation',
-    'Tests whether time complexity or recursion depth safely executes under maximal scale',
-    0.75
-  );
 
   return mutations;
 }

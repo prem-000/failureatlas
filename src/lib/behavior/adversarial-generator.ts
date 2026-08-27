@@ -272,7 +272,7 @@ export async function generateAdversarialTestLab(
     };
   } catch (error) {
     console.error('❌ Error in generateAdversarialTestLab from SSM:', error);
-    const fallback = getFallbackAdversarialTestLab(problemTitle, patternSlug, code);
-    return fallback;
+    // Re-throw instead of using legacy fallback with hardcoded fixtures from unrelated problems
+    throw error;
   }
 }
