@@ -26,31 +26,55 @@ export async function synthesizeHiddenTests(
 ): Promise<EvidenceBasedHiddenTest[]> {
   const { problem, submission, stressTargets } = pack;
 
+  const params = (submission.normalizedFacts.functions[0]?.params || [])
+    .filter(p => p !== 'self' && p !== 'cls');
   const validationContext = {
     problemTitle: problem.title,
     problemSlug: problem.slug || problem.title,
     constraints: problem.constraints,
     sourceCode: submission.sourceCode,
     detectedApproach: submission.detectedApproach.algorithm,
-    parameters: submission.normalizedFacts.functions[0]?.params || [],
+    parameters: params,
+  };
+
+  const fillMissing = (current: EvidenceBasedHiddenTest[], needed: number): EvidenceBasedHiddenTest[] => {
+    const added: EvidenceBasedHiddenTest[] = [];
+    const seenInputs = new Set(current.map(c => (c.input || '').trim().replace(/\s+/g, '').toLowerCase()));
+    for (let i = 0; i < 5 && added.length < needed; i++) {
+      const target = stressTargets[i] || stressTargets[0];
+      const fb = generateDynamicFallbackForTarget(target, i, pack, semantic);
+      const normKey = fb.input.trim().replace(/\s+/g, '').toLowerCase();
+      if (!seenInputs.has(normKey)) {
+        seenInputs.add(normKey);
+        added.push(fb);
+      }
+    }
+    let extraIdx = 0;
+    while (added.length < needed && extraIdx < 5) {
+      const target = stressTargets[extraIdx] || stressTargets[0];
+      const fb = generateDynamicFallbackForTarget(target, extraIdx, pack, semantic);
+      added.push(fb);
+      extraIdx++;
+    }
+    return added;
   };
 
   // ── Primary Path: LLM Free-Form Test Generation ──────────────────────────
   try {
     const llmTests = await generateViaLLM(pack, semantic);
-    if (llmTests.length >= 5) {
-      const validated = validateAndDeduplicateTests(llmTests, validationContext);
-      if (validated.length >= 5) {
-        return validated.slice(0, 5);
+    if (llmTests.length > 0) {
+      const validated = validateAndDeduplicateTests(llmTests, validationContext, fillMissing);
+      if (validated.length === 5) {
+        return validated;
       }
     }
   } catch (err) {
     console.warn('[TestSynthesizer] LLM generation failed, using deterministic fallback:', err);
   }
 
-  // ── Fallback Path: Semantic-Model-Driven Deterministic Generation ────────
-  const fallbackTests = generateDeterministicTests(pack, semantic);
-  return validateAndDeduplicateTests(fallbackTests, validationContext).slice(0, 5);
+  // ── Fallback Path: Dynamic Evidence-Based Fallback ────────────────────────
+  const fallbackTests = generateDynamicFallbackTests(pack, semantic);
+  return validateAndDeduplicateTests(fallbackTests, validationContext, fillMissing);
 }
 
 // ─── LLM Generation ─────────────────────────────────────────────────────────
@@ -60,7 +84,7 @@ async function generateViaLLM(
   semantic?: ProblemSemanticModel
 ): Promise<EvidenceBasedHiddenTest[]> {
   const { problem, submission, stressTargets } = pack;
-  const params = submission.normalizedFacts.functions[0]?.params || [];
+  const params = (submission.normalizedFacts.functions[0]?.params || []).filter(p => p !== 'self' && p !== 'cls');
   const paramSignature = params.length > 0 ? params.join(', ') : 'input';
 
   // Build hypothesis summary from stress targets for context
@@ -112,7 +136,9 @@ Return valid JSON:
       "evidenceFromCode": "The code line or variable relevant to this test"
     }
   ]
-}`;
+}
+
+Ensure all 10 tests have non-empty valid inputs formatted as "${paramSignature}" and correct expected outputs.`;
 
   const res = await groqClient.getChatCompletion({
     messages: [
@@ -127,14 +153,23 @@ Return valid JSON:
   const rawTests: any[] = Array.isArray(parsed.tests) ? parsed.tests : [];
 
   return rawTests.map((t, idx) => {
-    const oracleResult = evaluateProblemOracle(problem.slug || problem.title, t.input, t.expectedOutput);
+    let inputStr = typeof t.input === 'string' ? t.input : '';
+    if (typeof t.input === 'object' && t.input !== null) {
+      if (Array.isArray(t.input)) {
+        inputStr = JSON.stringify(t.input);
+      } else {
+        inputStr = Object.entries(t.input).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join(', ');
+      }
+    }
+    const candidateExpected = t.expectedOutput !== undefined ? String(t.expectedOutput) : (t.expected !== undefined ? String(t.expected) : '');
+    const oracleResult = evaluateProblemOracle(problem.slug || problem.title, inputStr, candidateExpected);
     const classification = mapClassification(t.classification);
 
     return {
       id: `HT-0${idx + 1}`,
       targetId: stressTargets[idx]?.id,
       kind: classification,
-      riskTitle: t.title || `Test ${idx + 1}`,
+      riskTitle: t.title || t.description || `Test ${idx + 1}`,
       confidence: 'High' as const,
       confidenceScore: 90,
       verificationStatus: oracleResult.verificationStatus,
@@ -144,9 +179,9 @@ Return valid JSON:
         description: t.evidenceFromCode || 'Derived from submitted source code analysis',
         confidence: 0.88,
       }],
-      input: t.input || '',
-      expectedOutput: oracleResult.expectedOutput || t.expectedOutput || '',
-      whyExists: t.whyExists || '',
+      input: inputStr,
+      expectedOutput: oracleResult.expectedOutput || candidateExpected || '',
+      whyExists: t.whyExists || t.description || '',
       whatItAttacks: t.whatItAttacks || '',
       constraintRelevance: `Tests problem-specific behavior for ${problem.title}`,
     };
@@ -198,13 +233,8 @@ function generateDeterministicTests(
     });
   }
 
-  // 2. Semantic-model-driven generation (parameter-aware)
-  if (semantic) {
-    return generateFromSemanticModel(pack, semantic);
-  }
-
-  // 3. Last resort: stress-target-driven generation
-  return generateFromStressTargets(pack);
+  // 2. Dynamic evidence-based fallback generation (parameter-aware & constraint-aware)
+  return generateDynamicFallbackTests(pack, semantic);
 }
 
 // ─── Known Problem Test Suites ───────────────────────────────────────────────
@@ -385,163 +415,241 @@ function getKnownProblemTests(slug: string): KnownTest[] {
     ];
   }
 
+  // Guess Number Higher or Lower
+  if (slug.includes('guess-number-higher-or-lower') || slug.includes('guess-number')) {
+    return [
+      { title: 'Interior search element', input: 'n = 10, pick = 6', expected: '6', whyExists: 'Validates binary search midpoint convergence on an interior target', whatItAttacks: 'Midpoint calculation and comparison branch' },
+      { title: 'Target at lower boundary', input: 'n = 10, pick = 1', expected: '1', whyExists: 'Target is the minimum possible number in range [1, n]', whatItAttacks: 'Left-edge boundary termination' },
+      { title: 'Target at upper boundary', input: 'n = 10, pick = 10', expected: '10', whyExists: 'Target is the maximum possible number in range [1, n]', whatItAttacks: 'Right-edge boundary termination' },
+      { title: 'Large 32-bit scale boundary', input: 'n = 2147483647, pick = 1702766719', expected: '1702766719', whyExists: 'Maximum allowed search range — tests integer overflow in midpoint calculation', whatItAttacks: 'Potential 32-bit integer overflow in left + right' },
+      { title: 'Single element search space', input: 'n = 1, pick = 1', expected: '1', whyExists: 'Minimum input range [1, 1] — loop should terminate immediately', whatItAttacks: 'Whether left <= right loop handles left == right correctly' },
+    ];
+  }
+
+  // Sqrt(x)
+  if (slug.includes('sqrtx') || slug === 'sqrt-x') {
+    return [
+      { title: 'Truncation of non-square', input: 'x = 8', expected: '2', whyExists: 'Square root of 8 is 2.828... which must truncate down to 2', whatItAttacks: 'Integer truncation when x is not a perfect square' },
+      { title: 'Zero boundary input', input: 'x = 0', expected: '0', whyExists: 'Minimum allowed non-negative integer input', whatItAttacks: 'Zero handling and division by zero guard' },
+      { title: 'Exact perfect square', input: 'x = 16', expected: '4', whyExists: 'Square root of 16 is exactly 4', whatItAttacks: 'Exact square convergence' },
+      { title: 'Large 32-bit scale boundary', input: 'x = 2147395599', expected: '46339', whyExists: 'Near 2^31 - 1 — tests multiplication overflow in mid * mid', whatItAttacks: 'Potential integer overflow during square calculation' },
+      { title: 'Smallest positive integer', input: 'x = 1', expected: '1', whyExists: 'Minimum non-zero integer boundary', whatItAttacks: 'Base case handling for x = 1' },
+    ];
+  }
+
+  // Valid Perfect Square
+  if (slug.includes('valid-perfect-square') || slug === 'perfect-square') {
+    return [
+      { title: 'Standard non-square number', input: 'num = 14', expected: 'false', whyExists: '14 is between 9 and 16 and is not a perfect square', whatItAttacks: 'Rejection of non-square positive integers' },
+      { title: 'Smallest perfect square', input: 'num = 1', expected: 'true', whyExists: '1 * 1 = 1 is the minimal perfect square', whatItAttacks: 'Base case handling for num = 1' },
+      { title: 'Standard perfect square', input: 'num = 16', expected: 'true', whyExists: '4 * 4 = 16 is a standard square', whatItAttacks: 'Convergence on exact root' },
+      { title: 'Maximum 32-bit prime boundary', input: 'num = 2147483647', expected: 'false', whyExists: '2^31 - 1 is prime and not a square — tests overflow and loop termination', whatItAttacks: 'Overflow protection at maximum constraint limit' },
+      { title: 'Large exact perfect square', input: 'num = 808201', expected: 'true', whyExists: '899 * 899 = 808201 — tests large range convergence', whatItAttacks: 'Search interval convergence on large inputs' },
+    ];
+  }
+
+  // First Bad Version
+  if (slug.includes('first-bad-version')) {
+    return [
+      { title: 'Bad version in interior', input: 'n = 5, bad = 4', expected: '4', whyExists: 'Version 4 is the first bad version among 5 versions', whatItAttacks: 'Binary search narrowing to first occurrence' },
+      { title: 'First version is bad', input: 'n = 5, bad = 1', expected: '1', whyExists: 'All versions are bad — must return 1 without out-of-bounds error', whatItAttacks: 'Leftmost boundary condition' },
+      { title: 'Last version is bad', input: 'n = 5, bad = 5', expected: '5', whyExists: 'Only the final version is bad — tests rightward convergence', whatItAttacks: 'Rightmost boundary condition' },
+      { title: 'Large 32-bit scale boundary', input: 'n = 2147483647, bad = 1702766719', expected: '1702766719', whyExists: 'Large version space — tests integer overflow in (left + right) // 2', whatItAttacks: 'Integer overflow prevention' },
+      { title: 'Single version input', input: 'n = 1, bad = 1', expected: '1', whyExists: 'Only one version exists and it is bad', whatItAttacks: 'Base case with n = 1' },
+    ];
+  }
+
+  // Find First and Last Position of Element in Sorted Array
+  if (slug.includes('find-first-and-last-position') || slug.includes('first-and-last-position')) {
+    return [
+      { title: 'Multiple duplicates in interior', input: 'nums = [5, 7, 7, 8, 8, 10], target = 8', expected: '[3, 4]', whyExists: 'Target occurs twice at indices 3 and 4', whatItAttacks: 'Dual-pointer boundary expansion or two binary searches' },
+      { title: 'Target not present in array', input: 'nums = [5, 7, 7, 8, 8, 10], target = 6', expected: '[-1, -1]', whyExists: 'Target falls within array range but does not exist', whatItAttacks: 'Negative result handling' },
+      { title: 'Empty array boundary', input: 'nums = [], target = 0', expected: '[-1, -1]', whyExists: 'Array is empty — must return [-1, -1] without runtime exception', whatItAttacks: 'Empty input boundary guard' },
+      { title: 'All elements identical to target', input: 'nums = [8, 8, 8, 8, 8], target = 8', expected: '[0, 4]', whyExists: 'Entire array matches target from index 0 to 4', whatItAttacks: 'Range spanning full array' },
+      { title: 'Single element matching target', input: 'nums = [1], target = 1', expected: '[0, 0]', whyExists: 'Single element array where element matches target', whatItAttacks: 'Base case with array length 1' },
+    ];
+  }
+
+  // Koko Eating Bananas
+  if (slug.includes('koko-eating-bananas')) {
+    return [
+      { title: 'Standard piles with fractional division', input: 'piles = [3, 6, 7, 11], h = 8', expected: '4', whyExists: 'Speed 4 requires 1+2+2+3 = 8 hours', whatItAttacks: 'Ceiling division and hour summation' },
+      { title: 'Hour budget equals pile count', input: 'piles = [30, 11, 23, 4, 20], h = 5', expected: '30', whyExists: 'Can spend at most 1 hour per pile — speed must equal maximum pile height', whatItAttacks: 'Upper bound speed boundary' },
+      { title: 'Tight hour constraint', input: 'piles = [30, 11, 23, 4, 20], h = 6', expected: '23', whyExists: 'Speed 23 requires 2+1+1+1+1 = 6 hours', whatItAttacks: 'Binary search predicate precision' },
+      { title: 'Large pile scale constraint', input: 'piles = [1000000000], h = 2', expected: '500000000', whyExists: 'Maximum pile size 10^9 with 2 hours requires speed 5 * 10^8', whatItAttacks: 'Scale boundary with large integers' },
+      { title: 'All identical small piles', input: 'piles = [3, 3, 3, 3], h = 4', expected: '3', whyExists: 'All piles equal and h equals count — speed is exactly pile size', whatItAttacks: 'Uniform distribution base case' },
+    ];
+  }
+
   return []; // Unknown problem — will fall through to semantic-model-driven generation
 }
 
-// ─── Semantic Model Driven Generation ────────────────────────────────────────
+// ─── Dynamic Fallback Generation ─────────────────────────────────────────────
 
-function generateFromSemanticModel(
+export function generateDynamicFallbackForTarget(
+  target: any,
+  slotIdx: number,
   pack: EvidencePack,
-  semantic: ProblemSemanticModel
-): EvidenceBasedHiddenTest[] {
-  const { problem, submission, stressTargets } = pack;
-  const params = semantic.parameters;
-  const tests: EvidenceBasedHiddenTest[] = [];
+  semantic?: ProblemSemanticModel
+): EvidenceBasedHiddenTest {
+  const { problem, submission } = pack;
+  const slug = (problem.slug || problem.title).toLowerCase().replace(/[^a-z0-9]/g, '-');
 
-  // Generate tests from constraint boundaries and testable edges
-  const candidates: Array<{ title: string; input: string; expected: string; whyExists: string; whatItAttacks: string }> = [];
-
-  // Generate boundary-value inputs from parameters
-  for (const p of params) {
-    if (p.inferredType === 'integer' && p.constraints.min) {
-      candidates.push({
-        title: `${p.name} at minimum (${p.constraints.min})`,
-        input: `${p.name} = ${parseConstraintValue(p.constraints.min)}`,
-        expected: 'Valid output',
-        whyExists: `Tests behavior when ${p.name} is at its minimum allowed value`,
-        whatItAttacks: `Minimum boundary handling for parameter ${p.name}`,
-      });
-    }
-    if (p.inferredType === 'integer' && p.constraints.max) {
-      candidates.push({
-        title: `${p.name} at maximum (${p.constraints.max})`,
-        input: `${p.name} = ${parseConstraintValue(p.constraints.max)}`,
-        expected: 'Valid output',
-        whyExists: `Tests behavior when ${p.name} is at its maximum allowed value`,
-        whatItAttacks: `Maximum constraint boundary for parameter ${p.name}`,
-      });
-    }
-    if (p.inferredType === 'integer_array') {
-      candidates.push({
-        title: `Single element ${p.name}`,
-        input: `${p.name} = [1]`,
-        expected: 'Valid output',
-        whyExists: `Tests behavior with minimum-length array for ${p.name}`,
-        whatItAttacks: `Whether the code handles single-element arrays correctly`,
-      });
-      candidates.push({
-        title: `All identical values in ${p.name}`,
-        input: `${p.name} = [3, 3, 3, 3, 3]`,
-        expected: 'Valid output',
-        whyExists: `All elements are the same — tests duplicate handling`,
-        whatItAttacks: `Whether identical values cause unexpected behavior in comparisons or lookups`,
-      });
-    }
-    if (p.inferredType === 'string') {
-      candidates.push({
-        title: `Empty string for ${p.name}`,
-        input: `${p.name} = ""`,
-        expected: 'Valid output',
-        whyExists: `Tests behavior with empty string input`,
-        whatItAttacks: `Whether the code handles empty input without errors`,
-      });
-      candidates.push({
-        title: `Single character for ${p.name}`,
-        input: `${p.name} = "a"`,
-        expected: 'Valid output',
-        whyExists: `Tests minimum non-empty string input`,
-        whatItAttacks: `Whether single character is correctly processed`,
-      });
-    }
-  }
-
-  // Add testable edge behaviors from semantic model
-  for (const edge of semantic.testableEdgeBehaviors.slice(0, 3)) {
-    candidates.push({
-      title: edge,
-      input: 'Constraint boundary input',
-      expected: 'Valid output',
-      whyExists: edge,
-      whatItAttacks: `Semantic edge behavior: ${edge}`,
-    });
-  }
-
-  // Convert candidates to hidden tests with oracle verification
-  for (let i = 0; i < Math.min(candidates.length, 5); i++) {
-    const c = candidates[i];
-    const oracleResult = evaluateProblemOracle(problem.slug || problem.title, c.input, c.expected);
-    const matchingTarget = stressTargets[i];
-
-    tests.push({
-      id: `HT-0${i + 1}`,
-      targetId: matchingTarget?.id,
-      kind: (matchingTarget?.kind || 'boundary') as EvidenceBasedHiddenTest['kind'],
-      riskTitle: c.title,
+  // 1. Check known problem test suites
+  const known = getKnownProblemTests(slug);
+  if (known && known.length > slotIdx) {
+    const k = known[slotIdx];
+    const oracleResult = evaluateProblemOracle(slug, k.input, k.expected);
+    return {
+      id: `HT-0${slotIdx + 1}`,
+      targetId: target?.id || `ST-0${slotIdx + 1}`,
+      kind: (target?.kind || 'boundary') as EvidenceBasedHiddenTest['kind'],
+      riskTitle: k.title,
       confidence: 'High',
-      confidenceScore: matchingTarget?.confidence || 85,
+      confidenceScore: target?.confidence || 90,
       verificationStatus: oracleResult.verificationStatus,
       verificationBadgeText: oracleResult.verificationBadgeText,
-      evidence: matchingTarget?.sourceEvidence || [],
-      input: c.input,
-      expectedOutput: oracleResult.expectedOutput || c.expected,
-      whyExists: c.whyExists,
-      whatItAttacks: c.whatItAttacks,
-      constraintRelevance: `Problem-specific boundary for ${problem.title}`,
-    });
+      evidence: (target?.sourceEvidence || []).concat(target?.constraintEvidence || []),
+      input: k.input,
+      expectedOutput: oracleResult.expectedOutput,
+      whyExists: k.whyExists,
+      whatItAttacks: k.whatItAttacks,
+      constraintRelevance: k.constraintRelevance || `Problem-specific boundary for ${problem.title}`,
+    };
+  }
+
+  // 2. Synthesize distinct, problem-grounded input for this target
+  const rawParams = (submission.normalizedFacts.functions[0]?.params || [])
+    .filter(p => p !== 'self' && p !== 'cls');
+  const params = rawParams.length > 0
+    ? rawParams
+    : (semantic?.parameters.map(p => p.name).filter(p => p !== 'self' && p !== 'cls') || ['n']);
+
+  const inputParts: string[] = [];
+
+  for (const p of params) {
+    const pLower = p.toLowerCase();
+    const paramDesc = semantic?.parameters.find(sp => sp.name === p);
+    const inferredType = paramDesc?.inferredType || inferParamTypeFallback(pLower, problem.constraints);
+
+    if (inferredType === 'integer') {
+      const minVal = parseConstraintVal(paramDesc?.constraints.min || '1', 1);
+      const maxVal = parseConstraintVal(paramDesc?.constraints.max || '10000', 10000);
+      let val = 1;
+      if (slotIdx === 0) {
+        val = Math.min(maxVal, Math.max(minVal, minVal + 5)); // interior/hypothesis
+      } else if (slotIdx === 1) {
+        val = minVal; // minimum boundary
+      } else if (slotIdx === 2) {
+        val = Math.min(maxVal, minVal + 1); // step transition/parity
+      } else if (slotIdx === 3) {
+        val = maxVal >= 10000 ? (maxVal > 50000 ? 2147483647 : maxVal) : 10000; // scale pressure
+      } else {
+        val = Math.min(maxVal, minVal + 9); // semantic case
+      }
+      inputParts.push(`${p} = ${val}`);
+    } else if (inferredType === 'integer_array') {
+      let arr = '[1, 2, 3]';
+      if (slotIdx === 0) arr = '[2, 7, 11, 15]';
+      else if (slotIdx === 1) arr = '[1]';
+      else if (slotIdx === 2) arr = '[3, 3, 3, 3]';
+      else if (slotIdx === 3) arr = '[-1, -2, -3, -4, -5]';
+      else arr = '[0, 4, 3, 0]';
+      inputParts.push(`${p} = ${arr}`);
+    } else if (inferredType === 'string') {
+      let str = '"abc"';
+      if (slotIdx === 0) str = '"abcabcbb"';
+      else if (slotIdx === 1) str = '""';
+      else if (slotIdx === 2) str = '"bbbbb"';
+      else if (slotIdx === 3) str = '"abcdefghijklmnopqrstuvwxyz"';
+      else str = '"pwwkew"';
+      inputParts.push(`${p} = ${str}`);
+    } else if (inferredType === 'matrix') {
+      let mat = '[[1, 2], [3, 4]]';
+      if (slotIdx === 1) mat = '[[1]]';
+      inputParts.push(`${p} = ${mat}`);
+    } else {
+      inputParts.push(`${p} = ${slotIdx + 1}`);
+    }
+  }
+
+  const input = inputParts.join(', ') || 'input = 1';
+  const oracleResult = evaluateProblemOracle(slug, input, 'Valid output');
+
+  const coverageTitles = [
+    target?.title || 'Target-specific failure hypothesis',
+    `Constraint boundary: minimum parameter limits`,
+    `State-transition invariant stress on ${params[0] || 'input'}`,
+    `Asymptotic scale pressure on ${params[0] || 'input'}`,
+    `Semantic regression verification for ${problem.title}`,
+  ];
+
+  return {
+    id: `HT-0${slotIdx + 1}`,
+    targetId: target?.id || `ST-0${slotIdx + 1}`,
+    kind: (target?.kind || 'boundary') as EvidenceBasedHiddenTest['kind'],
+    riskTitle: target?.title || coverageTitles[slotIdx] || `Test ${slotIdx + 1}`,
+    confidence: 'High',
+    confidenceScore: target?.confidence || 88,
+    verificationStatus: oracleResult.verificationStatus,
+    verificationBadgeText: oracleResult.verificationBadgeText,
+    evidence: (target?.sourceEvidence || []).concat(target?.constraintEvidence || []),
+    input,
+    expectedOutput: oracleResult.expectedOutput,
+    whyExists: target?.hypothesis || `Derived from code analysis of ${target?.title || 'solution stress model'}`,
+    whatItAttacks: target?.whatItAttacks || `Tests ${coverageTitles[slotIdx]}`,
+    constraintRelevance: target?.constraintEvidence?.[0]?.description || `Problem constraints for ${problem.title}`,
+  };
+}
+
+export function generateDynamicFallbackTests(
+  pack: EvidencePack,
+  semantic?: ProblemSemanticModel
+): EvidenceBasedHiddenTest[] {
+  const { stressTargets } = pack;
+  const tests: EvidenceBasedHiddenTest[] = [];
+
+  for (let i = 0; i < 5; i++) {
+    const target = stressTargets[i] || stressTargets[0] || {
+      id: `ST-0${i + 1}`,
+      kind: 'boundary',
+      title: `Stress Target ${i + 1}`,
+      hypothesis: `Verifies behavior under boundary conditions`,
+      whatItAttacks: `Parameter boundaries`,
+      sourceEvidence: [],
+      constraintEvidence: [],
+      riskSignals: { constraintConflict: 0.5, mutationSensitivity: 0.5, invariantImportance: 0.5, complexityPressure: 0.5, evidenceStrength: 0.8 },
+      confidence: 85,
+      distinctnessKey: `st_${i + 1}`,
+      priority: 85,
+    };
+    tests.push(generateDynamicFallbackForTarget(target, i, pack, semantic));
   }
 
   return tests;
 }
 
-// ─── Stress-Target-Driven Fallback ───────────────────────────────────────────
-
-function generateFromStressTargets(pack: EvidencePack): EvidenceBasedHiddenTest[] {
-  const { problem, stressTargets } = pack;
-  const params = pack.submission.normalizedFacts.functions[0]?.params || [];
-
-  return stressTargets.map((st, idx) => {
-    // Construct a minimal valid input from parameter names
-    const inputParts = params.map(p => {
-      const pLower = p.toLowerCase();
-      if (['nums', 'arr', 'prices', 'height', 'heights', 'candidates', 'numbers'].includes(pLower)) return `${p} = [1, 2, 3]`;
-      if (['s', 'str', 'string', 'word', 'haystack'].includes(pLower)) return `${p} = "abc"`;
-      if (['needle', 'pattern'].includes(pLower)) return `${p} = "a"`;
-      if (['n', 'x', 'num', 'k', 'target', 'threshold', 'val', 'amount'].includes(pLower)) return `${p} = 1`;
-      if (['t'].includes(pLower)) return `${p} = "abc"`;
-      if (['grid', 'matrix', 'board'].includes(pLower)) return `${p} = [[1]]`;
-      return `${p} = 1`;
-    });
-    const input = inputParts.join(', ') || 'input = 1';
-
-    const oracleResult = evaluateProblemOracle(problem.slug || problem.title, input, 'Valid output');
-
-    return {
-      id: `HT-0${idx + 1}`,
-      targetId: st.id,
-      kind: st.kind,
-      riskTitle: st.title,
-      confidence: 'High' as const,
-      confidenceScore: st.confidence,
-      verificationStatus: oracleResult.verificationStatus,
-      verificationBadgeText: oracleResult.verificationBadgeText,
-      evidence: st.sourceEvidence.concat(st.constraintEvidence),
-      input,
-      expectedOutput: oracleResult.expectedOutput,
-      whyExists: st.hypothesis,
-      whatItAttacks: st.whatItAttacks,
-      constraintRelevance: `Tests hypothesis: ${st.title}`,
-    };
-  });
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function parseConstraintValue(val: string): string {
-  // Convert "10^4" → "10000", "5 * 10^4" → "50000"
-  const cleaned = val.replace(/\s/g, '');
-  const powerMatch = cleaned.match(/^(\d+)\*?10\^(\d+)$/);
-  if (powerMatch) return String(parseInt(powerMatch[1]) * Math.pow(10, parseInt(powerMatch[2])));
-  const simplePower = cleaned.match(/^10\^(\d+)$/);
-  if (simplePower) return String(Math.pow(10, parseInt(simplePower[1])));
-  return val;
+function inferParamTypeFallback(name: string, constraints: string[]): 'integer' | 'integer_array' | 'string' | 'matrix' | 'unknown' {
+  const n = name.toLowerCase();
+  if (['nums', 'arr', 'prices', 'height', 'heights', 'piles', 'candidates', 'numbers', 'coins'].includes(n)) return 'integer_array';
+  if (['s', 'str', 'string', 'word', 'haystack', 'needle', 'pattern', 't'].includes(n)) return 'string';
+  if (['grid', 'matrix', 'board', 'image'].includes(n)) return 'matrix';
+  if (['n', 'x', 'num', 'k', 'target', 'threshold', 'val', 'amount', 'pick', 'bad', 'h'].includes(n)) return 'integer';
+  const cText = constraints.join(' ').toLowerCase();
+  if (cText.includes(`${n}.length`) || cText.includes(`${n}[i]`)) return 'integer_array';
+  return 'integer';
+}
+
+function parseConstraintVal(str: string, fallback: number): number {
+  if (!str) return fallback;
+  const cleaned = str.replace(/\s/g, '');
+  if (cleaned.includes('2^31')) return 2147483647;
+  const powerMatch = cleaned.match(/(\d+)\*?10\^(\d+)/);
+  if (powerMatch) return parseInt(powerMatch[1], 10) * Math.pow(10, parseInt(powerMatch[2], 10));
+  const simplePower = cleaned.match(/10\^(\d+)/);
+  if (simplePower) return Math.pow(10, parseInt(simplePower[1], 10));
+  const num = parseInt(cleaned, 10);
+  return isNaN(num) ? fallback : num;
 }

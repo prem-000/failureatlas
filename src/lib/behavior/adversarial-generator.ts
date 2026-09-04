@@ -219,6 +219,7 @@ export async function generateAdversarialTestLab(
 
     const hiddenTests: any[] = ssmResult.hiddenTests.map(t => ({
       id: t.id,
+      testId: t.id,
       targetId: t.targetId,
       kind: t.kind,
       riskTitle: t.riskTitle,

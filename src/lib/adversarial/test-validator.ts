@@ -20,7 +20,8 @@ export interface ValidationContext {
  */
 export function validateAndDeduplicateTests(
   tests: EvidenceBasedHiddenTest[],
-  context?: ValidationContext | string[]
+  context?: ValidationContext | string[],
+  fillMissing?: (currentValidated: EvidenceBasedHiddenTest[], countNeeded: number) => EvidenceBasedHiddenTest[]
 ): EvidenceBasedHiddenTest[] {
   const validated: EvidenceBasedHiddenTest[] = [];
   const seenInputs = new Set<string>();
@@ -47,6 +48,8 @@ export function validateAndDeduplicateTests(
     ctx.problemSlug.includes('palindrome-number') ||
     ctx.problemSlug.includes('climbing-stairs') ||
     ctx.problemSlug.includes('fibonacci') ||
+    ctx.problemSlug.includes('sqrt') ||
+    ctx.problemSlug.includes('perfect-square') ||
     (ctx.parameters.length === 1 && /^(x|n|num)$/i.test(ctx.parameters[0]));
 
   const isStringSingleParam =
@@ -116,5 +119,29 @@ export function validateAndDeduplicateTests(
     if (validated.length >= 5) break;
   }
 
-  return validated;
+  // 5. Fill missing slots if count < 5 and fillMissing callback provided
+  if (validated.length < 5 && fillMissing) {
+    const needed = 5 - validated.length;
+    const replacements = fillMissing(validated, needed);
+    for (const rep of replacements) {
+      if (validated.length >= 5) break;
+      const inputClean = (rep.input || '').trim();
+      const outputClean = (rep.expectedOutput || '').trim();
+      if (!inputClean || !outputClean) continue;
+      const normalizedKey = inputClean.replace(/\s+/g, '').toLowerCase();
+      if (seenInputs.has(normalizedKey)) continue;
+      seenInputs.add(normalizedKey);
+      const id = `HT-0${validated.length + 1}`;
+      validated.push({
+        ...rep,
+        id,
+      });
+    }
+  }
+
+  // Renumber to guarantee exactly HT-01 .. HT-05
+  return validated.slice(0, 5).map((t, idx) => ({
+    ...t,
+    id: `HT-0${idx + 1}`,
+  }));
 }

@@ -14,16 +14,21 @@ export class TsJsSourceAnalyzer implements SourceAnalyzer {
     const lines = source.split('\n');
 
     // 1. Extract Functions
-    const fnRegex = /(?:function\s+([a-zA-Z0-9_$]+)|(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*=>|(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*function)/g;
+    const fnRegex = /(?:function\s+([a-zA-Z0-9_$]+)\s*\(([^)]*)\)|(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*=>|(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*(?:async\s*)?function\s*\(([^)]*)\)|(?:async\s+)?([a-zA-Z0-9_$]+)\s*\(([^)]*)\)\s*(?::\s*[^{]+)?\s*\{)/g;
     let fnMatch: RegExpExecArray | null;
     while ((fnMatch = fnRegex.exec(source)) !== null) {
-      const name = fnMatch[1] || fnMatch[2] || fnMatch[4];
-      if (name) {
+      const name = fnMatch[1] || fnMatch[3] || fnMatch[5] || fnMatch[7];
+      const rawParams = fnMatch[2] ?? fnMatch[4] ?? fnMatch[6] ?? fnMatch[8] ?? '';
+      if (name && !['if', 'for', 'while', 'switch', 'catch'].includes(name)) {
         // Check for recursive self-call
         const isRecursive = new RegExp(`\\b${name}\\s*\\(`, 'g').test(source.slice(fnMatch.index + fnMatch[0].length));
+        const params = rawParams
+          .split(',')
+          .map(p => p.trim().split(':')[0].trim())
+          .filter(p => p && p !== 'this');
         facts.functions.push({
           name,
-          params: (fnMatch[3] || '').split(',').map(p => p.trim()).filter(Boolean),
+          params,
           isRecursive,
         });
       }

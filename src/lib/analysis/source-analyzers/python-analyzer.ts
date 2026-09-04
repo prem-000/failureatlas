@@ -14,11 +14,15 @@ export class PythonSourceAnalyzer implements SourceAnalyzer {
     const lines = source.split('\n');
 
     // 1. Extract Functions & Recursion
-    const fnRegex = /def\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\):/g;
+    const fnRegex = /def\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)(?:\s*->\s*[^:]+)?:/g;
     let fnMatch: RegExpExecArray | null;
     while ((fnMatch = fnRegex.exec(source)) !== null) {
       const name = fnMatch[1];
-      const params = (fnMatch[2] || '').split(',').map(p => p.trim()).filter(p => p && p !== 'self');
+      const params = (fnMatch[2] || '')
+        .split(',')
+        .map(p => p.trim())
+        .filter(p => p && p !== 'self' && p !== 'cls')
+        .map(p => p.split(':')[0].trim());
       const isRecursive = new RegExp(`\\b${name}\\s*\\(`, 'g').test(source.slice(fnMatch.index + fnMatch[0].length));
       facts.functions.push({
         name,

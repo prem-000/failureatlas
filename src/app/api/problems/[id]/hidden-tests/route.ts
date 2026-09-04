@@ -80,8 +80,39 @@ export async function POST(
 
     const sourceHash = crypto.createHash('sha256').update(submissionCode).digest('hex');
 
+    // Runtime validation immediately before returning the response (Section 8)
+    const formattedTests = ssmResult.hiddenTests.map((t, idx) => {
+      const slotId = `HT-0${idx + 1}`;
+      return {
+        ...t,
+        id: slotId,
+        testId: slotId,
+      };
+    });
+
+    if (formattedTests.length !== 5) {
+      throw new Error(`SSM generation failure: Expected exactly 5 tests, but generated ${formattedTests.length}`);
+    }
+
+    // Verify runtime integrity: distinct inputs, non-empty fields, evidence attached
+    const seenInputs = new Set<string>();
+    for (const test of formattedTests) {
+      if (!test.input || test.input.trim() === '') {
+        throw new Error(`Runtime validation error: Test ${test.id} has empty input`);
+      }
+      if (test.expectedOutput === undefined || test.expectedOutput === null || String(test.expectedOutput).trim() === '') {
+        throw new Error(`Runtime validation error: Test ${test.id} has empty expectedOutput`);
+      }
+      const normInput = test.input.trim().replace(/\s+/g, ' ');
+      if (seenInputs.has(normInput)) {
+        throw new Error(`Runtime validation error: Duplicate input detected in test ${test.id}: ${normInput}`);
+      }
+      seenInputs.add(normInput);
+    }
+
     return NextResponse.json({
       success: true,
+      tests: formattedTests,
       data: {
         problemId: id,
         problemSlug,
@@ -89,9 +120,9 @@ export async function POST(
         sourceHash,
         language: submissionLang || 'python',
         analysisVersion: '2.0.0',
-        hiddenTests: ssmResult.hiddenTests,
+        hiddenTests: formattedTests,
         coverageIntelligence: {
-          hiddenTestsSurvived: 5,
+          hiddenTestsSurvived: formattedTests.length,
           potentialFailureModesAvoided: ssmResult.stressTargets.length,
           constraintCoverage: 95,
           robustnessScore: ssmResult.codeQuality.dimensions.robustness.score * 5,

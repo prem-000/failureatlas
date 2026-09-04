@@ -153,7 +153,7 @@ function EvidencePanel({ result }: { result: DiagnosisResult | null }) {
 }
 
 // ─── Chat Bubble ───────────────────────────────────────────────────────────────
-function ChatBubble({ msg }: { msg: Message }) {
+function ChatBubble({ msg, mounted }: { msg: Message; mounted: boolean }) {
   const isUser = msg.role === 'user';
   return (
     <div style={{
@@ -170,8 +170,11 @@ function ChatBubble({ msg }: { msg: Message }) {
       }}>
         {msg.content}
       </div>
-      <span style={{ fontSize: 10, color: '#3f3f46', marginLeft: isUser ? 0 : 4, marginRight: isUser ? 4 : 0 }}>
-        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      <span
+        suppressHydrationWarning
+        style={{ fontSize: 10, color: '#3f3f46', marginLeft: isUser ? 0 : 4, marginRight: isUser ? 4 : 0 }}
+      >
+        {mounted ? msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
       </span>
     </div>
   );
@@ -187,11 +190,16 @@ const QUICK_PROMPTS = [
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function DiagnosisPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const diagnosisMutation = useDiagnosisGenerate();
   const generateExplanation = useGenerateFailureExplanation();
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: uuid(),
+      id: 'initial-welcome-message',
       role: 'assistant',
       content: "Hello! I'm your AI Failure Analyst. Ask me anything about your competitive programming patterns — I'll retrieve your past failures, analyze the evidence, and give you a targeted diagnosis.",
       timestamp: new Date(),
@@ -284,7 +292,7 @@ export default function DiagnosisPage() {
         <div className="diagnosis-chat" style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1f1f1f' }}>
           {/* Messages */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {messages.map(m => <ChatBubble key={m.id} msg={m} />)}
+            {messages.map(m => <ChatBubble key={m.id} msg={m} mounted={mounted} />)}
             {loading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#1e1e1e', borderRadius: '16px 16px 16px 4px', border: '1px solid #2a2a2a', width: 'fit-content' }}>
                 {[0, 1, 2].map(i => (

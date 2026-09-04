@@ -356,6 +356,7 @@ export interface AdversarialTestCase {
   
   // Evidence-driven CP fields
   id?: string; // HT-01 .. HT-05
+  testId?: string; // HT-01 .. HT-05
   targetId?: string; // ST-01 .. ST-05
   kind?: string;
   riskTitle?: string;

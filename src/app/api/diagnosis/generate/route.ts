@@ -4,6 +4,8 @@ import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
 import { computeWeaknessPageRank } from '@/lib/graph/pagerank';
 import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
 import { generateAIDiagnosis, DIAGNOSIS_MODEL_VERSION } from '@/lib/diagnosis/generator';
+import { resolveUserIntent } from '@/lib/diagnosis/intent-resolver';
+import { resolveProblemTarget } from '@/lib/diagnosis/problem-resolver';
 import { createFingerprint } from '@/lib/fingerprint/fingerprint';
 import type { SubmissionEvent } from '@/types';
 import { getAnalysisCache, setAnalysisCache, delAnalysisCache } from '@/lib/cache/analysis';
@@ -26,10 +28,13 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[DIAGNOSIS] request received');
+
     // 1. Authenticate user
     const authHeader = request.headers.get('authorization');
     const token = getTokenFromHeader(authHeader || undefined);
     if (!token) {
+      console.log('[DIAGNOSIS] authenticated user: failure');
       return NextResponse.json(
         { success: false, error: { code: 'AUTHENTICATION_REQUIRED', message: 'Missing Authorization token' } },
         { status: 401 }
@@ -38,12 +43,14 @@ export async function POST(request: NextRequest) {
 
     const payload = await verifyToken(token);
     if (!payload || !payload.userId) {
+      console.log('[DIAGNOSIS] authenticated user: failure');
       return NextResponse.json(
         { success: false, error: { code: 'AUTHORIZATION_FAILED', message: 'Invalid or expired token' } },
         { status: 401 }
       );
     }
     const userId = payload.userId;
+    console.log('[DIAGNOSIS] authenticated user: success');
 
     // Rate limiting: 10 requests per hour per user
     const rateLimitResult = await rateLimit(userId, 10, 3600);
@@ -64,19 +71,56 @@ export async function POST(request: NextRequest) {
       // empty body is fine
     }
 
-    // 2. Fetch the user's most recent failure event
-    const latestFailure = await prisma.submissionEvent.findFirst({
-      where: {
-        userId,
-        NOT: { status: 'Accepted' }
-      },
-      orderBy: { timestamp: 'desc' },
-      include: { problem: true }
-    });
+    // 2. Resolve user intent and problem entity
+    const intentResult = await resolveUserIntent(userQuery);
+    const problemResult = await resolveProblemTarget(userQuery, userId);
 
-    if (!latestFailure) {
+    console.log('[DIAGNOSIS] resolved intent:', intentResult.intent, 'confidence:', intentResult.confidence);
+    if (problemResult.problemMentioned) {
+      console.log(
+        '[DIAGNOSIS] resolved problem:',
+        problemResult.targetProblem?.title,
+        'attempted:',
+        problemResult.userHasAttempted
+      );
+    }
+
+    // Select target submission based on intent and resolved problem
+    let targetSubmission: any = null;
+
+    if (problemResult.problemMentioned && problemResult.targetProblem) {
+      if (problemResult.latestFailedAttempt) {
+        targetSubmission = problemResult.latestFailedAttempt;
+      } else if (problemResult.latestAttempt) {
+        targetSubmission = problemResult.latestAttempt;
+      }
+    }
+
+    // If no problem-specific submission, fallback to latest non-Accepted submission
+    if (!targetSubmission) {
+      targetSubmission = await prisma.submissionEvent.findFirst({
+        where: {
+          userId,
+          NOT: { status: 'Accepted' },
+        },
+        orderBy: { timestamp: 'desc' },
+        include: { problem: true },
+      });
+    }
+
+    // If still no failure, check if user has any submission at all
+    if (!targetSubmission) {
+      targetSubmission = await prisma.submissionEvent.findFirst({
+        where: { userId },
+        orderBy: { timestamp: 'desc' },
+        include: { problem: true },
+      });
+    }
+
+    if (!targetSubmission && !problemResult.problemMentioned && intentResult.intent !== 'GENERAL_DSA_QUESTION' && intentResult.intent !== 'WEEKLY_PRACTICE') {
+      console.log('[DIAGNOSIS] evidence retrieval: failure (no submissions found)');
       const emptyAnalysis = userQuery
-        ? `No failure history found to answer: "${userQuery}". Submit a failed attempt first.`
+        ? `No submission history found to answer: "${userQuery}". Submit an attempt first.`
         : 'No weaknesses identified! Keep solving problems.';
       return NextResponse.json({
         success: true,
@@ -96,7 +140,7 @@ export async function POST(request: NextRequest) {
             name: 'None',
             description: 'No weaknesses identified! Keep solving problems.',
             confidence: 100,
-            impactScore: 0.0
+            impactScore: 0.0,
           },
           secondaryWeaknesses: [],
           learningRecommendations: [],
@@ -106,59 +150,68 @@ export async function POST(request: NextRequest) {
             streakAnalysis: {
               currentStreak: 0,
               longestStreak: 0,
-              averageStreak: 0.0
-            }
-          }
-        }
+              averageStreak: 0.0,
+            },
+          },
+        },
       });
     }
 
-    // Map latest failure to type SubmissionEvent
-    const mappedCurrent: SubmissionEvent = {
-      eventId: latestFailure.eventId,
-      sessionId: latestFailure.sessionId,
-      timestamp: latestFailure.timestamp,
-      problemSlug: latestFailure.problem.slug,
-      problemTitle: latestFailure.problem.title,
-      problemDifficulty: latestFailure.problem.difficulty as any,
-      problemTopics: latestFailure.problem.topics,
-      problemUrl: latestFailure.problem.url || '',
-      submissionStatus: latestFailure.status as any,
-      submissionLanguage: latestFailure.language,
-      submissionCode: latestFailure.code,
-      runtime: latestFailure.runtime ?? undefined,
-      memory: latestFailure.memory ?? undefined,
-      testCasesPassed: latestFailure.testCasesPassed ?? undefined,
-      totalTestCases: latestFailure.totalTestCases ?? undefined,
-      failedTestCase: latestFailure.failedTestCase ?? undefined,
-      timeSpent: latestFailure.timeSpent,
-      attemptNumber: latestFailure.attemptNumber,
-      rapidSubmission: latestFailure.rapidSubmission
-    };
+    console.log('[DIAGNOSIS] evidence retrieval: success');
+
+    // Map target submission to type SubmissionEvent (or null if unattempted problem)
+    const mappedCurrent: SubmissionEvent | null = targetSubmission
+      ? {
+          eventId: targetSubmission.eventId,
+          sessionId: targetSubmission.sessionId,
+          timestamp: targetSubmission.timestamp,
+          problemSlug: targetSubmission.problem.slug,
+          problemTitle: targetSubmission.problem.title,
+          problemDifficulty: targetSubmission.problem.difficulty as any,
+          problemTopics: targetSubmission.problem.topics,
+          problemUrl: targetSubmission.problem.url || '',
+          submissionStatus: targetSubmission.status as any,
+          submissionLanguage: targetSubmission.language,
+          submissionCode: targetSubmission.code,
+          runtime: targetSubmission.runtime ?? undefined,
+          memory: targetSubmission.memory ?? undefined,
+          testCasesPassed: targetSubmission.testCasesPassed ?? undefined,
+          totalTestCases: targetSubmission.totalTestCases ?? undefined,
+          failedTestCase: targetSubmission.failedTestCase ?? undefined,
+          timeSpent: targetSubmission.timeSpent,
+          attemptNumber: targetSubmission.attemptNumber,
+          rapidSubmission: targetSubmission.rapidSubmission,
+        }
+      : null;
 
     // 3. Compute PageRank weakness scores
     const pageRankScores = await computeWeaknessPageRank(userId);
 
     // 4. Retrieve similar failures using Hybrid RAG search
-    const similarFailures = await retrieveSimilarFailures(
-      userId,
-      latestFailure.eventId,
-      mappedCurrent.problemTitle,
-      mappedCurrent.problemDifficulty,
-      mappedCurrent.problemTopics,
-      mappedCurrent.submissionStatus,
-      mappedCurrent.submissionCode,
-      mappedCurrent.failedTestCase
-    );
+    const similarFailures = targetSubmission && mappedCurrent
+      ? await retrieveSimilarFailures(
+          userId,
+          targetSubmission.eventId,
+          mappedCurrent.problemTitle,
+          mappedCurrent.problemDifficulty,
+          mappedCurrent.problemTopics,
+          mappedCurrent.submissionStatus,
+          mappedCurrent.submissionCode,
+          mappedCurrent.failedTestCase
+        )
+      : [];
+    console.log('[DIAGNOSIS] RAG context: success');
 
     // Generate deterministic fingerprint
-    const { fingerprint, codeHash } = createFingerprint({
-      userId,
-      problemSlug: latestFailure.problem.slug,
-      language: latestFailure.language,
-      status: latestFailure.status,
-      code: latestFailure.code
-    });
+    const { fingerprint, codeHash } = targetSubmission
+      ? createFingerprint({
+          userId,
+          problemSlug: targetSubmission.problem.slug,
+          language: targetSubmission.language,
+          status: targetSubmission.status,
+          code: targetSubmission.code,
+        })
+      : { fingerprint: `user-${userId}-intent-${intentResult.intent}`, codeHash: '' };
 
     let diagnosis: any = null;
     const responseRecs: Array<{
@@ -173,13 +226,21 @@ export async function POST(request: NextRequest) {
     let aiDiagnosisConfidence = 85;
     let aiDiagnosisReasoning = "Identified gap area.";
 
-    if (forceRegenerate) {
+    const isFallbackReasoning = (raw: any): boolean => {
+      if (!raw) return false;
+      const str = typeof raw === 'string' ? raw : JSON.stringify(raw);
+      return str.includes('Static rule-based heuristic fallback');
+    };
+
+    if (forceRegenerate || Boolean(userQuery)) {
       await delAnalysisCache(fingerprint);
     } else {
       // Check Redis Cache first
       const cached = await getAnalysisCache(fingerprint);
-      if (cached) {
+      if (cached && !isFallbackReasoning(cached)) {
         return NextResponse.json(cached);
+      } else if (cached) {
+        await delAnalysisCache(fingerprint);
       }
 
       diagnosis = await prisma.diagnosisResult.findUnique({
@@ -190,7 +251,7 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      if (diagnosis && diagnosis.modelVersion !== DIAGNOSIS_MODEL_VERSION) {
+      if (diagnosis && (diagnosis.modelVersion !== DIAGNOSIS_MODEL_VERSION || isFallbackReasoning(diagnosis.progressMetrics))) {
         diagnosis = null;
       }
     }
@@ -214,15 +275,19 @@ export async function POST(request: NextRequest) {
           });
           retries--;
         }
-        if (diagnosis && diagnosis.modelVersion !== DIAGNOSIS_MODEL_VERSION) {
+        if (diagnosis && (diagnosis.modelVersion !== DIAGNOSIS_MODEL_VERSION || isFallbackReasoning(diagnosis.progressMetrics))) {
           diagnosis = null;
         }
       }
 
       if (!diagnosis) {
         try {
-          // 5. Generate AI Diagnosis (pass userQuery so Groq can answer it directly)
-          const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores, userQuery || undefined);
+          // 5. Generate AI Diagnosis (pass userQuery, intent, and problem resolution options)
+          const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores, {
+            userQuery: userQuery || undefined,
+            intent: intentResult,
+            problemResolution: problemResult,
+          });
           aiDiagnosisPrimaryName = aiDiagnosis.primaryWeaknessName;
           aiDiagnosisConfidence = aiDiagnosis.confidence;
           aiDiagnosisReasoning = aiDiagnosis.reasoningChain;
@@ -239,67 +304,69 @@ export async function POST(request: NextRequest) {
             }
           });
 
-          let created;
-          const existingByFingerprint = await prisma.diagnosisResult.findUnique({
-            where: { fingerprint }
-          });
-
-          if (existingByFingerprint) {
-            created = await prisma.diagnosisResult.update({
-              where: { fingerprint },
-              data: {
-                submissionId: latestFailure.id,
-                primaryWeaknessId: primaryWeaknessNode.id,
-                modelVersion: DIAGNOSIS_MODEL_VERSION,
-                diagnosisJson: aiDiagnosis as any,
-                progressMetrics: {
-                  confidence: aiDiagnosis.confidence,
-                  reasoningChain: aiDiagnosis.reasoningChain
-                }
-              }
+          let created: any = null;
+          if (targetSubmission) {
+            const existingByFingerprint = await prisma.diagnosisResult.findUnique({
+              where: { fingerprint }
             });
-          } else {
-            created = await prisma.diagnosisResult.upsert({
-              where: { submissionId: latestFailure.id },
-              update: {
-                primaryWeaknessId: primaryWeaknessNode.id,
-                fingerprint,
-                codeHash,
-                modelVersion: DIAGNOSIS_MODEL_VERSION,
-                diagnosisJson: aiDiagnosis as any,
-                progressMetrics: {
-                  confidence: aiDiagnosis.confidence,
-                  reasoningChain: aiDiagnosis.reasoningChain
+
+            if (existingByFingerprint) {
+              created = await prisma.diagnosisResult.update({
+                where: { fingerprint },
+                data: {
+                  submissionId: targetSubmission.id,
+                  primaryWeaknessId: primaryWeaknessNode.id,
+                  modelVersion: DIAGNOSIS_MODEL_VERSION,
+                  diagnosisJson: aiDiagnosis as any,
+                  progressMetrics: {
+                    confidence: aiDiagnosis.confidence,
+                    reasoningChain: aiDiagnosis.reasoningChain
+                  }
                 }
+              });
+            } else {
+              created = await prisma.diagnosisResult.upsert({
+                where: { submissionId: targetSubmission.id },
+                update: {
+                  primaryWeaknessId: primaryWeaknessNode.id,
+                  fingerprint,
+                  codeHash,
+                  modelVersion: DIAGNOSIS_MODEL_VERSION,
+                  diagnosisJson: aiDiagnosis as any,
+                  progressMetrics: {
+                    confidence: aiDiagnosis.confidence,
+                    reasoningChain: aiDiagnosis.reasoningChain
+                  }
+                },
+                create: {
+                  userId,
+                  submissionId: targetSubmission.id,
+                  primaryWeaknessId: primaryWeaknessNode.id,
+                  fingerprint,
+                  codeHash,
+                  modelVersion: DIAGNOSIS_MODEL_VERSION,
+                  diagnosisJson: aiDiagnosis as any,
+                  progressMetrics: {
+                    confidence: aiDiagnosis.confidence,
+                    reasoningChain: aiDiagnosis.reasoningChain
+                  }
+                }
+              });
+            }
+
+            diagnosis = await prisma.diagnosisResult.findUnique({
+              where: { id: created.id },
+              include: {
+                primaryWeakness: true,
+                recommendations: { include: { strategy: true } },
               },
-              create: {
-                userId,
-                submissionId: latestFailure.id,
-                primaryWeaknessId: primaryWeaknessNode.id,
-                fingerprint,
-                codeHash,
-                modelVersion: DIAGNOSIS_MODEL_VERSION,
-                diagnosisJson: aiDiagnosis as any,
-                progressMetrics: {
-                  confidence: aiDiagnosis.confidence,
-                  reasoningChain: aiDiagnosis.reasoningChain
-                }
-              }
+            });
+
+            // Clear existing recommendations in case of overwrite
+            await prisma.learningRecommendation.deleteMany({
+              where: { diagnosisId: diagnosis.id }
             });
           }
-
-          diagnosis = await prisma.diagnosisResult.findUnique({
-            where: { id: created.id },
-            include: {
-              primaryWeakness: true,
-              recommendations: { include: { strategy: true } },
-            },
-          });
-
-          // Clear existing recommendations in case of overwrite
-          await prisma.learningRecommendation.deleteMany({
-            where: { diagnosisId: diagnosis.id }
-          });
 
           for (const rec of aiDiagnosis.learningRecommendations) {
             const strategy = await prisma.learningStrategy.create({
@@ -313,13 +380,15 @@ export async function POST(request: NextRequest) {
               }
             });
 
-            await prisma.learningRecommendation.create({
-              data: {
-                diagnosisId: created.id,
-                strategyId: strategy.id,
-                completed: false
-              }
-            });
+            if (created) {
+              await prisma.learningRecommendation.create({
+                data: {
+                  diagnosisId: created.id,
+                  strategyId: strategy.id,
+                  completed: false
+                }
+              });
+            }
 
             responseRecs.push({
               strategyId: strategy.id,
@@ -342,11 +411,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Cache hit: link to current submission if different, then skip LLM generation
-    if (diagnosis) {
-      if (diagnosis.submissionId !== latestFailure.id) {
+    if (diagnosis && targetSubmission) {
+      if (diagnosis.submissionId !== targetSubmission.id) {
         diagnosis = await prisma.diagnosisResult.update({
           where: { id: diagnosis.id },
-          data: { submissionId: latestFailure.id },
+          data: { submissionId: targetSubmission.id },
           include: {
             primaryWeakness: true,
             recommendations: { include: { strategy: true } }
@@ -487,11 +556,11 @@ export async function POST(request: NextRequest) {
         reasoningChain,
         similarFailures: similarForUi,
         recommendations: uiRecommendations,
-        latestSubmissionId: latestFailure.eventId,
+        latestSubmissionId: targetSubmission ? targetSubmission.eventId : undefined,
       },
       diagnosis: {
-        diagnosisId: diagnosis.id,
-        generatedAt: diagnosis.createdAt.toISOString(),
+        diagnosisId: diagnosis?.id || 'generated-diagnosis-id',
+        generatedAt: diagnosis?.createdAt ? diagnosis.createdAt.toISOString() : new Date().toISOString(),
         analysisScope: 'recent',
         primaryWeakness: {
           name: aiDiagnosisPrimaryName,

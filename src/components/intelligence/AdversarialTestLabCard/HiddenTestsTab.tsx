@@ -19,7 +19,7 @@ export function HiddenTestsTab({ hiddenTests, colors }: HiddenTestsTabProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
       {hiddenTests.map((test, idx) => {
-        const testId = test.id || `HT-0${idx + 1}`;
+        const testId = (test as any).testId || test.id || `HT-0${idx + 1}`;
         const isVerified = test.verificationStatus === 'verified_oracle' || test.verificationStatus === 'verified_reference';
         const badgeText = test.verificationBadgeText || (isVerified ? 'VERIFIED ✓' : 'HIGH CONFIDENCE — INFERRED');
 

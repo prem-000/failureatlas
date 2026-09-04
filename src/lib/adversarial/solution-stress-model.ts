@@ -252,6 +252,30 @@ export async function runSolutionStressModel(params: RunSSMParams): Promise<Solu
 }
 
 function resolveDefaultConstraintsForProblem(slug: string, topics: string[]): string[] {
+  if (slug.includes('guess-number-higher-or-lower') || slug.includes('guess-number')) {
+    return ['1 <= n <= 2^31 - 1', '1 <= pick <= n'];
+  }
+  if (slug.includes('sqrtx') || slug === 'sqrt-x') {
+    return ['0 <= x <= 2^31 - 1'];
+  }
+  if (slug.includes('valid-perfect-square') || slug === 'perfect-square') {
+    return ['1 <= num <= 2^31 - 1'];
+  }
+  if (slug.includes('first-bad-version')) {
+    return ['1 <= bad <= n <= 2^31 - 1'];
+  }
+  if (slug.includes('find-first-and-last-position') || slug.includes('first-and-last-position')) {
+    return ['0 <= nums.length <= 10^5', '-10^9 <= nums[i] <= 10^9', 'nums is a non-decreasing array', '-10^9 <= target <= 10^9'];
+  }
+  if (slug.includes('koko-eating-bananas')) {
+    return ['1 <= piles.length <= 10^4', 'piles.length <= h <= 10^9', '1 <= piles[i] <= 10^9'];
+  }
+  if (slug.includes('palindrome-number') || slug === 'palindrome') {
+    return ['-2^31 <= x <= 2^31 - 1'];
+  }
+  if (slug.includes('valid-parentheses')) {
+    return ['1 <= s.length <= 10^4', 's consists of parentheses only ()[]{}'];
+  }
   if (slug.includes('longest-substring') || slug.includes('string')) {
     return ['0 <= s.length <= 5 * 10^4', 's consists of English letters, digits, symbols and spaces'];
   }
