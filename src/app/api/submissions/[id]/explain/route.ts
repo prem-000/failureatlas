@@ -1,4 +1,4 @@
-﻿// src/app/api/submissions/[id]/explain/route.ts
+// src/app/api/submissions/[id]/explain/route.ts
 // POST /api/submissions/:id/explain  → generate (or regenerate) a FailureExplanation
 // GET  /api/submissions/:id/explain  → return cached FailureExplanation
 
@@ -97,7 +97,7 @@ export async function POST(
   }
 
   try {
-    // 1. Fetch submission + all evidence + network data
+    // 1. Fetch submission + all evidence + network data + existing diagnosis
     const submission = await prisma.submissionEvent.findFirst({
       where: {
         OR: [{ id: submissionId }, { eventId: submissionId }],
@@ -107,6 +107,12 @@ export async function POST(
         problem: true,
         evidence: { include: { rootCauseHypotheses: true } },
         networkEvidence: true,
+        diagnosis: {
+          include: {
+            primaryWeakness: true,
+            recommendations: { include: { strategy: true } }
+          }
+        },
       },
     });
 
@@ -226,8 +232,8 @@ export async function POST(
       );
     } catch { /* non-fatal */ }
 
-    // 9. Historical pattern counts
-    const historicalPatternCounts = await computeHistoricalPatternCounts(userId);
+    // 9. Historical pattern counts scoped to problem topics
+    const historicalPatternCounts = await computeHistoricalPatternCounts(userId, submission.problem.topics);
 
     // 10. Build engine input
     const ne = submission.networkEvidence;
@@ -249,6 +255,16 @@ export async function POST(
 
     // 11. Generate explanation
     const explanation = await generateFailureExplanation(engineInput);
+
+    // Unify with existing diagnosis if already generated for this submission
+    if (submission.diagnosis?.primaryWeakness) {
+      const establishedWeakness = submission.diagnosis.primaryWeakness;
+      explanation.rootCause = establishedWeakness.name;
+      explanation.confidence = Math.round(
+        Number((submission.diagnosis.progressMetrics as any)?.confidence) ||
+        (establishedWeakness.confidence <= 1 ? establishedWeakness.confidence * 100 : establishedWeakness.confidence)
+      );
+    }
 
     // 12. Upsert to DB
     const saved = await prisma.failureExplanation.upsert({
@@ -302,6 +318,11 @@ export async function POST(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function serializeExplanation(row: any) {
+  const { resolveRootCauseType } = require('@/lib/diagnosis/generator');
+  const { ROOT_CAUSE_RESOURCES } = require('@/lib/resources/catalog');
+  const rcType = resolveRootCauseType(row.rootCause);
+  const resources = ROOT_CAUSE_RESOURCES[rcType] || [];
+
   return {
     submissionId: row.submissionId,
     rootCause: row.rootCause,
@@ -315,6 +336,7 @@ function serializeExplanation(row: any) {
     evidenceItems: row.evidenceItems ?? [],
     representativeTestCase: row.representativeTestCase ?? null,
     recurringPatterns: row.recurringPatterns ?? [],
+    resources: row.resources || resources,
     generatedAt:
       row.generatedAt instanceof Date
         ? row.generatedAt.toISOString()
@@ -323,13 +345,33 @@ function serializeExplanation(row: any) {
 }
 
 async function computeHistoricalPatternCounts(
-  userId: string
+  userId: string,
+  topics?: string[]
 ): Promise<Record<string, number>> {
   try {
-    const hypotheses = await prisma.rootCauseHypothesis.findMany({
-      where: { evidence: { submission: { userId } } },
-      select: { rootCauseType: true },
-    });
+    const hasTopics = Array.isArray(topics) && topics.length > 0;
+    let hypotheses = hasTopics
+      ? await prisma.rootCauseHypothesis.findMany({
+          where: {
+            evidence: {
+              submission: {
+                userId,
+                problem: {
+                  topics: { hasSome: topics },
+                },
+              },
+            },
+          },
+          select: { rootCauseType: true },
+        })
+      : [];
+
+    if (hypotheses.length === 0) {
+      hypotheses = await prisma.rootCauseHypothesis.findMany({
+        where: { evidence: { submission: { userId } } },
+        select: { rootCauseType: true },
+      });
+    }
 
     const counts: Record<string, number> = {};
     for (const h of hypotheses) {

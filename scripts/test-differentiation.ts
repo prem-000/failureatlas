@@ -1,4 +1,5 @@
-import { runSolutionStressModel } from '@/lib/adversarial/solution-stress-model';
+import { runSolutionStressModel } from '../src/lib/adversarial/solution-stress-model';
+import type { StressTarget } from '../src/lib/adversarial/types';
 
 async function testTwoSum() {
   console.log('================================================================');
@@ -24,12 +25,9 @@ async function testTwoSum() {
     problemTopics: ['Array', 'Hash Table'],
   });
 
-  console.log('\n--- 5 Hidden Tests ---');
-  res.hiddenTests.forEach(t => {
-    console.log(`[${t.id}] "${t.riskTitle}" (${t.verificationBadgeText})`);
-    console.log(`   Input: ${t.input}`);
-    console.log(`   Expected: ${t.expectedOutput}`);
-    console.log(`   Why: ${t.whyExists}`);
+  console.log('\n--- Stress Targets ---');
+  res.stressTargets.forEach((t: StressTarget) => {
+    console.log(`[${t.id}] "${t.riskTitle}" (${t.targetHypothesis})`);
     console.log(`   Attacks: ${t.whatItAttacks}`);
     console.log();
   });
@@ -62,12 +60,9 @@ async function testLongestSubstring() {
     problemTopics: ['Hash Table', 'String', 'Sliding Window'],
   });
 
-  console.log('\n--- 5 Hidden Tests ---');
-  res.hiddenTests.forEach(t => {
-    console.log(`[${t.id}] "${t.riskTitle}" (${t.verificationBadgeText})`);
-    console.log(`   Input: ${t.input}`);
-    console.log(`   Expected: ${t.expectedOutput}`);
-    console.log(`   Why: ${t.whyExists}`);
+  console.log('\n--- Stress Targets ---');
+  res.stressTargets.forEach((t: StressTarget) => {
+    console.log(`[${t.id}] "${t.riskTitle}" (${t.targetHypothesis})`);
     console.log(`   Attacks: ${t.whatItAttacks}`);
     console.log();
   });
@@ -97,12 +92,9 @@ async function testBinarySearch() {
     problemTopics: ['Array', 'Binary Search'],
   });
 
-  console.log('\n--- 5 Hidden Tests ---');
-  res.hiddenTests.forEach(t => {
-    console.log(`[${t.id}] "${t.riskTitle}" (${t.verificationBadgeText})`);
-    console.log(`   Input: ${t.input}`);
-    console.log(`   Expected: ${t.expectedOutput}`);
-    console.log(`   Why: ${t.whyExists}`);
+  console.log('\n--- Stress Targets ---');
+  res.stressTargets.forEach((t: StressTarget) => {
+    console.log(`[${t.id}] "${t.riskTitle}" (${t.targetHypothesis})`);
     console.log(`   Attacks: ${t.whatItAttacks}`);
     console.log();
   });
@@ -116,10 +108,8 @@ async function main() {
   await testBinarySearch();
 
   console.log('\n\n================================================================');
-  console.log('DIFFERENTIATION CHECK');
+  console.log('DIFFERENTIATION CHECK COMPLETE');
   console.log('================================================================');
-  console.log('✓ If the 3 test sets above have DIFFERENT titles, inputs, and explanations, the pipeline is problem-specific.');
-  console.log('✗ If any tests share the same titles like "Invariant Stress" or "Mutation Sensitivity: LOOP Boundary", there is still template leakage.');
 }
 
 main().catch(console.error);

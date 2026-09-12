@@ -41,6 +41,12 @@ function normalizeScores(scores: { id: string; score: number }[]): { id: string;
   }));
 }
 
+export const DEFAULT_RAG_ALPHA = Number(process.env.RAG_RETRIEVAL_ALPHA ?? 0.45);
+
+export function clampScore(score: number): number {
+  return Math.min(Math.max(score, 0.0), 1.0);
+}
+
 /**
  * Performs hybrid semantic + structural retrieval for similar historical failures.
  * Falls back to graph-only retrieval if embedding generation fails.
@@ -55,17 +61,17 @@ export async function retrieveSimilarFailures(
   code: string,
   error?: string,
   limit: number = 3,
-  alpha: number = 0.6
+  alpha: number = DEFAULT_RAG_ALPHA
 ): Promise<RetrievedFailure[]> {
   try {
     return await hybridRetrieval(userId, eventId, problemTitle, difficulty, topics, status, code, error, limit, alpha);
   } catch (err) {
     console.warn('⚠️ Hybrid retrieval failed, falling back to graph-only:', err);
-    return await graphOnlyRetrieval(userId, eventId, limit);
+    return await graphOnlyRetrieval(userId, eventId, limit, topics);
   }
 }
 
-async function hybridRetrieval(
+export async function hybridRetrieval(
   userId: string,
   eventId: string,
   problemTitle: string,
@@ -75,7 +81,7 @@ async function hybridRetrieval(
   code: string,
   error?: string,
   limit: number = 3,
-  alpha: number = 0.6
+  alpha: number = DEFAULT_RAG_ALPHA
 ): Promise<RetrievedFailure[]> {
   // -------------------------------------------------------------
   // Branch A: Semantic Embedding Similarity (PostgreSQL / In-Memory)
@@ -86,13 +92,20 @@ async function hybridRetrieval(
   // If embedding generation failed, skip semantic branch entirely
   if (!queryEmbedding) {
     console.warn('⚠️ Embedding generation failed, using graph-only retrieval');
-    return await graphOnlyRetrieval(userId, eventId, limit);
+    return await graphOnlyRetrieval(userId, eventId, limit, topics);
   }
 
-  const userSubmissions = await prisma.submissionEvent.findMany({
+  // Pre-filter candidate pool by shared problemTopics before running hybrid fusion
+  const hasTopics = Array.isArray(topics) && topics.length > 0;
+  let userSubmissions = await prisma.submissionEvent.findMany({
     where: {
       userId,
-      NOT: { eventId }
+      NOT: { eventId },
+      ...(hasTopics ? {
+        problem: {
+          topics: { hasSome: topics }
+        }
+      } : {})
     },
     select: {
       id: true,
@@ -102,11 +115,35 @@ async function hybridRetrieval(
       problem: {
         select: {
           title: true,
-          slug: true
+          slug: true,
+          topics: true
         }
       }
     }
   });
+
+  // Fallback to all user submissions if topic pre-filtering returned zero candidates
+  if (userSubmissions.length === 0 && hasTopics) {
+    userSubmissions = await prisma.submissionEvent.findMany({
+      where: {
+        userId,
+        NOT: { eventId }
+      },
+      select: {
+        id: true,
+        eventId: true,
+        status: true,
+        code: true,
+        problem: {
+          select: {
+            title: true,
+            slug: true,
+            topics: true
+          }
+        }
+      }
+    });
+  }
 
   const subIds = userSubmissions.map(s => s.id);
   const embeddings = subIds.length > 0
@@ -203,6 +240,11 @@ async function hybridRetrieval(
       hybridScore *= 1.2;
     }
 
+    // Bugfix: Clamp hybrid score so it never exceeds 1.0 (100%)
+    hybridScore = clampScore(hybridScore);
+
+    console.log(`[RAG-Hybrid] id=${id} semantic=${sScore.toFixed(3)} graph=${gScore.toFixed(3)} hybrid=${hybridScore.toFixed(3)} (alpha=${alpha})`);
+
     hybridScores.push({ id, score: hybridScore });
   }
 
@@ -224,7 +266,7 @@ async function hybridRetrieval(
         problemTitle: sub.problem.title,
         submissionStatus: sub.status,
         code: sub.code,
-        similarityScore: result.score
+        similarityScore: clampScore(result.score)
       });
     }
   }
@@ -232,13 +274,17 @@ async function hybridRetrieval(
   return retrievedFailures;
 }
 
+// Alias for backwards compatibility with test scripts
+export const hybrid_failure_retrieval = hybridRetrieval;
+
 /**
  * Fallback: graph-only retrieval when embedding generation is unavailable.
  */
-async function graphOnlyRetrieval(
+export async function graphOnlyRetrieval(
   userId: string,
   eventId: string,
-  limit: number
+  limit: number,
+  topics?: string[]
 ): Promise<RetrievedFailure[]> {
   try {
     const currentSub = await prisma.submissionEvent.findUnique({
@@ -257,10 +303,16 @@ async function graphOnlyRetrieval(
     });
     const currentRcTypes = currentHypotheses.map(h => h.rootCauseType);
 
-    const otherSubmissions = await prisma.submissionEvent.findMany({
+    const hasTopics = Array.isArray(topics) && topics.length > 0;
+    let otherSubmissions = await prisma.submissionEvent.findMany({
       where: {
         userId,
-        NOT: { eventId }
+        NOT: { eventId },
+        ...(hasTopics ? {
+          problem: {
+            topics: { hasSome: topics }
+          }
+        } : {})
       },
       include: {
         evidence: {
@@ -270,6 +322,22 @@ async function graphOnlyRetrieval(
         }
       }
     });
+
+    if (otherSubmissions.length === 0 && hasTopics) {
+      otherSubmissions = await prisma.submissionEvent.findMany({
+        where: {
+          userId,
+          NOT: { eventId }
+        },
+        include: {
+          evidence: {
+            include: {
+              rootCauseHypotheses: true
+            }
+          }
+        }
+      });
+    }
 
     const graphScores = otherSubmissions.map(sub => {
       const sameProblem = sub.problemId === currentProblemId;
@@ -282,7 +350,9 @@ async function graphOnlyRetrieval(
       };
     });
 
-    const topResults = graphScores
+    const normGraph = normalizeScores(graphScores);
+
+    const topResults = normGraph
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
 
@@ -300,7 +370,7 @@ async function graphOnlyRetrieval(
           problemTitle: sub.problem.title,
           submissionStatus: sub.status,
           code: sub.code,
-          similarityScore: result.score
+          similarityScore: clampScore(result.score)
         });
       }
     }

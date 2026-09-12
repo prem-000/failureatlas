@@ -16,8 +16,29 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
     const elementId = `mermaid-${Math.floor(Math.random() * 100000)}`;
 
     const renderDiagram = async () => {
-      let cleanCode = '';
-      let codeToRender = '';
+      if (!code || !code.trim()) {
+        if (active) {
+          setSvg(null);
+          setError(false);
+        }
+        return;
+      }
+
+      // Clean the code string: replace escaped newlines/characters
+      const cleanCode = code
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .trim();
+
+      if (!cleanCode) {
+        if (active) {
+          setSvg(null);
+          setError(false);
+        }
+        return;
+      }
+
+      let codeToRender = cleanCode;
       try {
         // Dynamically import mermaid to avoid SSR issues
         const { default: mermaid } = await import('mermaid');
@@ -34,14 +55,7 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
           securityLevel: 'loose',
         });
 
-        // Clean the code string: replace escaped newlines/characters
-        cleanCode = code
-          .replace(/\\n/g, '\n')
-          .replace(/\\"/g, '"')
-          .trim();
-
         // 1. First Parse Attempt
-        codeToRender = cleanCode;
         let isValid = false;
         let parseError: any = null;
 
@@ -59,8 +73,10 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
             // Import and run sanitizeMermaid
             const { sanitizeMermaid } = await import('@/lib/learning-sheet/mermaidSanitizer');
             codeToRender = sanitizeMermaid(cleanCode);
-            await mermaid.parse(codeToRender);
-            isValid = true;
+            if (codeToRender && codeToRender.trim()) {
+              await mermaid.parse(codeToRender);
+              isValid = true;
+            }
           } catch (err2: any) {
             parseError = err2;
             isValid = false;
@@ -68,14 +84,16 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
         }
 
         if (!isValid) {
-          // Log complete debugging information
-          console.error("Mermaid Parse Error");
-          console.error({
-            original: code,
-            sanitized: codeToRender,
-            error: parseError?.message || parseError,
-            stack: parseError instanceof Error ? parseError.stack : undefined
-          });
+          if (cleanCode.length > 0) {
+            // Log complete debugging information
+            console.error("Mermaid Parse Error");
+            console.error({
+              original: code,
+              sanitized: codeToRender,
+              error: parseError?.message || parseError,
+              stack: parseError instanceof Error ? parseError.stack : undefined
+            });
+          }
 
           if (active) {
             setError(true);
@@ -102,6 +120,30 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
       active = false;
     };
   }, [code]);
+
+  if (!code || !code.trim()) {
+    return (
+      <div
+        style={{
+          padding: '24px 20px',
+          background: 'rgba(255,255,255,0.015)',
+          border: '1px solid rgba(255,255,255,0.05)',
+          borderRadius: 14,
+          fontSize: '13px',
+          color: '#71717a',
+          textAlign: 'center',
+          fontFamily: 'sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <span style={{ fontWeight: 700, color: '#a1a1aa', fontSize: '13px' }}>Diagram unavailable</span>
+        <span style={{ color: '#71717a', fontSize: '12px' }}>No diagram specification provided.</span>
+      </div>
+    );
+  }
 
   if (error) {
     return (

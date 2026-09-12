@@ -22,6 +22,7 @@ import { type DiffOp } from './components/DiffViewer';
 import { ConfidenceBar } from './components/ConfidenceBar';
 import { AttemptTimeline } from './components/AttemptTimeline';
 import { useScrollSpy } from './hooks/useScrollSpy';
+import { deduplicateRecommendations } from '@/lib/recommendations/dedup';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface SubmissionDetail {
@@ -509,29 +510,43 @@ export default function ProblemDetailPage() {
                     <div id={`section-practice`} className="analysis-section-anchor w-full min-w-0">
                       <SectionCard title="Targeted Practice" accent="#22c55e">
                         <div className="p-4 sm:p-5 flex flex-col gap-3">
-                          {latestDiagnosis.recommendations.map(r => r.strategy && (
-                            <div key={r.id} style={{ background: '#052e1615', border: '1px solid #166534', borderRadius: 8, padding: '12px 14px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: '#86efac' }}>{r.strategy.name}</span>
-                                <span style={{ fontSize: 10, color: '#22c55e', background: '#052e16', borderRadius: 4, padding: '2px 6px' }}>
-                                  P{r.strategy.priority}
-                                </span>
-                              </div>
-                              <div style={{ fontSize: 11, color: '#4ade80', marginBottom: 8, lineHeight: 1.4 }}>{r.strategy.description}</div>
-                              {r.strategy.estimatedTime && (
-                                <div style={{ fontSize: 10, color: '#166534' }}>⏱ {r.strategy.estimatedTime}</div>
-                              )}
-                              {r.strategy.practiceProblems?.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                  {r.strategy.practiceProblems.slice(0, 4).map(p => (
-                                    <span key={p} style={{ fontSize: 10, color: '#71717a', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '2px 7px' }}>
-                                      {p}
-                                    </span>
-                                  ))}
+                          {(() => {
+                            const validRecs = latestDiagnosis.recommendations
+                              .filter((r): r is typeof r & { strategy: NonNullable<typeof r.strategy> } => Boolean(r.strategy))
+                              .map(r => ({
+                                id: r.id,
+                                strategyId: r.strategy.id,
+                                name: r.strategy.name,
+                                description: r.strategy.description,
+                                priority: r.strategy.priority,
+                                estimatedTime: r.strategy.estimatedTime,
+                                practiceProblems: r.strategy.practiceProblems,
+                              }));
+                            const deduped = deduplicateRecommendations(validRecs);
+                            return deduped.map(r => (
+                              <div key={r.id || r.strategyId} style={{ background: '#052e1615', border: '1px solid #166534', borderRadius: 8, padding: '12px 14px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: '#86efac' }}>{r.name}</span>
+                                  <span style={{ fontSize: 10, color: '#22c55e', background: '#052e16', borderRadius: 4, padding: '2px 6px' }}>
+                                    P{r.priority}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                          ))}
+                                <div style={{ fontSize: 11, color: '#4ade80', marginBottom: 8, lineHeight: 1.4 }}>{r.description}</div>
+                                {r.estimatedTime && (
+                                  <div style={{ fontSize: 10, color: '#166534' }}>⏱ {r.estimatedTime}</div>
+                                )}
+                                {r.practiceProblems && r.practiceProblems.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    {r.practiceProblems.slice(0, 4).map((p: string) => (
+                                      <span key={p} style={{ fontSize: 10, color: '#71717a', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '2px 7px' }}>
+                                        {p}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ));
+                          })()}
                         </div>
                       </SectionCard>
                     </div>

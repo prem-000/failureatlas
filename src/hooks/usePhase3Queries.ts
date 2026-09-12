@@ -132,7 +132,8 @@ export interface DiagnosisData {
     similarity: number;
     timestamp: string;
   }>;
-  recommendations: Array<{ name: string; description: string; priority: number }>;
+  recommendations: Array<{ name: string; description: string; priority: number; strategyId?: string }>;
+  resources?: Array<{ title: string; type: string; url: string; source: string }>;
   /** ID of the most recent failed submission — used to fetch the FailureExplanation */
   latestSubmissionId?: string;
 }
@@ -371,6 +372,7 @@ export type FailureExplanationData = {
     isActualFailedCase: boolean;
   } | null;
   recurringPatterns: Array<{ category: string; count: number; problemType: string }>;
+  resources?: Array<{ title: string; type: string; url: string; source: string }>;
   generatedAt: string;
 };
 

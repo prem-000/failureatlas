@@ -197,35 +197,6 @@ export interface MutationCandidate {
   evidence: EvidenceItem[];
 }
 
-// ─── Evidence-Based Hidden Tests ──────────────────────────────────────────────
-
-export type VerificationStatus =
-  | 'verified_oracle'
-  | 'verified_reference'
-  | 'inferred_deterministic'
-  | 'inferred_llm';
-
-export interface EvidenceBasedHiddenTest {
-  id: string; // HT-01 .. HT-05
-  targetId?: string; // ST-01 .. ST-05
-  kind: StressTargetKind;
-  riskTitle: string;
-  confidence: 'High' | 'Medium' | 'Low';
-  confidenceScore: number; // 0 - 100
-  verificationStatus: VerificationStatus;
-  verificationBadgeText: string; // "VERIFIED ✓" | "HIGH CONFIDENCE — INFERRED"
-  evidence: EvidenceItem[];
-  input: string;
-  expectedOutput: string;
-  whyExists: string;
-  whatItAttacks: string;
-  constraintRelevance: string;
-  observedBuggyBehavior?: {
-    buggyOutput?: string;
-    buggySnippet?: string;
-    explanation?: string;
-  };
-}
 
 // ─── Break Solution ───────────────────────────────────────────────────────────
 
@@ -340,6 +311,7 @@ export interface EvidencePack {
     difficulty?: string;
     statement?: string;
     constraints: string[];
+    topics?: string[];
     inputFormat?: string;
     outputFormat?: string;
   };
@@ -371,7 +343,6 @@ export interface SolutionStressModelResult {
   assumptions: ExtractedAssumption[];
   mutations: MutationCandidate[];
   stressTargets: StressTarget[];
-  hiddenTests: EvidenceBasedHiddenTest[];
   breakSolution: BreakSolutionData;
   codeQuality: EvidenceCodeQuality;
   evidencePack: EvidencePack;

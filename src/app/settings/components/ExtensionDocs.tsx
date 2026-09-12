@@ -2,15 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { 
-  Search, CheckCircle2, Circle, Download, AlertCircle, Info, Key, Shield, ShieldAlert,
+  Search, CheckCircle2, Circle, AlertCircle, Info, Key, Shield, ShieldAlert,
   Terminal, Puzzle, LayoutGrid, CheckSquare, Code, Zap,
   Check, Copy, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 const SECTIONS = [
   { id: 'overview', title: 'Overview' },
-  { id: 'download', title: 'Download Extension' },
-  { id: 'install', title: 'Install Extension' },
+  { id: 'install', title: 'Install Firefox Extension' },
   { id: 'connect', title: 'Connect to Praxis' },
   { id: 'verify', title: 'Verify Installation' },
   { id: 'troubleshooting', title: 'Troubleshooting' },
@@ -49,45 +48,6 @@ function Callout({ type = 'info', title, children }: { type?: 'info' | 'warning'
         <div style={{ fontSize: 14, color: '#e4e4e7', lineHeight: 1.6 }}>{children}</div>
       </div>
     </div>
-  );
-}
-
-function ImageCard({ src, caption }: { src: string, caption: string }) {
-  const [zoomed, setZoomed] = useState(false);
-
-  return (
-    <>
-      <div 
-        onClick={() => setZoomed(true)}
-        style={{ 
-          background: '#111111', border: '1px solid #1f1f1f', borderRadius: 12, overflow: 'hidden', 
-          cursor: 'zoom-in', transition: 'border-color 0.2s' 
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.borderColor = '#3f3f46'}
-        onMouseLeave={(e) => e.currentTarget.style.borderColor = '#1f1f1f'}
-      >
-        <div style={{ padding: 4 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={caption} style={{ width: '100%', height: 'auto', borderRadius: 8, display: 'block' }} />
-        </div>
-        <div style={{ padding: '12px 16px', background: '#161616', borderTop: '1px solid #1f1f1f', fontSize: 13, color: '#a1a1aa', textAlign: 'center' }}>
-          {caption}
-        </div>
-      </div>
-
-      {zoomed && (
-        <div 
-          onClick={() => setZoomed(false)}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', 
-            zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out', padding: 40
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={caption} style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 12, boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} />
-        </div>
-      )}
-    </>
   );
 }
 
@@ -139,22 +99,25 @@ export function ExtensionDocs() {
   const [searchQuery, setSearchQuery] = useState('');
   
   const [progress, setProgress] = useState({
-    downloaded: false,
-    loaded: false,
-    pinned: false,
+    installed: false,
     connected: false,
     verified: false
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem('fa_ext_progress');
+    const saved = localStorage.getItem('fa_ext_progress_v2');
     if (saved) {
-      try { setProgress(JSON.parse(saved)); } catch (e) {}
+      try { 
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.installed === 'boolean' && typeof parsed.connected === 'boolean') {
+          setProgress(parsed);
+        }
+      } catch (e) {}
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('fa_ext_progress', JSON.stringify(progress));
+    localStorage.setItem('fa_ext_progress_v2', JSON.stringify(progress));
   }, [progress]);
 
   const toggleProgress = (key: keyof typeof progress) => {
@@ -201,12 +164,11 @@ export function ExtensionDocs() {
     // Simple content matching
     const contentMap: Record<string, string> = {
       'overview': 'Praxis Extension captures LeetCode submissions attempt history practice patterns evidence collection learning path updates metadata',
-      'download': 'Download Extension ZIP Current Version Manifest V3 Chrome Compatible',
-      'install': 'chrome://extensions Developer Mode Load Unpacked pin Praxis extension',
+      'install': 'Install Firefox Extension addons.mozilla.org FailureAtlas Current Version Manifest V3 Firefox Compatible',
       'connect': 'API Access Copy Extension API Key Connect',
       'verify': 'Verify Installation leetcode.com Submission received Diagnosis generation available',
-      'troubleshooting': 'NOT AUTH API key missing detecting syncing invalid Permission',
-      'faq': 'stored contests Firefox Edge disable tracking',
+      'troubleshooting': 'NOT AUTH API key missing detecting syncing invalid Permission about:addons',
+      'faq': 'stored contests Firefox disable tracking',
       'security': 'activeTab scripting webNavigation HTTPS',
       'updates': 'Release Date Manifest Version Check For Updates'
     };
@@ -250,11 +212,9 @@ export function ExtensionDocs() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
-              { id: 'downloaded', label: 'Download Extension' },
-              { id: 'loaded', label: 'Load Unpacked' },
-              { id: 'pinned', label: 'Pin Extension' },
-              { id: 'connected', label: 'Connect Account' },
-              { id: 'verified', label: 'Verify Installation' }
+              { id: 'installed', label: '1. Install Firefox Extension' },
+              { id: 'connected', label: '2. Connect to Praxis' },
+              { id: 'verified', label: '3. Verify Installation' }
             ].map(step => (
               <div 
                 key={step.id} 
@@ -269,7 +229,7 @@ export function ExtensionDocs() {
 
           {completedCount === totalSteps && (
             <div style={{ marginTop: 16, padding: '10px 12px', background: '#052e16', border: '1px solid #16a34a', borderRadius: 8, fontSize: 12, color: '#4ade80', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Zap size={14} /> Extension Successfully Configured
+              <Zap size={14} /> Setup Complete
             </div>
           )}
         </div>
@@ -298,7 +258,7 @@ export function ExtensionDocs() {
         
         <DocSection id="overview" title="Overview" hidden={!hasMatches('overview')}>
           <p style={{ fontSize: 16, color: '#a1a1aa', lineHeight: 1.6, margin: 0 }}>
-            The Praxis Chrome Extension acts as a bridge between your browser and your Praxis account. It monitors your coding sessions and securely syncs your submissions.
+            The Praxis Firefox Extension acts as a bridge between your browser and your Praxis account. It monitors your coding sessions and securely syncs your submissions.
           </p>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginTop: 12 }}>
@@ -317,113 +277,84 @@ export function ExtensionDocs() {
           </div>
         </DocSection>
 
-        <DocSection id="download" title="Download Extension" hidden={!hasMatches('download')}>
+        <DocSection id="install" title="Install Firefox Extension" hidden={!hasMatches('install')}>
           <div style={{ background: '#111111', border: '1px solid #1f1f1f', borderRadius: 16, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
             <div style={{ width: 64, height: 64, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-              <Download size={28} color="#f4f4f5" />
+              <Puzzle size={28} color="#f4f4f5" />
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#f4f4f5', marginBottom: 8 }}>Praxis Extension</h3>
-            <p style={{ fontSize: 14, color: '#a1a1aa', marginBottom: 24, maxWidth: 300 }}>
-              Download the latest Praxis Extension package to get started.
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#f4f4f5', marginBottom: 8 }}>FailureAtlas for Firefox</h3>
+            <p style={{ fontSize: 14, color: '#a1a1aa', marginBottom: 24, maxWidth: 360 }}>
+              FailureAtlas is officially available on Firefox Add-ons. Install with one click to monitor and sync your LeetCode practice sessions automatically.
             </p>
             <a 
-              href="/extension/failureatlas-extension-v1.0.0.zip" 
-              download
-              onClick={() => toggleProgress('downloaded')}
+              href="https://addons.mozilla.org/en-US/firefox/addon/failureatlas/" 
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                setProgress(p => ({ ...p, installed: true }));
+              }}
               style={{ background: '#f4f4f5', color: '#09090b', padding: '12px 24px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}
             >
-              <Download size={18} />
-              Download Extension ZIP
+              <Puzzle size={18} />
+              Install Firefox Extension
             </a>
             
             <div style={{ display: 'flex', gap: 24, marginTop: 32 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ fontSize: 11, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Version</span>
-                <span style={{ fontSize: 13, color: '#e4e4e7', fontWeight: 500 }}>v1.0.0</span>
+                <span style={{ fontSize: 13, color: '#e4e4e7', fontWeight: 500 }}>v1.0.3</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 11, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Platform</span>
+                <span style={{ fontSize: 13, color: '#e4e4e7', fontWeight: 500 }}>Firefox Add-ons</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ fontSize: 11, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Manifest</span>
                 <span style={{ fontSize: 13, color: '#e4e4e7', fontWeight: 500 }}>V3</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 11, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Compatibility</span>
-                <span style={{ fontSize: 13, color: '#e4e4e7', fontWeight: 500 }}>Chrome / Edge</span>
-              </div>
             </div>
           </div>
-        </DocSection>
 
-        <DocSection id="install" title="Install Extension" hidden={!hasMatches('install')}>
-          <p style={{ fontSize: 15, color: '#a1a1aa', marginBottom: 24 }}>Follow these steps to install the unpacked extension in Chrome.</p>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-            {/* Step 1 */}
-            <div style={{ display: 'flex', gap: 24 }}>
-              <div style={{ width: 32, height: 32, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#f4f4f5', flexShrink: 0 }}>1</div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <h4 style={{ fontSize: 18, fontWeight: 600, color: '#f4f4f5', marginBottom: 6 }}>Open Extensions Page</h4>
-                  <p style={{ fontSize: 14, color: '#a1a1aa', margin: 0 }}>Open a new tab and navigate to the Chrome extensions page.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
+            <h4 style={{ fontSize: 16, fontWeight: 600, color: '#f4f4f5', margin: 0 }}>Installation Steps</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[
+                { step: '1', title: 'Open Add-on Page', desc: 'Click "Install Firefox Extension" above to open the official FailureAtlas page on Firefox Add-ons.' },
+                { step: '2', title: 'Add to Firefox', desc: 'Click "+ Add to Firefox" on the Mozilla Add-ons page and accept the installation prompt.' },
+                { step: '3', title: 'Pin Extension (Optional)', desc: 'Click the puzzle icon in your Firefox toolbar and pin FailureAtlas for quick access.' },
+              ].map((item) => (
+                <div key={item.step} style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+                  <div style={{ width: 28, height: 28, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#f4f4f5', flexShrink: 0, marginTop: 2 }}>
+                    {item.step}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#f4f4f5', marginBottom: 2 }}>{item.title}</div>
+                    <div style={{ fontSize: 13, color: '#a1a1aa', lineHeight: 1.5 }}>{item.desc}</div>
+                  </div>
                 </div>
-                <CodeBlock code="chrome://extensions" />
-                <ImageCard src="/extension/pics/1st.png" caption="Navigate to chrome://extensions" />
-              </div>
+              ))}
             </div>
 
-            {/* Step 2 */}
-            <div style={{ display: 'flex', gap: 24 }}>
-              <div style={{ width: 32, height: 32, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#f4f4f5', flexShrink: 0 }}>2</div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <h4 style={{ fontSize: 18, fontWeight: 600, color: '#f4f4f5', marginBottom: 6 }}>Enable Developer Mode</h4>
-                  <p style={{ fontSize: 14, color: '#a1a1aa', margin: 0 }}>Toggle the <strong>Developer mode</strong> switch in the top right corner.</p>
-                </div>
-                <ImageCard src="/extension/pics/2nd.png" caption="Enable Developer mode toggle" />
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div style={{ display: 'flex', gap: 24 }}>
-              <div style={{ width: 32, height: 32, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#f4f4f5', flexShrink: 0 }}>3</div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <h4 style={{ fontSize: 18, fontWeight: 600, color: '#f4f4f5', marginBottom: 6 }}>Load Unpacked</h4>
-                  <p style={{ fontSize: 14, color: '#a1a1aa', margin: 0 }}>Click the <strong>Load unpacked</strong> button that appears in the top left.</p>
-                </div>
-                <ImageCard src="/extension/pics/3rd.png" caption="Click Load unpacked button" />
-                <button onClick={() => toggleProgress('loaded')} style={{ alignSelf: 'flex-start', background: progress.loaded ? '#052e16' : '#1a1a1a', border: `1px solid ${progress.loaded ? '#16a34a' : '#2a2a2a'}`, color: progress.loaded ? '#4ade80' : '#a1a1aa', padding: '8px 16px', borderRadius: 8, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckSquare size={16} /> Mark as complete
-                </button>
-              </div>
-            </div>
-
-            {/* Step 4 */}
-            <div style={{ display: 'flex', gap: 24 }}>
-              <div style={{ width: 32, height: 32, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#f4f4f5', flexShrink: 0 }}>4</div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <h4 style={{ fontSize: 18, fontWeight: 600, color: '#f4f4f5', marginBottom: 6 }}>Select Extension Folder</h4>
-                  <p style={{ fontSize: 14, color: '#a1a1aa', margin: 0 }}>Select the extracted folder you downloaded in the first step. The extension card should now appear.</p>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Step 5 */}
-            <div style={{ display: 'flex', gap: 24 }}>
-              <div style={{ width: 32, height: 32, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#f4f4f5', flexShrink: 0 }}>5</div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <h4 style={{ fontSize: 18, fontWeight: 600, color: '#f4f4f5', marginBottom: 6 }}>Pin the Extension</h4>
-                  <p style={{ fontSize: 14, color: '#a1a1aa', margin: 0 }}>Click the puzzle icon in your browser toolbar and pin the Praxis extension for easy access.</p>
-                </div>
-
-                <button onClick={() => toggleProgress('pinned')} style={{ alignSelf: 'flex-start', background: progress.pinned ? '#052e16' : '#1a1a1a', border: `1px solid ${progress.pinned ? '#16a34a' : '#2a2a2a'}`, color: progress.pinned ? '#4ade80' : '#a1a1aa', padding: '8px 16px', borderRadius: 8, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckSquare size={16} /> Mark as complete
-                </button>
-              </div>
-            </div>
-
+            <button 
+              onClick={() => toggleProgress('installed')} 
+              style={{ 
+                alignSelf: 'flex-start', 
+                background: progress.installed ? '#052e16' : '#1a1a1a', 
+                border: `1px solid ${progress.installed ? '#16a34a' : '#2a2a2a'}`, 
+                color: progress.installed ? '#4ade80' : '#a1a1aa', 
+                padding: '8px 16px', 
+                borderRadius: 8, 
+                fontSize: 13, 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8,
+                marginTop: 4
+              }}
+            >
+              {progress.installed ? <CheckCircle2 size={16} /> : <CheckSquare size={16} />}
+              {progress.installed ? 'Installation Confirmed' : 'Mark as installed'}
+            </button>
           </div>
         </DocSection>
 
@@ -444,7 +375,6 @@ export function ExtensionDocs() {
                 <Puzzle size={18} color="#3b82f6" /> 2. Connect Extension
               </h4>
               <p style={{ fontSize: 14, color: '#a1a1aa', marginBottom: 16 }}>Click the Praxis icon in your browser toolbar, paste your API key, and click Connect.</p>
-
             </div>
 
             <Callout type="success" title="Connected successfully">
@@ -497,12 +427,12 @@ export function ExtensionDocs() {
             
             <Accordion title="Extension not detecting LeetCode">
               <p><strong>Cause:</strong> Extension might be disabled or not have permission to read leetcode.com.</p>
-              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Go to chrome://extensions, ensure the toggle is ON, and try reloading the page. Right-click the extension icon and ensure it can read data on leetcode.com.</p>
+              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Go to about:addons in Firefox, ensure the extension toggle is ON, and try reloading the page. Ensure permissions are granted for leetcode.com.</p>
             </Accordion>
 
             <Accordion title="Submission not syncing">
               <p><strong>Cause:</strong> The Praxis backend might be unavailable or network issues occurred.</p>
-              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Check if you can access the Praxis dashboard. If the server is up, try reloading the extension in chrome://extensions.</p>
+              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Check if you can access the Praxis dashboard. If the server is up, try reloading the extension in about:addons.</p>
             </Accordion>
 
             <Accordion title="API key invalid">
@@ -512,7 +442,7 @@ export function ExtensionDocs() {
             
             <Accordion title="Permission issue">
               <p><strong>Cause:</strong> LeetCode access was denied during installation.</p>
-              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Open extension details in Chrome and ensure &quot;Site access&quot; is granted for leetcode.com.</p>
+              <p style={{ marginBottom: 0 }}><strong>Fix:</strong> Open extension details in Firefox (about:addons) and ensure site access permissions are granted for leetcode.com.</p>
             </Accordion>
           </div>
         </DocSection>
@@ -526,13 +456,10 @@ export function ExtensionDocs() {
               Yes, the extension is fully compatible with LeetCode contests and will track your practice sessions in real-time.
             </Accordion>
             <Accordion title="Can I disable tracking temporarily?">
-              Yes. You can click the extension icon and click &quot;Disconnect&quot; to pause tracking at any time, or toggle it off in chrome://extensions.
+              Yes. You can click the extension icon and click &quot;Disconnect&quot; to pause tracking at any time, or toggle it off in about:addons.
             </Accordion>
-            <Accordion title="Does it support Microsoft Edge?">
-              Yes. Since Microsoft Edge is built on Chromium, you can install the extension exactly the same way using Developer Mode.
-            </Accordion>
-            <Accordion title="Does it support Firefox or Safari?">
-              Not currently. We are planning a Manifest V2/V3 compliant version for Firefox in the future.
+            <Accordion title="Which browsers are supported?">
+              FailureAtlas is officially supported and available on Firefox Add-ons.
             </Accordion>
           </div>
         </DocSection>
@@ -570,9 +497,9 @@ export function ExtensionDocs() {
             <div>
               <h4 style={{ fontSize: 18, fontWeight: 600, color: '#f4f4f5', marginBottom: 6 }}>Current Version</h4>
               <div style={{ display: 'flex', gap: 16, fontSize: 14, color: '#a1a1aa' }}>
-                <span>v1.0.0</span>
+                <span>v1.0.3</span>
                 <span>•</span>
-                <span>Released: Oct 2024</span>
+                <span>Firefox Add-ons</span>
                 <span>•</span>
                 <span>Manifest V3</span>
               </div>
@@ -584,11 +511,11 @@ export function ExtensionDocs() {
 
           <div style={{ marginTop: 20, border: '1px solid #1f1f1f', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ background: '#161616', padding: '16px 20px', borderBottom: '1px solid #1f1f1f' }}>
-              <h4 style={{ fontSize: 15, fontWeight: 600, color: '#f4f4f5', margin: 0 }}>Release Notes: v1.0.0</h4>
+              <h4 style={{ fontSize: 15, fontWeight: 600, color: '#f4f4f5', margin: 0 }}>Release Notes: v1.0.3</h4>
             </div>
             <div style={{ padding: '20px', background: '#111111' }}>
               <ul style={{ margin: 0, paddingLeft: 20, color: '#a1a1aa', fontSize: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <li>Initial release of the Praxis Extension.</li>
+                <li>Official Firefox Add-ons store release.</li>
                 <li>Support for LeetCode submission tracking.</li>
                 <li>Secure API Key authentication.</li>
                 <li>Manifest V3 compliance.</li>

@@ -16,8 +16,28 @@ interface TreePlayerProps {
 export function TreePlayer({ visualization, activeStep }: TreePlayerProps) {
   const nodes = visualization.nodes || [];
   const edges = visualization.edges || [];
-  const stepData = visualization.steps[activeStep] || {};
+  const stepData = visualization.steps?.[activeStep] || {};
   const highlighted = stepData.state || [];
+
+  if (nodes.length === 0) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 120,
+          background: 'rgba(255,255,255,0.01)',
+          border: '1px solid rgba(255,255,255,0.04)',
+          borderRadius: 12,
+          color: '#71717a',
+          fontSize: '12px',
+        }}
+      >
+        No tree or graph nodes defined for this step.
+      </div>
+    );
+  }
 
   // Build base diagram using standard parser builder
   let treeCode = buildMermaidFromSchema({ nodes, edges });

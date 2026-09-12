@@ -201,14 +201,17 @@ export async function generateSuccessInsight(
   const complexityResult = estimateComplexity(code, patternResult.patternSlug);
   const qualityResult = scoreCodeQuality(code);
   
-  // Generate Adversarial Test Lab (Groq LLM / fallback)
+  // Generate Adversarial Test Lab (SSM engine)
   const adversarialTestLab = await generateAdversarialTestLab(
     userId,
     submission.problem.title,
     submission.problem.slug,
     patternResult.patternSlug,
     code,
-    complexityResult
+    complexityResult,
+    submission.problem.topics || [],
+    submission.problem.difficulty || 'Medium',
+    submission.language
   );
 
   const edgeCaseScore = adversarialTestLab.coverageIntelligence.robustnessScore / 100;

@@ -2,6 +2,7 @@
 import { AppShell } from '@/components/layout/AppShell';
 import { useDiagnosisGenerate, type DiagnosisData, useFailureExplanation, useGenerateFailureExplanation } from '@/hooks/usePhase3Queries';
 import { FailureExplanationCard } from '@/components/intelligence/FailureExplanationCard';
+import { deduplicateRecommendations } from '@/lib/recommendations/dedup';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -130,24 +131,28 @@ function EvidencePanel({ result }: { result: DiagnosisResult | null }) {
       )}
 
       {/* Recommendations */}
-      {result.recommendations?.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10, color: '#71717a', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>
-            Recommendations
+      {(() => {
+        const dedupedRecommendations = deduplicateRecommendations(result.recommendations || []);
+        if (dedupedRecommendations.length === 0) return null;
+        return (
+          <div>
+            <div style={{ fontSize: 10, color: '#71717a', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>
+              Recommendations
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {dedupedRecommendations.map((r, i) => (
+                <div key={r.strategyId || i} style={{
+                  background: '#052e16', borderRadius: 8, padding: '10px 12px',
+                  border: '1px solid #166534',
+                }}>
+                  <div style={{ fontSize: 12, color: '#86efac', fontWeight: 600, marginBottom: 4 }}>{r.name}</div>
+                  <div style={{ fontSize: 11, color: '#4ade80', lineHeight: 1.4 }}>{r.description}</div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {result.recommendations.map((r, i) => (
-              <div key={i} style={{
-                background: '#052e16', borderRadius: 8, padding: '10px 12px',
-                border: '1px solid #166534',
-              }}>
-                <div style={{ fontSize: 12, color: '#86efac', fontWeight: 600, marginBottom: 4 }}>{r.name}</div>
-                <div style={{ fontSize: 11, color: '#4ade80', lineHeight: 1.4 }}>{r.description}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

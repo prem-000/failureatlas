@@ -15,7 +15,7 @@ interface Tab {
 
 const TABS: Tab[] = [
   { id: 'roadmap',   label: 'Roadmap',        icon: Map,     description: 'Adaptive LeetCode practice plan' },
-  { id: 'knowledge', label: 'Knowledge Graph', icon: GitFork, description: 'Concept relationships' },
+  { id: 'knowledge', label: 'Topic Explorer', icon: GitFork, description: 'DSA curriculum & patterns' },
   { id: 'replay',    label: 'Failure Replay',  icon: Bug,     description: 'Counter-example discovery engine', badge: 'New', badgeColor: '#ef4444' },
 ];
 

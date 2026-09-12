@@ -175,7 +175,148 @@ function reverseString(s) {
   while (l < r) { [s[l], s[r]] = [s[r], s[l]]; l++; r--; }
   return s;
 }`,
+
+  'daily-temperatures': `
+function dailyTemperatures(temperatures) {
+  const n = temperatures.length;
+  const res = new Array(n).fill(0);
+  const stack = [];
+  for (let i = 0; i < n; i++) {
+    while (stack.length > 0 && temperatures[stack[stack.length - 1]] < temperatures[i]) {
+      const prevIdx = stack.pop();
+      res[prevIdx] = i - prevIdx;
+    }
+    stack.push(i);
+  }
+  return res;
+}`,
+
+  'next-greater-element-i': `
+function nextGreaterElement(nums1, nums2) {
+  const map = new Map();
+  const stack = [];
+  for (const num of nums2) {
+    while (stack.length > 0 && stack[stack.length - 1] < num) {
+      map.set(stack.pop(), num);
+    }
+    stack.push(num);
+  }
+  return nums1.map(x => map.get(x) ?? -1);
+}`,
+
+  'longest-substring-without-repeating-characters': `
+function lengthOfLongestSubstring(s) {
+  let maxLen = 0;
+  let left = 0;
+  const seen = new Map();
+  for (let right = 0; right < s.length; right++) {
+    const char = s[right];
+    if (seen.has(char) && seen.get(char) >= left) {
+      left = seen.get(char) + 1;
+    }
+    seen.set(char, right);
+    maxLen = Math.max(maxLen, right - left + 1);
+  }
+  return maxLen;
+}`,
+
+  'valid-parentheses': `
+function isValid(s) {
+  const stack = [];
+  const map = { ')': '(', '}': '{', ']': '[' };
+  for (const c of s) {
+    if (c === '(' || c === '{' || c === '[') {
+      stack.push(c);
+    } else if (map[c]) {
+      if (stack.length === 0 || stack.pop() !== map[c]) return false;
+    }
+  }
+  return stack.length === 0;
+}`,
+
+  'sub-arrays-of-size-k-and-average-greater-than-or-equal-to-threshold': `
+function numOfSubarrays(arr, k, threshold) {
+  let sum = 0, count = 0;
+  const targetSum = k * threshold;
+  for (let i = 0; i < arr.length; i++) {
+    sum += arr[i];
+    if (i >= k) sum -= arr[i - k];
+    if (i >= k - 1 && sum >= targetSum) count++;
+  }
+  return count;
+}`,
+
+  'remove-all-adjacent-duplicates-in-string': `
+function removeDuplicates(s) {
+  const stack = [];
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (stack.length > 0 && stack[stack.length - 1] === ch) {
+      stack.pop();
+    } else {
+      stack.push(ch);
+    }
+  }
+  return stack.join('');
+}`,
 };
+
+// ─── Input Parsing Helper ─────────────────────────────────────────────────────
+
+export function parseInputToArguments(inputStr: string): unknown[] {
+  const trimmed = (inputStr || '').trim();
+  if (!trimmed) return [];
+
+  const parts: string[] = [];
+  let depth = 0;
+  let inQuotes = false;
+  let current = '';
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (ch === '"' && trimmed[i - 1] !== '\\') {
+      inQuotes = !inQuotes;
+      current += ch;
+    } else if (inQuotes) {
+      current += ch;
+    } else if (ch === '[' || ch === '{' || ch === '(') {
+      depth++;
+      current += ch;
+    } else if (ch === ']' || ch === '}' || ch === ')') {
+      depth--;
+      current += ch;
+    } else if (ch === ',' && depth === 0) {
+      parts.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+
+  const args: unknown[] = [];
+  for (const part of parts) {
+    const eqIdx = part.indexOf('=');
+    let valStr = eqIdx !== -1 ? part.substring(eqIdx + 1).trim() : part.trim();
+
+    try {
+      args.push(JSON.parse(valStr));
+    } catch {
+      if (valStr.toLowerCase() === 'true') args.push(true);
+      else if (valStr.toLowerCase() === 'false') args.push(false);
+      else if (valStr.toLowerCase() === 'null') args.push(null);
+      else {
+        const num = Number(valStr);
+        if (!isNaN(num)) args.push(num);
+        else args.push(valStr.replace(/^["']|["']$/g, ''));
+      }
+    }
+  }
+
+  return args;
+}
 
 // ─── Groq fallback ────────────────────────────────────────────────────────────
 

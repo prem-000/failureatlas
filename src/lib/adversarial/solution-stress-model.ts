@@ -16,7 +16,6 @@ import { extractCodeBlocks } from '@/lib/analysis/code-block-extractor';
 import { generateCodeMutations } from './mutation-engine';
 import { generateFailureHypotheses } from './stress-target-pool';
 import { buildProblemSemanticModel } from './problem-semantic-model';
-import { synthesizeHiddenTests } from './test-synthesizer';
 import { groqClient } from '@/lib/api/groq-client';
 
 export interface RunSSMParams {
@@ -96,6 +95,7 @@ export async function runSolutionStressModel(params: RunSSMParams): Promise<Solu
       difficulty: problemDifficulty,
       statement: problemStatement || `${problemTitle} (Constraints: ${problemConstraints.join('; ')})`,
       constraints: problemConstraints,
+      topics: problemTopics,
     },
     submission: {
       language: facts.language,
@@ -115,9 +115,6 @@ export async function runSolutionStressModel(params: RunSSMParams): Promise<Solu
       noGenericCases: true,
     },
   };
-
-  // 10. Synthesize 5 Evidence-Based Hidden Tests (with semantic context)
-  const hiddenTests = await synthesizeHiddenTests(evidencePack, semantic);
 
   // 10. Generate Break Solution Data (Sections A, B, C, D)
   // Section B: Split submitted code into logical execution blocks
@@ -232,7 +229,6 @@ export async function runSolutionStressModel(params: RunSSMParams): Promise<Solu
     complexity,
     invariants,
     assumptions,
-    hiddenTests,
     problemConstraints,
     problemTitle,
   });
@@ -244,7 +240,6 @@ export async function runSolutionStressModel(params: RunSSMParams): Promise<Solu
     assumptions,
     mutations,
     stressTargets,
-    hiddenTests,
     breakSolution,
     codeQuality,
     evidencePack,
@@ -276,8 +271,20 @@ function resolveDefaultConstraintsForProblem(slug: string, topics: string[]): st
   if (slug.includes('valid-parentheses')) {
     return ['1 <= s.length <= 10^4', 's consists of parentheses only ()[]{}'];
   }
+  if (slug.includes('remove-all-adjacent-duplicates-in-string') || (slug.includes('remove') && slug.includes('duplicate'))) {
+    return ['1 <= s.length <= 10^5', 's consists of lowercase English letters'];
+  }
   if (slug.includes('longest-substring') || slug.includes('string')) {
     return ['0 <= s.length <= 5 * 10^4', 's consists of English letters, digits, symbols and spaces'];
+  }
+  if (
+    (topics && topics.some(t => t.toLowerCase().includes('string'))) ||
+    slug.includes('palindrome') ||
+    slug.includes('word') ||
+    slug.includes('anagram') ||
+    slug.includes('subsequence')
+  ) {
+    return ['1 <= s.length <= 10^5', 's consists of lowercase English letters'];
   }
   if (slug.includes('two-sum') || slug.includes('3sum')) {
     return ['2 <= nums.length <= 10^5', '-10^9 <= nums[i], target <= 10^9'];
@@ -291,7 +298,7 @@ function resolveDefaultConstraintsForProblem(slug: string, topics: string[]): st
   if (slug.includes('sub-arrays-of-size-k') || slug.includes('threshold')) {
     return ['1 <= arr.length <= 10^5', '1 <= k <= arr.length', '0 <= threshold <= 10^4', '0 <= arr[i] <= 10^4'];
   }
-  return ['1 <= input.length <= 10^5', 'Values are bounded within 32-bit signed integers'];
+  return ['1 <= nums.length <= 10^5', 'Values are bounded within 32-bit signed integers'];
 }
 
 async function generateProblemAwareHints(params: {
@@ -438,7 +445,6 @@ function scoreProblemAwareCodeQuality(params: {
   complexity: any;
   invariants: any;
   assumptions: any;
-  hiddenTests: any;
   problemConstraints: string[];
   problemTitle: string;
 }): EvidenceCodeQuality {

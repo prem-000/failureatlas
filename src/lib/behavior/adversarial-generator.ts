@@ -14,35 +14,6 @@ function getFallbackAdversarialTestLab(
   
   if (patternSlug === 'prefix_sum') {
     return {
-      hiddenTests: [
-        {
-          input: '[42]',
-          expectedOutput: '[42]',
-          purpose: 'Validates minimum valid input size.',
-          failureMode: 'Initialization failures.',
-          whyPassed: 'Running sum correctly initializes with first element.',
-          confidence: 94,
-          riskScore: 10,
-        },
-        {
-          input: '[-1,-2,-3,-4]',
-          expectedOutput: '[-1,-3,-6,-10]',
-          purpose: 'Negative accumulation validation.',
-          failureMode: 'Monotonic-growth assumptions.',
-          whyPassed: 'Implementation accumulates values independent of sign.',
-          confidence: 91,
-          riskScore: 15,
-        },
-        {
-          input: '[1000000,1000000,1000000]',
-          expectedOutput: '[1000000,2000000,3000000]',
-          purpose: 'Large-value accumulation.',
-          failureMode: 'Overflow assumptions.',
-          whyPassed: 'No overflow-sensitive logic detected.',
-          confidence: 89,
-          riskScore: 35,
-        }
-      ],
       breakMySolution: [
         {
           input: '[1,2,3]',
@@ -106,53 +77,6 @@ function getFallbackAdversarialTestLab(
 
   // Default / General Array Traversal Fallback
   return {
-    hiddenTests: [
-      {
-        input: 'arr = [2,2,2,2,5,5,5,8], k = 3, threshold = 4',
-        expectedOutput: '3',
-        purpose: 'Validates standard sliding window evaluation on array boundary elements.',
-        failureMode: 'Final Window Evaluation Omission',
-        whyPassed: 'Loop termination condition correctly assesses final window of size k.',
-        confidence: 95,
-        riskScore: 10,
-      },
-      {
-        input: 'arr = [11,13,17,23,29,31,7,5,2,3], k = 3, threshold = 5',
-        expectedOutput: '6',
-        purpose: 'Tests window sum transition across varying elements.',
-        failureMode: 'State update desynchronization',
-        whyPassed: 'Maintains running sum by subtracting outgoing element and adding incoming.',
-        confidence: 94,
-        riskScore: 15,
-      },
-      {
-        input: 'arr = [1,1,1,1,1], k = 1, threshold = 0',
-        expectedOutput: '5',
-        purpose: 'Minimum window size k=1 boundary test.',
-        failureMode: 'Single-element window offset error',
-        whyPassed: 'Handles k=1 single element windows gracefully.',
-        confidence: 96,
-        riskScore: 8,
-      },
-      {
-        input: 'arr = [10000,10000,10000], k = 3, threshold = 10000',
-        expectedOutput: '1',
-        purpose: 'Maximum constraint magnitude values.',
-        failureMode: 'Integer overflow in window summation',
-        whyPassed: 'Accumulator safely holds cumulative elements.',
-        confidence: 92,
-        riskScore: 20,
-      },
-      {
-        input: 'arr = [7,7,7,7,7,7,7], k = 7, threshold = 7',
-        expectedOutput: '1',
-        purpose: 'Window size equal to array length (single evaluation window).',
-        failureMode: 'Full array window omission',
-        whyPassed: 'Evaluates single full-length window exactly once.',
-        confidence: 93,
-        riskScore: 12,
-      }
-    ],
     breakMySolution: [
       {
         input: 'arr = [1, 2, 3], k = 2, threshold = 2',
@@ -206,42 +130,28 @@ export async function generateAdversarialTestLab(
   problemSlug: string,
   patternSlug: string,
   code: string,
-  complexity: any
+  complexity: any,
+  problemTopics: string[] = [],
+  problemDifficulty: string = 'Medium',
+  language?: string
 ): Promise<AdversarialTestLab> {
   const { runSolutionStressModel } = await import('@/lib/adversarial/solution-stress-model');
 
   try {
     const ssmResult = await runSolutionStressModel({
       code,
+      language,
       problemTitle,
       problemSlug,
+      problemDifficulty,
+      problemTopics,
     });
-
-    const hiddenTests: any[] = ssmResult.hiddenTests.map(t => ({
-      id: t.id,
-      testId: t.id,
-      targetId: t.targetId,
-      kind: t.kind,
-      riskTitle: t.riskTitle,
-      purpose: t.whyExists,
-      failureMode: t.whatItAttacks,
-      input: t.input,
-      expectedOutput: t.expectedOutput,
-      whyExists: t.whyExists,
-      whatItAttacks: t.whatItAttacks,
-      constraintRelevance: t.constraintRelevance,
-      confidence: t.confidenceScore,
-      riskScore: 100 - t.confidenceScore,
-      verificationStatus: t.verificationStatus,
-      verificationBadgeText: t.verificationBadgeText,
-      evidence: t.evidence,
-    }));
 
     const breakMySolution: any[] = ssmResult.stressTargets.map((st, idx) => ({
       id: `BUG-${idx + 1}`,
       failureMode: st.title,
-      input: ssmResult.hiddenTests[idx]?.input || 'Sample stress input',
-      expectedOutput: ssmResult.hiddenTests[idx]?.expectedOutput || 'Expected output',
+      input: '',
+      expectedOutput: '',
       purpose: st.hypothesis,
       reason: st.whatItAttacks,
       failureProbability: 100 - st.confidence,
@@ -251,18 +161,17 @@ export async function generateAdversarialTestLab(
     }));
 
     return {
-      hiddenTests,
       breakMySolution,
       breakSolutionData: ssmResult.breakSolution,
       constraintExtremes: {
-        tests: hiddenTests.slice(0, 2),
+        tests: [],
         metrics: {
           cpuImpact: 'Low (< 1.0ms)',
           memoryImpact: 'Minimal (< 0.5MB)',
           complexitySafety: `${ssmResult.complexity.detectedTime} safe`,
         },
       },
-      aiGeneratedCases: hiddenTests,
+      aiGeneratedCases: [],
       coverageIntelligence: {
         hiddenTestsSurvived: 5,
         potentialFailureModesAvoided: ssmResult.stressTargets.length,

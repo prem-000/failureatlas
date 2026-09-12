@@ -69,6 +69,20 @@ export function buildProblemSemanticModel(params: {
     parameters.push(...inferred);
   }
 
+  // Fallback if still empty or generic
+  if (parameters.length === 0) {
+    const isString = title.toLowerCase().includes('string') ||
+      slug.includes('string') || slug.includes('duplicate') || slug.includes('palindrome') ||
+      slug.includes('word') || slug.includes('parenthes') || slug.includes('anagram');
+    if (isString) {
+      parameters.push({
+        name: 's',
+        inferredType: 'string',
+        constraints: { min: '1', max: '10^5' },
+      });
+    }
+  }
+
   // 2. Determine input shape
   const inputShape = deriveInputShape(parameters);
 
@@ -107,7 +121,10 @@ function inferParamType(
   const n = name.toLowerCase();
 
   // Direct name patterns
-  if (n === 's' || n === 'str' || n === 'string' || n === 'haystack' || n === 'needle' || n === 'word' || n === 'pattern') {
+  if (n === 's' || n === 'str' || n === 'string' || n === 'haystack' || n === 'needle' || n === 'word' || n === 'pattern' || n === 'text') {
+    return 'string';
+  }
+  if (n === 'input' && (constraintText.includes('string') || constraintText.includes('letter') || constraintText.includes('parenthes'))) {
     return 'string';
   }
   if (n === 'nums' || n === 'arr' || n === 'numbers' || n === 'prices' || n === 'height' || n === 'heights' || n === 'temperatures' || n === 'candidates' || n === 'coins' || n === 'weights' || n === 'intervals') {

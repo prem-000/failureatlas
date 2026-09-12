@@ -472,6 +472,31 @@ export function FailureExplanationCard({ explanation, problemTitle }: FailureExp
             </p>
           </div>
 
+          {/* ── Resources ────────────────────────────────────────────── */}
+          {explanation.resources && explanation.resources.length > 0 && (
+            <div style={{ background: 'rgba(34,197,94,0.05)', borderRadius: 10, padding: '14px 16px', border: '1px solid rgba(34,197,94,0.15)' }}>
+              <div style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Resources
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {explanation.resources.slice(0, 3).map((res, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                    <span style={{ color: '#71717a' }}>•</span>
+                    <a
+                      href={res.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#a1a1aa', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    >
+                      {res.title}
+                    </a>
+                    <span style={{ fontSize: 11, color: '#52525b' }}>({res.source})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Recurring Patterns ────────────────────────────────────── */}
           <RecurringPatternsPanel patterns={explanation.recurringPatterns} />
         </div>

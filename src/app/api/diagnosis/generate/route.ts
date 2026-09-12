@@ -3,12 +3,15 @@ import { prisma } from '@/lib/db/prisma';
 import { verifyToken, getTokenFromHeader } from '@/lib/auth/jwt';
 import { computeWeaknessPageRank } from '@/lib/graph/pagerank';
 import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
-import { generateAIDiagnosis, DIAGNOSIS_MODEL_VERSION } from '@/lib/diagnosis/generator';
+import { generateAIDiagnosis, DIAGNOSIS_MODEL_VERSION, resolveRootCauseType } from '@/lib/diagnosis/generator';
 import { resolveUserIntent } from '@/lib/diagnosis/intent-resolver';
 import { resolveProblemTarget } from '@/lib/diagnosis/problem-resolver';
 import { createFingerprint } from '@/lib/fingerprint/fingerprint';
 import type { SubmissionEvent } from '@/types';
 import { getAnalysisCache, setAnalysisCache, delAnalysisCache } from '@/lib/cache/analysis';
+import { createDiagnosisCacheKey, getCachedDiagnosis, setCachedDiagnosis, isNonCacheableQuery } from '@/lib/cache/redis';
+import { ROOT_CAUSE_RESOURCES } from '@/lib/resources/catalog';
+import { deduplicateRecommendations } from '@/lib/recommendations/dedup';
 import { acquireLock, releaseLock } from '@/lib/lock';
 import { rateLimit } from '@/lib/rate-limit';
 import { delRoadmapCache } from '@/lib/cache/roadmap';
@@ -232,10 +235,46 @@ export async function POST(request: NextRequest) {
       return str.includes('Static rule-based heuristic fallback');
     };
 
+    // Check Upstash Redis Cache first if applicable
+    const redisCacheKey = targetSubmission ? createDiagnosisCacheKey({
+      problemSlug: targetSubmission.problem.slug,
+      submissionStatus: targetSubmission.status,
+      codeDiffFingerprint: targetSubmission.code,
+      failedTestCase: targetSubmission.failedTestCase,
+    }) : null;
+
+    const isBypassCache = forceRegenerate || isNonCacheableQuery(userQuery);
+
+    if (!isBypassCache && redisCacheKey) {
+      const cachedDiagnosis = await getCachedDiagnosis(redisCacheKey);
+      if (cachedDiagnosis) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            analysis: (cachedDiagnosis.progressMetrics as any)?.reasoningChain || 'Analysis complete.',
+            confidence: cachedDiagnosis.confidence,
+            primaryWeaknessId: cachedDiagnosis.primaryWeakness.name,
+            reasoningChain: Array.isArray((cachedDiagnosis.progressMetrics as any)?.reasoningChain)
+              ? (cachedDiagnosis.progressMetrics as any)?.reasoningChain
+              : [(cachedDiagnosis.progressMetrics as any)?.reasoningChain || 'Identified gap area.'],
+            similarFailures: [],
+            recommendations: (cachedDiagnosis.learningRecommendations || []).map((r: any) => ({
+              name: r.name,
+              description: r.description,
+              priority: r.priority || 1,
+            })),
+            resources: cachedDiagnosis.resources,
+            latestSubmissionId: targetSubmission?.eventId,
+          },
+          diagnosis: cachedDiagnosis,
+        });
+      }
+    }
+
     if (forceRegenerate || Boolean(userQuery)) {
       await delAnalysisCache(fingerprint);
     } else {
-      // Check Redis Cache first
+      // Check legacy Redis Cache
       const cached = await getAnalysisCache(fingerprint);
       if (cached && !isFallbackReasoning(cached)) {
         return NextResponse.json(cached);
@@ -256,13 +295,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Lookup existing diagnosis for this target submission to maintain grounding consistency across follow-ups
+    const existingDiag = targetSubmission
+      ? await prisma.diagnosisResult.findFirst({
+          where: { submissionId: targetSubmission.id },
+          include: { primaryWeakness: true, recommendations: { include: { strategy: true } } },
+        })
+      : null;
+
+    const existingExpl = (!existingDiag && targetSubmission)
+      ? await prisma.failureExplanation.findUnique({
+          where: { submissionId: targetSubmission.id },
+        })
+      : null;
+
+    const existingDiagnosisContext = existingDiag
+      ? {
+          primaryWeaknessId: existingDiag.primaryWeakness.name,
+          primaryWeaknessName: existingDiag.primaryWeakness.name,
+          confidence: (existingDiag.progressMetrics as any)?.confidence ?? 85,
+          reasoningChain: (existingDiag.progressMetrics as any)?.reasoningChain,
+        }
+      : existingExpl
+      ? {
+          primaryWeaknessId: existingExpl.rootCause,
+          primaryWeaknessName: existingExpl.rootCause,
+          confidence: Math.round(existingExpl.confidence),
+          reasoningChain: existingExpl.reason,
+        }
+      : undefined;
+
     // If still no diagnosis, acquire a lock and check DB again/generate AI
     if (!diagnosis) {
       const lockKey = `analysis:${fingerprint}`;
       const acquired = await acquireLock(lockKey, 35000);
       if (!acquired) {
-        // Lock not acquired, another request is generating AI for this fingerprint.
-        // Wait and check the database again.
         let retries = 5;
         while (retries > 0 && !diagnosis) {
           await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -282,11 +349,12 @@ export async function POST(request: NextRequest) {
 
       if (!diagnosis) {
         try {
-          // 5. Generate AI Diagnosis (pass userQuery, intent, and problem resolution options)
+          // 5. Generate AI Diagnosis (grounded with existingDiagnosis context if available)
           const aiDiagnosis = await generateAIDiagnosis(mappedCurrent, similarFailures, pageRankScores, {
             userQuery: userQuery || undefined,
             intent: intentResult,
             problemResolution: problemResult,
+            existingDiagnosis: existingDiagnosisContext,
           });
           aiDiagnosisPrimaryName = aiDiagnosis.primaryWeaknessName;
           aiDiagnosisConfidence = aiDiagnosis.confidence;
@@ -362,7 +430,7 @@ export async function POST(request: NextRequest) {
               },
             });
 
-            // Clear existing recommendations in case of overwrite
+            // Clear existing recommendations in case of overwrite to prevent accumulation
             await prisma.learningRecommendation.deleteMany({
               where: { diagnosisId: diagnosis.id }
             });
@@ -424,27 +492,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-
-
     if (diagnosis) {
       aiDiagnosisPrimaryName = diagnosis.primaryWeakness.name;
       aiDiagnosisConfidence = (diagnosis.progressMetrics as any)?.confidence ?? 85;
       aiDiagnosisReasoning = (diagnosis.progressMetrics as any)?.reasoningChain ?? "Identified gap area.";
 
-      for (const rec of diagnosis.recommendations) {
-        responseRecs.push({
-          strategyId: rec.strategy.id,
-          name: rec.strategy.name,
-          description: rec.strategy.description,
-          estimatedTime: Math.round((rec.strategy.estimatedTime / 60) * 10) / 10, // convert minutes to hours for API spec
-          priority: rec.strategy.priority,
-          practiceProblems: rec.strategy.practiceProblems.map((slug: string) => ({
-            problemSlug: slug,
-            title: slug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-            difficulty: 'Medium' as const,
-            reasoning: `Recommended to practice the pattern: ${rec.strategy.name}`
-          }))
-        });
+      // Only populate from stored recommendations if not already populated from fresh generation
+      if (responseRecs.length === 0) {
+        for (const rec of diagnosis.recommendations) {
+          responseRecs.push({
+            strategyId: rec.strategy.id,
+            name: rec.strategy.name,
+            description: rec.strategy.description,
+            estimatedTime: Math.round((rec.strategy.estimatedTime / 60) * 10) / 10,
+            priority: rec.strategy.priority,
+            practiceProblems: rec.strategy.practiceProblems.map((slug: string) => ({
+              problemSlug: slug,
+              title: slug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+              difficulty: 'Medium' as const,
+              reasoning: `Recommended to practice the pattern: ${rec.strategy.name}`
+            }))
+          });
+        }
       }
     }
 
@@ -534,7 +603,9 @@ export async function POST(request: NextRequest) {
       ? aiDiagnosisReasoning
       : `Primary weakness: ${aiDiagnosisPrimaryName}. Confidence ${aiDiagnosisConfidence}/100.`;
 
-    const uiRecommendations = responseRecs.map((r) => ({
+    const dedupedRecs = deduplicateRecommendations(responseRecs);
+
+    const uiRecommendations = dedupedRecs.map((r) => ({
       name: r.name,
       description: r.description,
       priority: typeof r.priority === 'number' ? r.priority : 1,
@@ -547,6 +618,9 @@ export async function POST(request: NextRequest) {
       frequency: ws.frequency
     }));
 
+    const rootCauseType = resolveRootCauseType(aiDiagnosisPrimaryName);
+    const resources = ROOT_CAUSE_RESOURCES[rootCauseType] || [];
+
     const responsePayload = {
       success: true,
       data: {
@@ -556,12 +630,16 @@ export async function POST(request: NextRequest) {
         reasoningChain,
         similarFailures: similarForUi,
         recommendations: uiRecommendations,
+        resources,
         latestSubmissionId: targetSubmission ? targetSubmission.eventId : undefined,
       },
       diagnosis: {
         diagnosisId: diagnosis?.id || 'generated-diagnosis-id',
         generatedAt: diagnosis?.createdAt ? diagnosis.createdAt.toISOString() : new Date().toISOString(),
         analysisScope: 'recent',
+        rootCause: rootCauseType,
+        confidence: aiDiagnosisConfidence,
+        resources,
         primaryWeakness: {
           name: aiDiagnosisPrimaryName,
           description: `Identified gap area: ${aiDiagnosisPrimaryName}.`,
@@ -569,8 +647,10 @@ export async function POST(request: NextRequest) {
           impactScore: pageRankScores[0]?.pageRankScore ?? 0.0
         },
         secondaryWeaknesses,
-        learningRecommendations: responseRecs,
+        learningRecommendations: dedupedRecs,
         progressMetrics: {
+          confidence: aiDiagnosisConfidence,
+          reasoningChain,
           totalFailures,
           improvementRate,
           streakAnalysis: {
@@ -582,7 +662,40 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // Save to Redis Cache
+    // Save to Upstash Redis Cache (7 days TTL) if valid structured submission
+    if (!isBypassCache && redisCacheKey) {
+      await setCachedDiagnosis(redisCacheKey, responsePayload.diagnosis as any);
+    }
+
+    // Also persist FailureExplanation in PostgreSQL so /explain endpoint returns identical root cause and confidence
+    if (targetSubmission) {
+      try {
+        await prisma.failureExplanation.upsert({
+          where: { submissionId: targetSubmission.id },
+          update: {
+            rootCause: aiDiagnosisPrimaryName,
+            confidence: aiDiagnosisConfidence,
+            reason: analysis,
+          },
+          create: {
+            submissionId: targetSubmission.id,
+            rootCause: aiDiagnosisPrimaryName,
+            rootCauseCategory: aiDiagnosisPrimaryName,
+            confidence: aiDiagnosisConfidence,
+            reason: analysis,
+            logicBreakdown: analysis,
+            learningConcept: aiDiagnosisPrimaryName,
+            recommendation: uiRecommendations[0]?.name || 'Targeted Practice',
+            estimatedLearningTimeMinutes: 20,
+            generatedAt: new Date(),
+          },
+        });
+      } catch (err) {
+        console.warn('Non-fatal failureExplanation upsert sync warning:', err);
+      }
+    }
+
+    // Save to legacy Redis Cache
     await setAnalysisCache(fingerprint, responsePayload);
     // Invalidate roadmap cache due to weakness graph changes
     await delRoadmapCache(userId);

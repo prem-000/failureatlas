@@ -27,7 +27,26 @@ export function renderVisualizationPlayer({ type, visualization, activeStep, mer
   const PlayerComponent = REGISTRY[type] || REGISTRY.flowchart;
   
   if (PlayerComponent === REGISTRY.flowchart) {
-    return <PlayerComponent code={mermaidDiagram || ''} />;
+    if (!mermaidDiagram || !mermaidDiagram.trim()) {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 120,
+            background: 'rgba(255,255,255,0.01)',
+            border: '1px solid rgba(255,255,255,0.04)',
+            borderRadius: 12,
+            color: '#71717a',
+            fontSize: '12px',
+          }}
+        >
+          No diagram data available
+        </div>
+      );
+    }
+    return <PlayerComponent code={mermaidDiagram} />;
   }
 
   return <PlayerComponent visualization={visualization} activeStep={activeStep} />;

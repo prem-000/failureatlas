@@ -1,6 +1,6 @@
 {
   "name": "@failureatlas/extension",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "FailureAtlas Chrome Extension — LeetCode submission capture",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
     "build:dev": "webpack --config webpack.config.js --mode development",
     "dev": "webpack --config webpack.config.js --mode development --watch",
     "type-check": "tsc --noEmit",
-    "package": "cd dist && zip -r ../failureatlas-extension-v1.0.0.zip .",
+    "package": "python package.py",
     "lint": "eslint src --ext .ts,.tsx",
     "test": "jest"
   },

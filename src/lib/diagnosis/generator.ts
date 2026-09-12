@@ -44,6 +44,12 @@ export interface DiagnosisContextOptions {
     recentWeaknesses: string[];
     streakDays: number;
   };
+  existingDiagnosis?: {
+    primaryWeaknessId: string;
+    primaryWeaknessName: string;
+    confidence: number;
+    reasoningChain?: string;
+  };
 }
 
 function getFallbackDiagnosis(
@@ -53,8 +59,13 @@ function getFallbackDiagnosis(
 ): StructuredDiagnosis {
   let primaryId: WeaknessType = 'edge-case-reasoning';
   let primaryName = 'Edge Case Reasoning';
+  let confidence = 85;
 
-  if (current?.submissionStatus === 'Time Limit Exceeded' || current?.submissionStatus === 'Memory Limit Exceeded') {
+  if (options?.existingDiagnosis) {
+    primaryId = options.existingDiagnosis.primaryWeaknessId as WeaknessType;
+    primaryName = options.existingDiagnosis.primaryWeaknessName;
+    confidence = options.existingDiagnosis.confidence;
+  } else if (current?.submissionStatus === 'Time Limit Exceeded' || current?.submissionStatus === 'Memory Limit Exceeded') {
     primaryId = 'performance-analysis';
     primaryName = 'Performance Analysis';
   } else if (weaknessScores.length > 0 && weaknessScores[0]) {
@@ -67,7 +78,9 @@ function getFallbackDiagnosis(
   const intent = options?.intent?.intent || 'CURRENT_FAILURE';
   const prob = options?.problemResolution;
 
-  let fallbackReasoning = 'Identified gap area based on algorithmic heuristic analysis.';
+  let fallbackReasoning = options?.existingDiagnosis?.reasoningChain
+    ? `Continuing analysis on ${primaryName}: ${query ? `regarding "${query}", ` : ''}focus on invariant verification.`
+    : 'Identified gap area based on algorithmic heuristic analysis.';
 
   switch (intent) {
     case 'WEEKLY_PRACTICE':
@@ -239,6 +252,19 @@ ${current.failedTestCase ? `- Failed Test Case: ${current.failedTestCase}` : ''}
 `;
   }
 
+  const consistencySection = options.existingDiagnosis ? `
+## Stored Root Cause Diagnosis (MUST REMAIN CONSISTENT)
+- Established Root Cause: ${options.existingDiagnosis.primaryWeaknessName} (${options.existingDiagnosis.primaryWeaknessId})
+- Established Confidence: ${options.existingDiagnosis.confidence}%
+- Prior Diagnosis Reasoning: ${options.existingDiagnosis.reasoningChain || 'Established root cause for this attempt.'}
+
+CRITICAL CONSISTENCY CONSTRAINT:
+This session already has an established root cause diagnosis (${options.existingDiagnosis.primaryWeaknessName}, ${options.existingDiagnosis.confidence}% confidence).
+You MUST preserve "primaryWeaknessId": "${options.existingDiagnosis.primaryWeaknessId}", "primaryWeaknessName": "${options.existingDiagnosis.primaryWeaknessName}", and "confidence": ${options.existingDiagnosis.confidence}.
+Do NOT classify or invent a conflicting root cause.
+Provide your reasoning and commentary in "reasoningChain" ON TOP of this established diagnosis to answer the user's question: "${query}".
+` : '';
+
   const prompt = `
 You are an expert AI Failure Analyst and Algorithmic Reasoning Tutor inside FailureAtlas.
 Your goal is to answer the user's inquiry accurately and constructively.
@@ -250,6 +276,7 @@ ${intent}
 "${query || 'Diagnose my coding patterns'}"
 
 ${problemContextSection}
+${consistencySection}
 
 ## Similar Past Failures (from embedding search)
 ${
@@ -323,7 +350,12 @@ ${
     clean = clean.trim();
 
     const parsed = JSON.parse(clean) as StructuredDiagnosis;
-    if (parsed && parsed.primaryWeaknessId && parsed.reasoningChain) {
+    if (parsed && parsed.reasoningChain) {
+      if (options.existingDiagnosis) {
+        parsed.primaryWeaknessId = options.existingDiagnosis.primaryWeaknessId as WeaknessType;
+        parsed.primaryWeaknessName = options.existingDiagnosis.primaryWeaknessName;
+        parsed.confidence = options.existingDiagnosis.confidence;
+      }
       return parsed;
     }
 
@@ -332,4 +364,109 @@ ${
     console.error('[DIAGNOSIS] Groq generation failed:', err?.message || err);
     return getFallbackDiagnosis(current, weaknessScores, options);
   }
+}
+
+/**
+ * Maps arbitrary root cause or weakness string to one of the 8 canonical RootCauseTypes
+ */
+export function resolveRootCauseType(raw: string): import('@/types').RootCauseType {
+  const norm = (raw || '').toLowerCase().replace(/[^a-z0-9]/g, '-');
+  if (norm.includes('boundary') || norm.includes('off-by-one')) return 'boundary-condition-error';
+  if (norm.includes('algorithm-selection') || norm.includes('greedy-failure')) return 'algorithm-selection-mistake';
+  if (norm.includes('pattern') || norm.includes('recognition')) return 'pattern-recognition-gap';
+  if (norm.includes('time-complexity') || norm.includes('time-limit') || norm.includes('tle') || norm.includes('performance')) return 'time-complexity-oversight';
+  if (norm.includes('space-complexity') || norm.includes('memory-limit') || norm.includes('mle')) return 'space-complexity-oversight';
+  if (norm.includes('data-structure') || norm.includes('hashmap') || norm.includes('stack')) return 'data-structure-mismatch';
+  if (norm.includes('implementation') || norm.includes('precision') || norm.includes('overflow')) return 'implementation-detail-error';
+  if (norm.includes('input-output') || norm.includes('edge-case') || norm.includes('io')) return 'input-output-handling-error';
+  return 'boundary-condition-error';
+}
+
+/**
+ * High-level unified diagnosis generator function.
+ * Produces a unified DiagnosisResult with attached static resources, deduplicated recommendations,
+ * and handles caching via Upstash Redis.
+ */
+export async function generateDiagnosis(params: {
+  current: SubmissionEvent | null;
+  similarFailures: RetrievedFailure[];
+  weaknessScores: WeaknessScore[];
+  options?: DiagnosisContextOptions;
+  cacheKey?: string;
+}): Promise<import('@/types').DiagnosisResult> {
+  const { current, similarFailures, weaknessScores, options, cacheKey } = params;
+  const { getCachedDiagnosis, setCachedDiagnosis, isNonCacheableQuery } = await import('@/lib/cache/redis');
+  const { ROOT_CAUSE_RESOURCES } = await import('@/lib/resources/catalog');
+  const { deduplicateRecommendations } = await import('@/lib/recommendations/dedup');
+
+  const isBypass = isNonCacheableQuery(options?.userQuery);
+
+  // 1. Check Redis Cache first if cacheKey provided and not non-cacheable query
+  if (cacheKey && !isBypass) {
+    const cached = await getCachedDiagnosis(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  // 2. Generate structured diagnosis
+  const structured = await generateAIDiagnosis(current, similarFailures, weaknessScores, options);
+  const rootCauseType = resolveRootCauseType(structured.primaryWeaknessId || structured.primaryWeaknessName);
+  const resources = ROOT_CAUSE_RESOURCES[rootCauseType] || [];
+
+  const rawRecs = structured.learningRecommendations.map((r) => ({
+    strategyId: `strategy-${r.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+    name: r.name,
+    description: r.description,
+    estimatedTime: r.estimatedTime,
+    priority: r.priority,
+    practiceProblems: r.practiceProblems.map((p) => ({
+      problemSlug: p.problemSlug,
+      problemTitle: p.title,
+      difficulty: p.difficulty,
+      topicsTested: [],
+    })),
+  }));
+
+  const dedupedRecs = deduplicateRecommendations(rawRecs);
+
+  const diagnosisResult: import('@/types').DiagnosisResult = {
+    diagnosisId: `diag-${Date.now()}`,
+    generatedAt: new Date(),
+    rootCause: rootCauseType,
+    confidence: structured.confidence,
+    resources,
+    primaryWeakness: {
+      id: structured.primaryWeaknessId,
+      name: structured.primaryWeaknessName,
+      severity: 'high',
+      confidence: structured.confidence / 100,
+      frequency: 1,
+      lastOccurrence: new Date(),
+      riskIndex: (100 - structured.confidence) / 100,
+      pageRankScore: weaknessScores[0]?.pageRankScore || 0.25,
+    },
+    secondaryWeaknesses: weaknessScores.slice(1).map((ws) => ({
+      id: ws.id,
+      name: ws.name,
+      severity: 'medium',
+      confidence: ws.pageRankScore,
+      frequency: ws.frequency,
+      lastOccurrence: new Date(),
+      riskIndex: 0.1,
+      pageRankScore: ws.pageRankScore,
+    })),
+    learningRecommendations: dedupedRecs,
+    progressMetrics: {
+      confidence: structured.confidence,
+      reasoningChain: structured.reasoningChain,
+    },
+  };
+
+  // 3. Store result in cache if cacheKey provided and not bypassed
+  if (cacheKey && !isBypass) {
+    await setCachedDiagnosis(cacheKey, diagnosisResult);
+  }
+
+  return diagnosisResult;
 }

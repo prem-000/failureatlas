@@ -414,8 +414,8 @@ export function BreakMySolutionTab({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Lightbulb size={16} style={{ color: '#facc15' }} />
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#facc15', letterSpacing: '0.06em' }}>
+            <Lightbulb size={16} style={{ color: colors.green }} />
+            <span style={{ fontSize: 11, fontWeight: 800, color: colors.green, letterSpacing: '0.06em' }}>
               SECTION D · HINTS TOWARD THE OPTIMAL SOLUTION
             </span>
           </div>
@@ -433,7 +433,7 @@ export function BreakMySolutionTab({
                 key={h.level}
                 style={{
                   background: 'rgba(13, 21, 39, 0.6)',
-                  border: `1px solid ${isExp ? 'rgba(250, 204, 21, 0.3)' : 'rgba(255, 255, 255, 0.06)'}`,
+                  border: `1px solid ${isExp ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255, 255, 255, 0.06)'}`,
                   borderRadius: 8,
                   overflow: 'hidden',
                   transition: 'border 0.2s ease',
@@ -463,8 +463,9 @@ export function BreakMySolutionTab({
                         fontWeight: 800,
                         padding: '1px 5px',
                         borderRadius: 3,
-                        background: 'rgba(250, 204, 21, 0.15)',
-                        color: '#facc15',
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        color: colors.green,
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
                         fontFamily: 'monospace',
                       }}
                     >
@@ -472,7 +473,7 @@ export function BreakMySolutionTab({
                     </span>
                     <span>{h.title}</span>
                   </div>
-                  {isExp ? <ChevronDown size={14} color="#facc15" /> : <ChevronRight size={14} color="#71717a" />}
+                  {isExp ? <ChevronDown size={14} color={colors.green} /> : <ChevronRight size={14} color="#71717a" />}
                 </button>
 
                 {isExp && (

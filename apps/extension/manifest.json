@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FailureAtlas",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "FailureAtlas Chrome Extension — LeetCode submission capture",
   "permissions": [
     "storage",
@@ -25,8 +25,20 @@
     }
   ],
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "scripts": ["background.js"],
+    "service_worker": "background.js"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "failureatlas-public@failureatlas.dev",
+      "data_collection_permissions": {
+        "required": [
+          "authenticationInfo",
+          "websiteActivity",
+          "websiteContent"
+        ]
+      }
+    }
   },
   "content_scripts": [
     {

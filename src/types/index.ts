@@ -221,6 +221,14 @@ export interface GraphFilters {
   confidenceThreshold: number;
 }
 
+// Learning Resource types
+export interface LearningResource {
+  title: string;
+  type: 'article' | 'paper' | 'video' | 'docs';
+  url: string;
+  source: string;
+}
+
 // Diagnosis types
 export interface DiagnosisResult {
   diagnosisId: string;
@@ -229,6 +237,10 @@ export interface DiagnosisResult {
   secondaryWeaknesses: SystemicWeakness[];
   learningRecommendations: LearningRecommendation[];
   progressMetrics: Record<string, unknown>;
+  rootCause?: RootCauseType | string;
+  confidence?: number;
+  resources?: LearningResource[];
+  servedFromCache?: boolean;
 }
 
 export interface LearningRecommendation {
@@ -476,7 +488,7 @@ export interface BreakSolutionPayload {
 }
 
 export interface AdversarialTestLab {
-  hiddenTests: AdversarialTestCase[];
+  hiddenTests?: AdversarialTestCase[];
   breakMySolution: AdversarialTestCase[];
   breakSolutionData?: BreakSolutionPayload;
   constraintExtremes: {
@@ -704,6 +716,9 @@ export interface FailureExplanation {
 
   // Historical patterns
   recurringPatterns: RecurringPattern[];
+
+  // Recommended Learning Resources
+  resources?: LearningResource[];
 
   generatedAt: string; // ISO timestamp
 }
