@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma';
 import { generateEmbedding, buildFailureEmbeddingContent } from '@/lib/embeddings/pipeline';
+import type { DiagnosisStage } from '@/types';
 
 export interface RetrievedFailure {
   submissionId: string;
@@ -61,10 +62,11 @@ export async function retrieveSimilarFailures(
   code: string,
   error?: string,
   limit: number = 3,
-  alpha: number = DEFAULT_RAG_ALPHA
+  alpha: number = DEFAULT_RAG_ALPHA,
+  onStage?: (stage: DiagnosisStage) => void
 ): Promise<RetrievedFailure[]> {
   try {
-    return await hybridRetrieval(userId, eventId, problemTitle, difficulty, topics, status, code, error, limit, alpha);
+    return await hybridRetrieval(userId, eventId, problemTitle, difficulty, topics, status, code, error, limit, alpha, onStage);
   } catch (err) {
     console.warn('⚠️ Hybrid retrieval failed, falling back to graph-only:', err);
     return await graphOnlyRetrieval(userId, eventId, limit, topics);
@@ -81,11 +83,13 @@ export async function hybridRetrieval(
   code: string,
   error?: string,
   limit: number = 3,
-  alpha: number = DEFAULT_RAG_ALPHA
+  alpha: number = DEFAULT_RAG_ALPHA,
+  onStage?: (stage: DiagnosisStage) => void
 ): Promise<RetrievedFailure[]> {
   // -------------------------------------------------------------
   // Branch A: Semantic Embedding Similarity (PostgreSQL / In-Memory)
   // -------------------------------------------------------------
+  onStage?.('retrieving_embeddings');
   const queryText = buildFailureEmbeddingContent(problemTitle, difficulty, topics, status, code, error);
   const queryEmbedding = await generateEmbedding(queryText);
 
@@ -174,6 +178,7 @@ export async function hybridRetrieval(
   // -------------------------------------------------------------
   // Branch B: Structural Graph Similarity (PostgreSQL)
   // -------------------------------------------------------------
+  onStage?.('traversing_graph');
   const currentSub = await prisma.submissionEvent.findUnique({
     where: { eventId },
     select: { problemId: true }
@@ -220,6 +225,7 @@ export async function hybridRetrieval(
   // -------------------------------------------------------------
   // Hybrid Fusion
   // -------------------------------------------------------------
+  onStage?.('fusing_evidence');
   const allIds = new Set([
     ...normSemantic.map(s => s.id),
     ...normGraph.map(s => s.id)

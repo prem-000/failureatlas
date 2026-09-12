@@ -7,7 +7,7 @@
  * into a structured, actionable diagnosis using Groq.
  */
 
-import type { SubmissionEvent, WeaknessType } from '@/types';
+import type { SubmissionEvent, WeaknessType, DiagnosisStage } from '@/types';
 import type { RetrievedFailure } from '../rag/retrieval';
 import type { WeaknessScore } from '../graph/pagerank';
 import { groqClient } from '@/lib/api/groq-client';
@@ -50,6 +50,7 @@ export interface DiagnosisContextOptions {
     confidence: number;
     reasoningChain?: string;
   };
+  onStage?: (stage: DiagnosisStage) => void;
 }
 
 function getFallbackDiagnosis(
@@ -209,6 +210,7 @@ export async function generateAIDiagnosis(
   );
 
   if (!hasGroqKey) {
+    options.onStage?.('reasoning');
     console.warn('⚠️ GROQ_API_KEY is not defined. Falling back to rule-based diagnosis.');
     return getFallbackDiagnosis(current, weaknessScores, options);
   }
@@ -335,6 +337,7 @@ ${
 `;
 
   try {
+    options.onStage?.('reasoning');
     console.log('[DIAGNOSIS] Groq request started for intent:', intent);
     const response = await groqClient.getChatCompletion({
       messages: [{ role: 'user', content: prompt }],

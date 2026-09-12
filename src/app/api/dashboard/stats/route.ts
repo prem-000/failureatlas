@@ -40,13 +40,55 @@ export async function GET(request: NextRequest) {
       include: { problem: { select: { title: true, difficulty: true, slug: true } } },
     });
 
-    const [totalSubmissions, acceptedSubmissions, weaknesses, recentSubmissions] = await Promise.all([
+    // 1. Fetch user's accepted problem IDs
+    const acceptedSubmissionsList = await prisma.submissionEvent.findMany({
+      where: { userId, status: 'Accepted' },
+      select: { problemId: true },
+    });
+    const acceptedProblemIds = Array.from(new Set(acceptedSubmissionsList.map(s => s.problemId)));
+
+    // 2. Fetch all open failing submissions for problems that have never been accepted
+    const openFailures = await prisma.submissionEvent.findMany({
+      where: {
+        userId,
+        status: { not: 'Accepted' },
+        problemId: { notIn: acceptedProblemIds },
+      },
+      select: {
+        diagnosis: { select: { primaryWeaknessId: true } },
+        failureExplanation: { select: { rootCause: true } },
+        evidence: { select: { rootCauseHypotheses: { select: { rootCauseType: true } } } },
+      },
+    });
+
+    // 3. Count unique weaknesses with currently open failures
+    const activeWeaknessIds = new Set<string>();
+    for (const sub of openFailures) {
+      const rc =
+        sub.failureExplanation?.rootCause ||
+        sub.evidence?.flatMap((e) => e.rootCauseHypotheses)[0]?.rootCauseType ||
+        sub.diagnosis?.primaryWeaknessId;
+      if (rc) {
+        const norm = rc.toLowerCase();
+        if (norm.includes('boundary') || norm.includes('edge') || norm.includes('lookahead')) {
+          activeWeaknessIds.add('edge-case-reasoning');
+        } else if (norm.includes('pattern') || norm.includes('algorithm')) {
+          activeWeaknessIds.add('algorithmic-pattern-recognition');
+        } else if (norm.includes('complexity') || norm.includes('time') || norm.includes('space') || norm.includes('tle')) {
+          activeWeaknessIds.add('performance-analysis');
+        } else {
+          activeWeaknessIds.add('implementation-precision');
+        }
+      }
+    }
+
+    const [totalSubmissions, acceptedSubmissions, recentSubmissions] = await Promise.all([
       prisma.submissionEvent.count({ where: { userId } }),
       prisma.submissionEvent.count({ where: { userId, status: 'Accepted' } }),
-      prisma.systemicWeakness.count({ where: { severity: { in: ['high', 'critical'] } } }),
       recentSubmissionQuery,
     ] as const);
 
+    const weaknesses = activeWeaknessIds.size;
     const acceptanceRate =
       totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
 

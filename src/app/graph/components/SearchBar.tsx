@@ -6,11 +6,13 @@ interface SearchBarProps {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-export function SearchBar({ value, onChange, placeholder = 'Search...' }: SearchBarProps) {
+export function SearchBar({ value, onChange, placeholder = 'Search...', className, style }: SearchBarProps) {
   return (
-    <div style={{ position: 'relative', flexShrink: 0 }}>
+    <div className={`search-bar-root ${className || ''}`} style={{ position: 'relative', flexShrink: 0, ...style }}>
       <Search
         size={13}
         style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#52525b', pointerEvents: 'none' }}
@@ -19,6 +21,7 @@ export function SearchBar({ value, onChange, placeholder = 'Search...' }: Search
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
+        className="search-bar-input"
         style={{
           background: 'rgba(255,255,255,0.04)',
           border: '1px solid rgba(255,255,255,0.07)',
@@ -27,7 +30,8 @@ export function SearchBar({ value, onChange, placeholder = 'Search...' }: Search
           color: '#e4e4e7',
           fontSize: '12px',
           outline: 'none',
-          width: 200,
+          width: '100%',
+          boxSizing: 'border-box',
           transition: 'border-color 150ms, background 150ms',
         }}
         onFocus={e => {

@@ -18,6 +18,21 @@
   }
 }
 
+@layer utilities {
+  .text-body {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .text-caption {
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .text-micro {
+    font-size: 11px;
+    line-height: 14px;
+  }
+}
+
 :root {
   --color-background: #131313;
   --color-surface: #191919;

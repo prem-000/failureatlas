@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { mapRootCauseToWeakness, WEAKNESS_MAP, normalizeRootCauseKey } from '@/lib/graph/weakness-taxonomy';
 import {
   Bug, Zap, RefreshCw, ChevronRight,
   CheckCircle2, XCircle, Terminal, Brain,
@@ -98,323 +100,315 @@ const PROBLEM_PRESETS: ProblemPreset[] = [
     ],
     learningPoints: [
       'Subtractive notation handling in Roman numeral conversion',
-      '1-step lookahead pointer comparison (val[i] < val[i+1])',
-      'Handling non-monotonic sequence evaluation in string parsing'
+      'Lookahead comparisons using index bounds checks s[i] < s[i+1]',
+      'Single-pass accumulation invariant principles'
     ],
     nextProblems: [
-      { title: 'Valid Parentheses', difficulty: 'Easy', reason: 'Master state-transition & character pair matching logic.' },
-      { title: 'String to Integer (atoi)', difficulty: 'Medium', reason: 'Practice state machine parsing & boundary checks.' }
+      { title: 'Integer to Roman', difficulty: 'Medium', reason: 'Reinforces subtractive threshold ordering' },
+      { title: 'Valid Roman Numerals', difficulty: 'Medium', reason: 'Grammar and state machine validation' },
+      { title: 'Basic Calculator II', difficulty: 'Medium', reason: 'Operator precedence lookahead handling' }
     ],
     levels: [
       {
-        level: 1,
-        categoryName: 'Easy',
-        input: 'III',
-        expected: '3',
-        userOutput: '3',
-        status: 'untested',
-        explanation: 'Simple additive string. 1 + 1 + 1 = 3.',
+        level: 1, categoryName: 'Easy', input: '"III"', expected: '3', userOutput: '3', status: 'passed',
+        explanation: 'Simple additive string. No subtractive lookahead required.',
         steps: [
-          { stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 0 -> 1.', variables: { i: 0, s: 'III', currChar: 'I', val: 1, total: 1 }, pointerPos: 0, stateChange: { from: 0, op: '+1', to: 1 } },
-          { stepIndex: 2, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 1 -> 2.', variables: { i: 1, s: 'III', currChar: 'I', val: 1, total: 2 }, pointerPos: 1, stateChange: { from: 1, op: '+1', to: 2 } },
-          { stepIndex: 3, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 2 -> 3.', variables: { i: 2, s: 'III', currChar: 'I', val: 1, total: 3 }, pointerPos: 2, stateChange: { from: 2, op: '+1', to: 3 } },
+          { stepIndex: 1, lineNumber: 2, codeSnippet: "roman = {'I':1, 'V':5...}", explanation: "Dictionary initialization", variables: { total: 0 } },
+          { stepIndex: 2, lineNumber: 4, codeSnippet: "for i in range(len(s)):", explanation: "Loop iter i=0 ('I')", variables: { i: 0, "s[i]": 'I' } },
+          { stepIndex: 3, lineNumber: 5, codeSnippet: "total += roman[s[i]]", explanation: "Add roman['I'] (1) to total", variables: { total: 1 }, stateChange: { from: 0, op: '+1', to: 1 } },
+          { stepIndex: 4, lineNumber: 4, codeSnippet: "for i in range(len(s)):", explanation: "Loop iter i=1 ('I')", variables: { i: 1, "s[i]": 'I' } },
+          { stepIndex: 5, lineNumber: 5, codeSnippet: "total += roman[s[i]]", explanation: "Add roman['I'] (1) to total", variables: { total: 2 }, stateChange: { from: 1, op: '+1', to: 2 } },
+          { stepIndex: 6, lineNumber: 4, codeSnippet: "for i in range(len(s)):", explanation: "Loop iter i=2 ('I')", variables: { i: 2, "s[i]": 'I' } },
+          { stepIndex: 7, lineNumber: 5, codeSnippet: "total += roman[s[i]]", explanation: "Add roman['I'] (1) to total", variables: { total: 3 }, stateChange: { from: 2, op: '+1', to: 3 } },
+          { stepIndex: 8, lineNumber: 6, codeSnippet: "return total", explanation: "Return final accumulated total 3", variables: { result: 3 } }
         ]
       },
       {
-        level: 2,
-        categoryName: 'Normal',
-        input: 'VIII',
-        expected: '8',
-        userOutput: '8',
-        status: 'locked',
-        explanation: 'Monotonic additive string. 5 + 1 + 1 + 1 = 8.',
+        level: 2, categoryName: 'Normal', input: '"LVIII"', expected: '58', userOutput: '58', status: 'passed',
+        explanation: 'Non-subtractive mixed characters pass correctly.',
         steps: [
-          { stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "V" (val 5). total: 0 -> 5.', variables: { i: 0, s: 'VIII', currChar: 'V', val: 5, total: 5 }, pointerPos: 0, stateChange: { from: 0, op: '+5', to: 5 } },
-          { stepIndex: 2, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 5 -> 6.', variables: { i: 1, s: 'VIII', currChar: 'I', val: 1, total: 6 }, pointerPos: 1, stateChange: { from: 5, op: '+1', to: 6 } },
-          { stepIndex: 3, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 6 -> 7.', variables: { i: 2, s: 'VIII', currChar: 'I', val: 1, total: 7 }, pointerPos: 2, stateChange: { from: 6, op: '+1', to: 7 } },
-          { stepIndex: 4, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "I" (val 1). total: 7 -> 8.', variables: { i: 3, s: 'VIII', currChar: 'I', val: 1, total: 8 }, pointerPos: 3, stateChange: { from: 7, op: '+1', to: 8 } },
+          { stepIndex: 1, lineNumber: 2, codeSnippet: "roman = {'I':1, 'V':5, 'X':10, 'L':50...}", explanation: "Dictionary initialization", variables: { total: 0 } },
+          { stepIndex: 2, lineNumber: 5, codeSnippet: "total += roman[s[0]]", explanation: "Add 'L' (50)", variables: { total: 50 } },
+          { stepIndex: 3, lineNumber: 5, codeSnippet: "total += roman[s[1]]", explanation: "Add 'V' (5)", variables: { total: 55 } },
+          { stepIndex: 4, lineNumber: 5, codeSnippet: "total += roman[s[2..4]]", explanation: "Add 'III' (3)", variables: { total: 58 } },
+          { stepIndex: 5, lineNumber: 6, codeSnippet: "return total", explanation: "Return final total 58", variables: { total: 58 } }
         ]
       },
       {
-        level: 3,
-        categoryName: 'Boundary',
-        input: 'IV',
-        expected: '4',
-        userOutput: '6',
-        status: 'locked',
-        explanation: 'Subtractive pair! "I" (1) comes before "V" (5). Instead of 1 + 5 = 6, it must evaluate to 5 - 1 = 4.',
+        level: 3, categoryName: 'Boundary', input: '"IV"', expected: '4', userOutput: '6', status: 'failed',
+        explanation: 'Subtractive pair fails! The algorithm added 1 + 5 = 6 instead of 5 - 1 = 4.',
         steps: [
+          { stepIndex: 1, lineNumber: 2, codeSnippet: "roman = {'I':1, 'V':5...}", explanation: "Dictionary initialized", variables: { total: 0 } },
+          { stepIndex: 2, lineNumber: 4, codeSnippet: "for i in range(len(s)):", explanation: "Iteration i=0: character 'I' (value 1)", variables: { i: 0, current: 'I', next: 'V' } },
           {
-            stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]',
-            explanation: 'Condition evaluated: Current "I" (1) is smaller than next "V" (5). Your code adds +1 instead of subtracting.',
-            variables: { i: 0, s: 'IV', currChar: 'I', nextChar: 'V', currVal: 1, nextVal: 5, total: 1 },
-            pointerPos: 0, stateChange: { from: 0, op: '+1 (should be -1)', to: 1 },
+            stepIndex: 3, lineNumber: 5, codeSnippet: "# total += roman[s[i]]",
+            explanation: "Paused! Do you notice s[i] < s[i+1]? What should be added or subtracted?",
+            variables: { i: 0, "val(s[i])": 1, "val(s[i+1])": 5, total: 0 },
             quiz: {
-              question: 'When currVal (1) < nextVal (5), what operation should be performed?',
-              options: ['Add currVal (+1)', 'Subtract currVal (-1)', 'Multiply values'],
+              question: "When s[i] is less than s[i+1] (e.g. 'I' before 'V'), what is the correct arithmetic operation?",
+              options: [
+                "Always add both values (total += 1 + 5)",
+                "Subtract s[i] from total or treat as -1 before adding s[i+1]",
+                "Skip s[i] completely and only add s[i+1]",
+                "Multiply s[i] by 10"
+              ],
               correctIndex: 1,
-              explanation: 'In Roman subtractive pairs (IV, IX, XL, CM), a smaller symbol preceding a larger symbol must be subtracted.'
+              explanation: "In Roman subtractive notation, when a smaller symbol precedes a larger symbol, its value is subtracted from the next symbol."
             }
           },
-          { stepIndex: 2, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "V" (val 5). total: 1 + 5 = 6 (Expected: 4).', variables: { i: 1, s: 'IV', currChar: 'V', currVal: 5, total: 6 }, pointerPos: 1, stateChange: { from: 1, op: '+5', to: 6 } }
+          { stepIndex: 4, lineNumber: 5, codeSnippet: "total += roman[s[i]]  # Buggy execution!", explanation: "Bug: Code unconditionally adds 1 to total!", variables: { total: 1 }, stateChange: { from: 0, op: '+1 (BUG)', to: 1 } },
+          { stepIndex: 5, lineNumber: 4, codeSnippet: "for i in range(len(s)):", explanation: "Iteration i=1: character 'V' (value 5)", variables: { i: 1, current: 'V' } },
+          { stepIndex: 6, lineNumber: 5, codeSnippet: "total += roman[s[i]]", explanation: "Add 5 to total (total becomes 6 instead of 4)", variables: { total: 6 }, stateChange: { from: 1, op: '+5', to: 6 } },
+          { stepIndex: 7, lineNumber: 6, codeSnippet: "return total", explanation: "Return 6 (Expected: 4). FAILED!", variables: { actual: 6, expected: 4 } }
         ]
       },
       {
-        level: 4,
-        categoryName: 'Hidden',
-        input: 'XL',
-        expected: '40',
-        userOutput: '60',
-        status: 'locked',
-        explanation: 'Subtractive pair XL (10 before 50). Code produces 10 + 50 = 60 instead of 50 - 10 = 40.',
-        steps: [
-          { stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "X" (10). Next "L" (50). Added +10 instead of -10.', variables: { i: 0, s: 'XL', currChar: 'X', nextChar: 'L', total: 10 }, pointerPos: 0 },
-          { stepIndex: 2, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Read "L" (50). total = 60.', variables: { i: 1, s: 'XL', currChar: 'L', total: 60 }, pointerPos: 1 }
-        ]
+        level: 4, categoryName: 'Hidden', input: '"MCMXCIV"', expected: '1994', userOutput: '2216', status: 'locked',
+        explanation: 'Multiple subtractive instances (CM, XC, IV) compound the addition error.',
+        steps: []
       },
       {
-        level: 5,
-        categoryName: 'Stress',
-        input: 'MCMXCIV',
-        expected: '1994',
-        userOutput: '2216',
-        status: 'locked',
-        explanation: 'Complex multi-subtractive string (M + CM + XC + IV = 1000 + 900 + 90 + 4 = 1994).',
-        steps: [
-          { stepIndex: 1, lineNumber: 5, codeSnippet: 'total += roman[s[i]]', explanation: 'Processing MCMXCIV sequence.', variables: { i: 0, s: 'MCMXCIV', total: 1000 }, pointerPos: 0 }
-        ]
+        level: 5, categoryName: 'Stress', input: '"MMMDCCCLXXXVIII"', expected: '3888', userOutput: '3888', status: 'locked',
+        explanation: 'Maximum Roman numeral representation boundary test.',
+        steps: []
       }
     ]
   },
 
-  // 2. Binary Search (Array / Binary Search paradigm)
+  // 2. Longest Substring Without Repeating Characters (Sliding Window / Two Pointers)
+  {
+    id: 'preset-sliding-window',
+    problemTitle: 'Longest Substring Without Repeating Characters',
+    problemSlug: 'longest-substring-without-repeating-characters',
+    category: 'array-twopointer',
+    status: 'Wrong Answer',
+    language: 'python3',
+    passedTests: 412,
+    totalTests: 987,
+    code: `def lengthOfLongestSubstring(s: str) -> int:
+    char_map = {}
+    left = 0
+    max_len = 0
+    for right, c in enumerate(s):
+        if c in char_map:
+            # Bug: Does not take max(left, char_map[c] + 1)!
+            # Window can jump BACKWARDS when duplicate is outside current window!
+            left = char_map[c] + 1
+        char_map[c] = right
+        max_len = max(max_len, right - left + 1)
+    return max_len`,
+    rootCause: 'Window left pointer jumps backwards to stale duplicate indices.',
+    confidence: 94,
+    evidenceItems: [
+      'Failed on "abba": output 3 instead of 2',
+      'Passes strictly monotonic character sequences ("abcde")',
+      'Missing max(left, char_map[c] + 1) window bound guard',
+      'Matched pattern: Two-Pointer State Invariant Violation'
+    ],
+    learningPoints: [
+      'Sliding window monotonicity invariant (left pointer must never decrease)',
+      'Hash map index caching with stale entry invalidation',
+      'Two-pointer window length calculation semantics'
+    ],
+    nextProblems: [
+      { title: 'Minimum Window Substring', difficulty: 'Hard', reason: 'Dynamic contraction with multi-character frequency map' },
+      { title: 'Longest Repeating Character Replacement', difficulty: 'Medium', reason: 'Window expansion with frequency max count invariant' },
+      { title: 'Subarray Product Less Than K', difficulty: 'Medium', reason: 'Sliding window product bound condition' }
+    ],
+    levels: [
+      {
+        level: 1, categoryName: 'Easy', input: '"abcabcbb"', expected: '3', userOutput: '3', status: 'passed',
+        explanation: 'Standard repeating characters correctly contract window.',
+        steps: [
+          { stepIndex: 1, lineNumber: 2, codeSnippet: "char_map = {}; left = 0; max_len = 0", explanation: "Window state init", variables: { left: 0, max_len: 0 } },
+          { stepIndex: 2, lineNumber: 9, codeSnippet: "max_len = max(max_len, right - left + 1)", explanation: "Window 'abc' found, max_len=3", variables: { left: 0, right: 2, max_len: 3 } },
+          { stepIndex: 3, lineNumber: 8, codeSnippet: "left = char_map['a'] + 1", explanation: "Duplicate 'a' found at right=3, advance left to 1", variables: { left: 1, right: 3 } },
+          { stepIndex: 4, lineNumber: 10, codeSnippet: "return max_len", explanation: "Returns 3", variables: { max_len: 3 } }
+        ]
+      },
+      {
+        level: 2, categoryName: 'Normal', input: '"bbbbb"', expected: '1', userOutput: '1', status: 'passed',
+        explanation: 'Single recurring character constantly advances window.',
+        steps: [
+          { stepIndex: 1, lineNumber: 2, codeSnippet: "char_map = {}", explanation: "Init map", variables: { max_len: 0 } },
+          { stepIndex: 2, lineNumber: 7, codeSnippet: "left = char_map[c] + 1", explanation: "Window remains size 1 on every step", variables: { max_len: 1 } },
+          { stepIndex: 3, lineNumber: 10, codeSnippet: "return max_len", explanation: "Returns 1", variables: { max_len: 1 } }
+        ]
+      },
+      {
+        level: 3, categoryName: 'Boundary', input: '"abba"', expected: '2', userOutput: '3', status: 'failed',
+        explanation: 'Window left jumped backward on 2nd "a" because char_map["a"]=0 was still in map!',
+        steps: [
+          { stepIndex: 1, lineNumber: 4, codeSnippet: "for right, c in enumerate('abba'):", explanation: "right=0 ('a'): char_map['a'] = 0", variables: { left: 0, right: 0, char: 'a' } },
+          { stepIndex: 2, lineNumber: 4, codeSnippet: "right=1 ('b'): char_map['b'] = 1", explanation: "right=1 ('b'): window is 'ab', length=2", variables: { left: 0, right: 1, max_len: 2 } },
+          { stepIndex: 3, lineNumber: 7, codeSnippet: "right=2 ('b'): duplicate 'b' found!", explanation: "Duplicate 'b' at idx 1: left advances to char_map['b']+1 = 2", variables: { left: 2, right: 2, "char_map['b']": 1 } },
+          {
+            stepIndex: 4, lineNumber: 7, codeSnippet: "if c in char_map: left = char_map[c] + 1",
+            explanation: "Paused! When right=3 ('a'), char_map['a'] is 0. What will happen to left if we don't guard it?",
+            variables: { right: 3, current_left: 2, "stale_char_map['a']": 0 },
+            quiz: {
+              question: "Current left pointer is 2. The duplicate character 'a' was last seen at index 0. What happens if left = char_map['a'] + 1?",
+              options: [
+                "left jumps forward to index 3",
+                "left stays at index 2 correctly",
+                "left jumps backwards from 2 to 1, causing window to re-include duplicate 'b'!",
+                "Code throws IndexError"
+              ],
+              correctIndex: 2,
+              explanation: "Without max(left, char_map[c] + 1), left moves backwards from 2 to 1 (0 + 1), causing the invalid window 'ba' to be counted as 3!"
+            }
+          },
+          { stepIndex: 5, lineNumber: 7, codeSnippet: "left = char_map['a'] + 1  # 0 + 1 = 1!", explanation: "BUG: Left retreated from 2 to 1!", variables: { left: 1, right: 3 }, stateChange: { from: 2, op: 'REGRESSION', to: 1 } },
+          { stepIndex: 6, lineNumber: 9, codeSnippet: "max_len = max(2, 3 - 1 + 1) = 3", explanation: "Wrong max_len calculated as 3 instead of 2!", variables: { max_len: 3 } },
+          { stepIndex: 7, lineNumber: 10, codeSnippet: "return max_len", explanation: "Output 3 (Expected: 2). FAILED!", variables: { actual: 3, expected: 2 } }
+        ]
+      },
+      {
+        level: 4, categoryName: 'Hidden', input: '"tmmzuxt"', expected: '5', userOutput: '6', status: 'locked',
+        explanation: 'Multiple backward pointer leaps trigger on nested repeats.',
+        steps: []
+      },
+      {
+        level: 5, categoryName: 'Stress', input: '"abcdefghijklmnopqrstuvwxyz"*50', expected: '26', userOutput: '26', status: 'locked',
+        explanation: 'Stress test verifying linear O(n) bound.',
+        steps: []
+      }
+    ]
+  },
+
+  // 3. Binary Search (Overflow / High Boundary Off-by-one)
   {
     id: 'preset-binary-search',
     problemTitle: 'Binary Search',
     problemSlug: 'binary-search',
     category: 'binary-search',
-    status: 'Wrong Answer',
+    status: 'Time Limit Exceeded',
     language: 'python3',
-    passedTests: 32,
+    passedTests: 31,
     totalTests: 47,
-    code: `def search(nums: List[int], target: int) -> int:
-    low, high = 0, len(nums)  # ❌ Off-by-one: high should be len(nums)-1
-    while low < high:         # ❌ Misses element when low == high
-        mid = (low + high) // 2
+    code: `def search(nums: list[int], target: int) -> int:
+    left, right = 0, len(nums)
+    while left < right:
+        mid = (left + right) // 2
         if nums[mid] == target:
             return mid
         elif nums[mid] < target:
-            low = mid          # ❌ Infinite loop: should be mid + 1
+            # Bug: missing + 1 causes infinite loop when left == mid!
+            left = mid
         else:
-            high = mid
+            right = mid
     return -1`,
-    rootCause: 'Off-by-one bound error & infinite loop in pointer updates.',
-    confidence: 94,
-    evidenceItems: [
-      'Failed single-element arrays [5], target=5',
-      'Infinite loop when target is greater than mid',
-      'Loop condition `low < high` terminates before inspecting low == high',
-      'Matched pattern: Binary Search Condition Oversight'
-    ],
-    learningPoints: [
-      'Correct binary search boundaries (high = len - 1 vs len)',
-      'Mid offset update rules (low = mid + 1 vs mid)',
-      'Handling single-element arrays and termination conditions'
-    ],
-    nextProblems: [
-      { title: 'Search in Rotated Sorted Array', difficulty: 'Medium', reason: 'Master modified binary search conditionals.' },
-      { title: 'Find First and Last Position', difficulty: 'Medium', reason: 'Practice lower/upper bound binary search.' }
-    ],
-    levels: [
-      {
-        level: 1,
-        categoryName: 'Easy',
-        input: 'nums = [1, 3, 5, 7], target = 3',
-        expected: '1',
-        userOutput: '1',
-        status: 'untested',
-        explanation: 'Target found at mid index 1 on first iteration.',
-        steps: [
-          { stepIndex: 1, lineNumber: 3, codeSnippet: 'mid = (low + high) // 2', explanation: 'low=0, high=4 -> mid=2 (val=5). 5 > 3 -> high=2.', variables: { low: 0, high: 4, mid: 2, 'nums[mid]': 5, target: 3 }, pointers: { low: 0, mid: 2, high: 4 } },
-          { stepIndex: 2, lineNumber: 3, codeSnippet: 'mid = (low + high) // 2', explanation: 'low=0, high=2 -> mid=1 (val=3). Found target!', variables: { low: 0, high: 2, mid: 1, 'nums[mid]': 3, target: 3 }, pointers: { low: 0, mid: 1, high: 2 } }
-        ]
-      },
-      {
-        level: 2,
-        categoryName: 'Normal',
-        input: 'nums = [-1, 0, 3, 5, 9, 12], target = 9',
-        expected: '4',
-        userOutput: 'Infinite Loop',
-        status: 'locked',
-        explanation: 'low=mid without +1 causes infinite loop when low=4, high=5, mid=4.',
-        steps: [
-          {
-            stepIndex: 1, lineNumber: 8, codeSnippet: 'low = mid',
-            explanation: 'nums[mid] (5) < target (9). Executed `low = mid` (4). On next turn, mid remains 4 forever!',
-            variables: { low: 4, high: 6, mid: 4, 'nums[mid]': 5, target: 9 }, pointers: { low: 4, mid: 4, high: 6 },
-            quiz: {
-              question: 'When nums[mid] < target, how should low be updated?',
-              options: ['low = mid', 'low = mid + 1', 'low = mid - 1'],
-              correctIndex: 1,
-              explanation: 'Since nums[mid] is smaller than target, mid cannot be the answer. Increment low to mid + 1.'
-            }
-          }
-        ]
-      },
-      {
-        level: 3,
-        categoryName: 'Boundary',
-        input: 'nums = [5], target = 5',
-        expected: '0',
-        userOutput: '-1',
-        status: 'locked',
-        explanation: 'Single element array. Loop `while low < high` exits without checking low==0.',
-        steps: [
-          { stepIndex: 1, lineNumber: 3, codeSnippet: 'while low < high:', explanation: 'low=0, high=0 (since high=len(nums)-1=0). low < high is False! Exits loop.', variables: { low: 0, high: 0, target: 5 }, pointers: { low: 0, mid: 0, high: 0 } }
-        ]
-      },
-      {
-        level: 4,
-        categoryName: 'Hidden',
-        input: 'nums = [2, 5], target = 5',
-        expected: '1',
-        userOutput: 'Infinite Loop',
-        status: 'locked',
-        explanation: 'Two element array target at index 1 triggers infinite loop.',
-        steps: [{ stepIndex: 1, lineNumber: 8, codeSnippet: 'low = mid', explanation: 'Infinite loop on low=0, high=1.', variables: { low: 0, high: 1 } }]
-      },
-      {
-        level: 5,
-        categoryName: 'Stress',
-        input: 'nums = [1..10000], target = 9999',
-        expected: '9998',
-        userOutput: 'Time Limit Exceeded',
-        status: 'locked',
-        explanation: 'Stress test exhibits TLE due to non-terminating binary search loop.',
-        steps: [{ stepIndex: 1, lineNumber: 3, codeSnippet: 'while low < high:', explanation: 'TLE', variables: {} }]
-      }
-    ]
-  },
-
-  // 3. Valid Parentheses (Stack paradigm)
-  {
-    id: 'preset-valid-parentheses',
-    problemTitle: 'Valid Parentheses',
-    problemSlug: 'valid-parentheses',
-    category: 'stack-string',
-    status: 'Wrong Answer',
-    language: 'python3',
-    passedTests: 60,
-    totalTests: 95,
-    code: `def isValid(s: str) -> bool:
-    stack = []
-    mapping = {")": "(", "}": "{", "]": "["}
-    for char in s:
-        if char in mapping:
-            # ❌ Bug: Throws IndexError if closing bracket occurs on empty stack!
-            top = stack.pop()
-            if mapping[char] != top:
-                return False
-        else:
-            stack.append(char)
-    return len(stack) == 0`,
-    rootCause: 'Popping from stack without checking if stack is empty first.',
+    rootCause: 'Infinite loop due to non-advancing left pointer in integer division floor.',
     confidence: 98,
     evidenceItems: [
-      'Runtime error / Index error when input starts with closing bracket `)`',
-      'Normal matching pairs `()[]{}` pass',
-      'Stack pop operation lacks `if not stack:` boundary check',
-      'Matched pattern: Empty Data Structure Access Error'
+      'Time Limit Exceeded on 2-element arrays [2, 5], target 5',
+      'Passes odd-length arrays where target is at root mid',
+      'Floor division (left + right) // 2 rounds down, causing left = mid to stall',
+      'Matched pattern: Binary Search Loop Termination Invariant Failure'
     ],
     learningPoints: [
-      'Always check `stack.isEmpty()` before popping',
-      'Handling leading closing bracket edge cases',
-      'Clean state machine matching for bracket pairs'
+      'Search space reduction invariant (must guarantee left or right strictly moves)',
+      'Floor division midpoint bias towards left boundary',
+      'Inclusive vs exclusive upper-bound loop termination contract (left <= right vs left < right)'
     ],
     nextProblems: [
-      { title: 'Simplify Path', difficulty: 'Medium', reason: 'Practice Unix path directory stack operations.' },
-      { title: 'Evaluate Reverse Polish Notation', difficulty: 'Medium', reason: 'Master arithmetic operand stack evaluation.' }
+      { title: 'Search in Rotated Sorted Array', difficulty: 'Medium', reason: 'Two-halves sorted boundary partition' },
+      { title: 'Find First and Last Position of Element', difficulty: 'Medium', reason: 'Lower and upper bound binary search templates' },
+      { title: 'Find Minimum in Rotated Sorted Array', difficulty: 'Medium', reason: 'Unimodal inflection point convergence' }
     ],
     levels: [
       {
-        level: 1,
-        categoryName: 'Easy',
-        input: '()',
-        expected: 'True',
-        userOutput: 'True',
-        status: 'untested',
-        explanation: 'Simple valid pair. Push "(", pop "(" on ")".',
+        level: 1, categoryName: 'Easy', input: '[-1,0,3,5,9,12], target=9', expected: '4', userOutput: '4', status: 'passed',
+        explanation: 'Exact mid matches cleanly on odd splits.',
         steps: [
-          { stepIndex: 1, lineNumber: 10, codeSnippet: 'stack.append(char)', explanation: 'Push "(" to stack.', variables: { char: '(', stack: "['(']" }, stackState: ['('] },
-          { stepIndex: 2, lineNumber: 6, codeSnippet: 'top = stack.pop()', explanation: 'Pop "(" on ")". Stack becomes empty.', variables: { char: ')', top: '(', stack: '[]' }, stackState: [] }
+          { stepIndex: 1, lineNumber: 2, codeSnippet: "left, right = 0, 6", explanation: "Range [0, 6)", variables: { left: 0, right: 6 } },
+          { stepIndex: 2, lineNumber: 4, codeSnippet: "mid = 3, nums[3] = 5 < 9", explanation: "Target in right half", variables: { mid: 3, val: 5 } },
+          { stepIndex: 3, lineNumber: 8, codeSnippet: "left = mid (3)", explanation: "Narrow to [3, 6)", variables: { left: 3, right: 6 } },
+          { stepIndex: 4, lineNumber: 6, codeSnippet: "mid = 4, nums[4] = 9 == target", explanation: "Found target at index 4", variables: { result: 4 } }
         ]
       },
       {
-        level: 2,
-        categoryName: 'Normal',
-        input: '()[]{}',
-        expected: 'True',
-        userOutput: 'True',
-        status: 'locked',
-        explanation: 'Sequential valid bracket pairs.',
+        level: 2, categoryName: 'Normal', input: '[5], target=5', expected: '0', userOutput: '0', status: 'passed',
+        explanation: 'Single element match returns on step 1.',
         steps: [
-          { stepIndex: 1, lineNumber: 10, codeSnippet: 'stack.append(char)', explanation: 'Processing pairs.', variables: { s: '()[]{}' }, stackState: [] }
+          { stepIndex: 1, lineNumber: 2, codeSnippet: "left, right = 0, 1", explanation: "Range [0, 1)", variables: { left: 0, right: 1 } },
+          { stepIndex: 2, lineNumber: 4, codeSnippet: "mid = 0, nums[0] == 5", explanation: "Immediate match", variables: { result: 0 } }
         ]
       },
       {
-        level: 3,
-        categoryName: 'Boundary',
-        input: ']',
-        expected: 'False',
-        userOutput: 'IndexError: pop from empty list',
-        status: 'locked',
-        explanation: 'Single closing bracket! Stack is empty when `stack.pop()` is called.',
+        level: 3, categoryName: 'Boundary', input: '[2, 5], target=5', expected: '1', userOutput: 'TLE', status: 'failed',
+        explanation: 'Infinite Loop! left=0, right=2 → mid=1? No, mid=(0+1)//2=0 → left stays 0 indefinitely!',
         steps: [
+          { stepIndex: 1, lineNumber: 2, codeSnippet: "left, right = 0, 2", explanation: "Initial bounds", variables: { left: 0, right: 2 } },
+          { stepIndex: 2, lineNumber: 4, codeSnippet: "mid = (0 + 2) // 2 = 1", explanation: "Mid is 1, nums[1]=5 == target!", variables: { mid: 1, "nums[1]": 5 } },
+          { stepIndex: 3, lineNumber: 2, codeSnippet: "nums=[2, 5], target=5 (left=0, right=1)", explanation: "Consider subarray state left=0, right=1", variables: { left: 0, right: 1 } },
           {
-            stepIndex: 1, lineNumber: 6, codeSnippet: 'top = stack.pop()',
-            explanation: 'Attempted to pop from EMPTY stack! Causes IndexError.',
-            variables: { char: ']', stack: '[]' }, stackState: [],
+            stepIndex: 4, lineNumber: 7, codeSnippet: "elif nums[mid] < target: left = mid",
+            explanation: "Paused! When left=0 and right=1, mid=(0+1)//2 = 0. nums[0] < 5. What happens when left = mid?",
+            variables: { left: 0, right: 1, mid: 0 },
             quiz: {
-              question: 'What must be checked before calling `stack.pop()` on a closing bracket?',
-              options: ['Check if len(s) > 0', 'Check if `not stack` (empty stack)', 'Check if char is lowercase'],
+              question: "When mid = 0 and we execute `left = mid`, what is the new value of left?",
+              options: [
+                "left becomes 1, correctly halving the search space",
+                "left remains 0, causing the while loop to repeat with the exact same bounds indefinitely (TLE)",
+                "right decreases to 0",
+                "The algorithm terminates with -1"
+              ],
               correctIndex: 1,
-              explanation: 'If the stack is empty when encountering a closing bracket, the string is invalid immediately.'
+              explanation: "Because integer division rounds down, (0+1)//2 is 0. Setting left = mid sets left back to 0! To make progress, binary search MUST use left = mid + 1."
             }
-          }
+          },
+          { stepIndex: 5, lineNumber: 8, codeSnippet: "left = mid  # left remains 0!", explanation: "Infinite loop triggered: left=0, right=1 forever.", variables: { left: 0, right: 1, status: 'STALL' } },
+          { stepIndex: 6, lineNumber: 3, codeSnippet: "while left < right: (never terminates)", explanation: "Execution timed out after 2000ms. FAILED!", variables: { status: 'Time Limit Exceeded' } }
         ]
       },
       {
-        level: 4,
-        categoryName: 'Hidden',
-        input: '([)]',
-        expected: 'False',
-        userOutput: 'False',
-        status: 'locked',
-        explanation: 'Mismatched nested brackets correctly return False.',
-        steps: [{ stepIndex: 1, lineNumber: 8, codeSnippet: 'return False', explanation: 'Mismatch caught.', variables: {} }]
+        level: 4, categoryName: 'Hidden', input: '[1, 2, 3, 4], target=5', expected: '-1', userOutput: 'TLE', status: 'locked',
+        explanation: 'Missing target off the upper boundary gets trapped in infinite loop.',
+        steps: []
       },
       {
-        level: 5,
-        categoryName: 'Stress',
-        input: '((((... 1000 brackets ...))))',
-        expected: 'True',
-        userOutput: 'True',
-        status: 'locked',
-        explanation: 'Deep nesting stack test.',
-        steps: [{ stepIndex: 1, lineNumber: 10, codeSnippet: 'stack.append(char)', explanation: 'Deep stack', variables: {} }]
+        level: 5, categoryName: 'Stress', input: 'range(100000), target=99999', expected: '99999', userOutput: '99999', status: 'locked',
+        explanation: 'Scale test verifying log(n) ~ 17 iterations.',
+        steps: []
       }
     ]
   }
 ];
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function formatDistanceToNow(date: Date): string {
+  const diffMs = Math.max(0, Date.now() - date.getTime());
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min${minutes > 1 ? 's' : ''}`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''}`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''}`;
+}
 
-export function FailureReplayTab() {
-  const [selectedPreset, setSelectedPreset] = useState<ProblemPreset>(PROBLEM_PRESETS[0]);
+// ─── Main Content Component ───────────────────────────────────────────────────
+
+function FailureReplayContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryProblem = searchParams?.get('problem') || searchParams?.get('problemSlug');
+  const querySubmissionId = searchParams?.get('submissionId') || searchParams?.get('id');
+
+  const [openFailures, setOpenFailures] = useState<ProblemPreset[]>(PROBLEM_PRESETS);
+  const [selectedPreset, setSelectedPreset] = useState<ProblemPreset | null>(PROBLEM_PRESETS[0]);
+  const [resolvedState, setResolvedState] = useState<{
+    problemSlug: string;
+    problemTitle?: string;
+    timestamp: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const [debugStarted, setDebugStarted] = useState(false);
 
   // Debugger Stepper State
-  const [levels, setLevels] = useState<DynamicTestLevel[]>(selectedPreset.levels);
+  const [levels, setLevels] = useState<DynamicTestLevel[]>(PROBLEM_PRESETS[0].levels);
   const [currentLevelIdx, setCurrentLevelIdx] = useState(0);
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
 
@@ -424,13 +418,171 @@ export function FailureReplayTab() {
   const [isQuizSolved, setIsQuizSolved] = useState(false);
 
   // Sandbox Code Editor State
-  const [sandboxCode, setSandboxCode] = useState(selectedPreset.code);
+  const [sandboxCode, setSandboxCode] = useState(PROBLEM_PRESETS[0].code);
   const [sandboxValidated, setSandboxValidated] = useState(false);
 
   // Journey & Replay State
   const [isReplaying, setIsReplaying] = useState(false);
   const [replayProgress, setReplayProgress] = useState(0);
   const [journeyFinished, setJourneyFinished] = useState(false);
+
+  // 1. Fetch live open failures & check if queried problem is resolved
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadFailingSubmissions() {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const url = new URL('/api/submissions/failing', window.location.origin);
+        if (queryProblem) url.searchParams.set('problemSlug', queryProblem);
+        if (querySubmissionId) url.searchParams.set('submissionId', querySubmissionId);
+
+        const res = await fetch(url.toString(), { headers });
+        if (!res.ok) return;
+        const json = await res.json();
+
+        if (!isMounted) return;
+
+        // Direct-link fallback: If problem was solved on later attempt, show Solved card!
+        if (json.isResolved && json.acceptedSubmission) {
+          setResolvedState({
+            problemSlug: queryProblem || json.acceptedSubmission.slug || 'problem',
+            problemTitle: json.acceptedSubmission.title || queryProblem || 'Problem',
+            timestamp: json.acceptedSubmission.timestamp,
+          });
+          setLoading(false);
+          return;
+        }
+
+        const acceptedSlugs = new Set<string>(json.acceptedSlugs || []);
+
+        // Filter out any presets that have been accepted
+        let available = PROBLEM_PRESETS.filter(p => !acceptedSlugs.has(p.problemSlug));
+
+        // If DB returned custom open failures, integrate them
+        if (json.openFailures && json.openFailures.length > 0) {
+          const dbItems: ProblemPreset[] = json.openFailures.map((dbSub: any) => {
+            const matchedPreset = PROBLEM_PRESETS.find(p => p.problemSlug === dbSub.problemSlug);
+            if (matchedPreset) {
+              return {
+                ...matchedPreset,
+                code: dbSub.code || matchedPreset.code,
+                status: dbSub.status || matchedPreset.status,
+                passedTests: dbSub.passedTests ?? matchedPreset.passedTests,
+                totalTests: dbSub.totalTests ?? matchedPreset.totalTests,
+              };
+            }
+            return {
+              id: dbSub.id,
+              problemTitle: dbSub.problemTitle,
+              problemSlug: dbSub.problemSlug,
+              category: 'array-twopointer' as ProblemCategory,
+              status: dbSub.status,
+              language: dbSub.language || 'python3',
+              passedTests: dbSub.passedTests,
+              totalTests: dbSub.totalTests,
+              code: dbSub.code,
+              rootCause: dbSub.rootCause,
+              confidence: dbSub.confidence,
+              evidenceItems: dbSub.evidenceItems,
+              learningPoints: ['Analyze corner cases and boundary assertions before execution'],
+              nextProblems: [],
+              levels: [
+                {
+                  level: 1,
+                  categoryName: 'Easy' as const,
+                  input: '[1, 2]',
+                  expected: 'True',
+                  userOutput: 'True',
+                  status: 'passed' as const,
+                  explanation: 'Minimal base inputs pass baseline branch.',
+                  steps: [
+                    {
+                      stepIndex: 1,
+                      lineNumber: 2,
+                      codeSnippet: dbSub.code.split('\n')[0] || 'def solution():',
+                      explanation: 'Initialization passes simple assertions.',
+                      variables: { n: 2 }
+                    }
+                  ]
+                },
+                {
+                  level: 2,
+                  categoryName: 'Boundary' as const,
+                  input: '[0, 0, 0]',
+                  expected: '0',
+                  userOutput: '-1',
+                  status: 'failed' as const,
+                  explanation: 'Edge case fails due to boundary condition oversight.',
+                  steps: [
+                    {
+                      stepIndex: 1,
+                      lineNumber: 3,
+                      codeSnippet: dbSub.code.split('\n')[1] || 'return res',
+                      explanation: 'Oversight in boundary handling fails edge case.',
+                      variables: { edge: true }
+                    }
+                  ]
+                }
+              ]
+            };
+          });
+
+          const uniqueSlugs = new Set(dbItems.map(d => d.problemSlug));
+          available = [...dbItems, ...available.filter(p => !uniqueSlugs.has(p.problemSlug))];
+        }
+
+        setOpenFailures(available);
+
+        if (available.length > 0) {
+          const matching = queryProblem ? available.find(p => p.problemSlug === queryProblem) : null;
+          const toSelect = matching || available[0];
+          setSelectedPreset(toSelect);
+          setLevels(toSelect.levels);
+          setSandboxCode(toSelect.code);
+        } else {
+          setSelectedPreset(null);
+        }
+      } catch (err) {
+        console.error('Failed to load failing submissions:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    loadFailingSubmissions();
+    return () => { isMounted = false; };
+  }, [queryProblem, querySubmissionId]);
+
+  // 2. Client-side Optimistic Removal: when a problem is accepted, immediately drop from queue
+  const handleProblemSolved = (slug: string) => {
+    setOpenFailures(prev => {
+      const next = prev.filter(p => p.problemSlug !== slug);
+      if (selectedPreset?.problemSlug === slug) {
+        const nextSelected = next[0] || null;
+        if (nextSelected) {
+          handleSelectPreset(nextSelected);
+        } else {
+          setSelectedPreset(null);
+        }
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const handleAcceptedEvent = (e: any) => {
+      const slug = e?.detail?.problemSlug || e?.detail?.slug;
+      if (slug) {
+        handleProblemSolved(slug);
+      }
+    };
+    window.addEventListener('submission-accepted', handleAcceptedEvent as EventListener);
+    return () => window.removeEventListener('submission-accepted', handleAcceptedEvent as EventListener);
+  }, [selectedPreset]);
 
   // Synchronize when switching problem presets
   const handleSelectPreset = (preset: ProblemPreset) => {
@@ -453,7 +605,7 @@ export function FailureReplayTab() {
   };
 
   const currentLevel = levels[currentLevelIdx] ?? levels[0];
-  const currentStep = currentLevel.steps[currentStepIdx] ?? currentLevel.steps[0];
+  const currentStep = currentLevel?.steps[currentStepIdx] ?? currentLevel?.steps[0];
 
   const handleRunLevel = async (lvlIdx: number) => {
     const target = levels[lvlIdx];
@@ -469,7 +621,7 @@ export function FailureReplayTab() {
 
   const handleSelectQuizOption = (optIdx: number) => {
     setQuizAnswer(optIdx);
-    if (currentStep.quiz) {
+    if (currentStep?.quiz) {
       if (optIdx === currentStep.quiz.correctIndex) {
         setIsQuizSolved(true);
         setQuizFeedback(`✅ Correct! ${currentStep.quiz.explanation}`);
@@ -485,6 +637,7 @@ export function FailureReplayTab() {
   };
 
   const handleReplayAll = async () => {
+    if (!selectedPreset) return;
     setIsReplaying(true);
     setReplayProgress(0);
     for (let i = 0; i < levels.length; i++) {
@@ -494,12 +647,179 @@ export function FailureReplayTab() {
     }
     setIsReplaying(false);
     setJourneyFinished(true);
+
+    // Problem is now solved! Drop it from open failures queue optimistically and notify
+    const solvedSlug = selectedPreset.problemSlug;
+    setTimeout(() => {
+      handleProblemSolved(solvedSlug);
+      window.dispatchEvent(new CustomEvent('submission-accepted', {
+        detail: { problemSlug: solvedSlug }
+      }));
+    }, 1400);
   };
 
   const level3Failed = levels.some(l => l.level === 3 && l.status === 'failed');
 
+  // 3. Weakness banner live calculation
+  const weaknessInfo = useMemo(() => {
+    if (!selectedPreset) return null;
+    return mapRootCauseToWeakness(selectedPreset.rootCause);
+  }, [selectedPreset]);
+
+  const relatedOpenCount = useMemo(() => {
+    if (!selectedPreset || !weaknessInfo) return 0;
+    return openFailures.filter(f =>
+      f.problemSlug !== selectedPreset.problemSlug &&
+      mapRootCauseToWeakness(f.rootCause)?.id === weaknessInfo.id
+    ).length;
+  }, [openFailures, selectedPreset, weaknessInfo]);
+
+  // ─── Direct-Link Resolved State Render ────────────────────────────────────────
+  if (resolvedState) {
+    return (
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#09090b',
+        color: '#e4e4e7',
+        padding: '32px 20px',
+        fontFamily: 'Inter, system-ui, sans-serif',
+      }}>
+        <div style={{
+          background: 'rgba(18, 22, 19, 0.95)',
+          border: '1px solid rgba(34, 197, 94, 0.3)',
+          borderRadius: 16,
+          padding: '48px 36px',
+          textAlign: 'center',
+          maxWidth: 480,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 12,
+          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.65)',
+        }}>
+          <div style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'rgba(34, 197, 94, 0.12)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#4ade80',
+            marginBottom: 6,
+          }}>
+            <CheckCircle2 size={32} />
+          </div>
+          <h2 style={{ fontSize: 19, fontWeight: 700, color: '#f4f4f5', margin: 0 }}>
+            You solved this on a later attempt
+          </h2>
+          <p style={{ fontSize: 13, color: '#a1a1aa', margin: 0 }}>
+            {formatDistanceToNow(new Date(resolvedState.timestamp))} ago
+          </p>
+          <button
+            onClick={() => router.push(`/problems/${resolvedState.problemSlug}`)}
+            style={{
+              marginTop: 16,
+              padding: '10px 22px',
+              borderRadius: 8,
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              color: '#f4f4f5',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            View accepted solution <ArrowRight size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Clean Queue (All Solved) ────────────────────────────────────────────────
+  if (!loading && openFailures.length === 0) {
+    return (
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#09090b',
+        color: '#e4e4e7',
+        padding: '32px 20px',
+        fontFamily: 'Inter, system-ui, sans-serif',
+      }}>
+        <div style={{
+          background: 'rgba(18, 18, 22, 0.85)',
+          border: '1px solid rgba(34, 197, 94, 0.25)',
+          borderRadius: 16,
+          padding: '48px 36px',
+          textAlign: 'center',
+          maxWidth: 480,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 14,
+        }}>
+          <div style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'rgba(34, 197, 94, 0.12)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#4ade80',
+          }}>
+            <CheckCircle2 size={32} />
+          </div>
+          <h2 style={{ fontSize: 19, fontWeight: 700, color: '#f4f4f5', margin: 0 }}>
+            Queue Clean — No Open Failures!
+          </h2>
+          <p style={{ fontSize: 13, color: '#71717a', margin: 0, lineHeight: 1.5 }}>
+            Every problem in your sessions is currently accepted. Unsolved problems from your practice runs will populate this queue automatically.
+          </p>
+          <button
+            onClick={() => router.push('/problems')}
+            style={{
+              marginTop: 10,
+              padding: '10px 22px',
+              borderRadius: 8,
+              background: '#22c55e',
+              border: 'none',
+              color: '#000',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            Practice Problems →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedPreset) {
+    return null;
+  }
+
   return (
-    <div style={{ display: 'flex', flex: 1, height: '100%', overflow: 'hidden', background: '#09090b', color: '#e4e4e7', fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="failure-replay-container">
       <style>{`
         @keyframes pulseGlow {
           0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.25); }
@@ -510,19 +830,248 @@ export function FailureReplayTab() {
         .card-panel { background: rgba(18, 18, 22, 0.85); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 16px; padding: 24px; }
         .code-line { padding: 4px 12px; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 13px; transition: all 0.2s ease; }
         .code-line.active { background: rgba(245, 158, 11, 0.18); border-left: 3px solid #f59e0b; color: #fbbf24; }
+
+        /* ─── Base Layout ─── */
+        .failure-replay-container {
+          display: flex;
+          flex: 1;
+          height: 100%;
+          overflow: hidden;
+          background: #09090b;
+          color: #e4e4e7;
+          font-family: 'Inter', system-ui, sans-serif;
+          min-width: 0;
+        }
+        .failure-replay-sidebar {
+          width: 270px;
+          border-right: 1px solid rgba(255,255,255,0.06);
+          display: flex;
+          flex-direction: column;
+          flex-shrink: 0;
+          overflow-y: auto;
+          background: #0d0d0f;
+        }
+        .failure-replay-workspace {
+          flex: 1;
+          overflow-y: auto;
+          padding: 24px 32px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          min-width: 0;
+        }
+        .mobile-session-picker {
+          display: none;
+        }
+        .submission-overview-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        }
+        .overview-title-group {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+        .step2-ladder-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 12px;
+        }
+        .step3-stepper-grid {
+          display: grid;
+          grid-template-columns: 1.2fr 1fr;
+          gap: 20px;
+        }
+        .stepper-header-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        }
+        .stepper-btn-group {
+          display: flex;
+          gap: 6px;
+        }
+
+        /* ─── Mobile Viewport (< 900px) ─── */
+        @media (max-width: 899px) {
+          .failure-replay-container {
+            flex-direction: column !important;
+          }
+          .failure-replay-sidebar {
+            display: none !important;
+          }
+          .failure-replay-workspace {
+            padding: 14px 14px calc(88px + env(safe-area-inset-bottom, 0px)) 14px !important;
+            gap: 14px !important;
+          }
+          .card-panel {
+            padding: 16px !important;
+            border-radius: 14px !important;
+          }
+
+          /* Mobile Session Picker (Horizontal Pill Carousel) */
+          .mobile-session-picker {
+            display: flex !important;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(18, 18, 22, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 10px 12px;
+          }
+          .mobile-session-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10px;
+            font-weight: 800;
+            color: #71717a;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+          }
+          .mobile-session-count {
+            font-size: 9px;
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: 700;
+          }
+          .mobile-session-pills {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .mobile-session-pills::-webkit-scrollbar {
+            display: none;
+          }
+          .mobile-session-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+            color: #a1a1aa;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            font-size: 11.5px;
+            font-weight: 600;
+            transition: all 150ms ease;
+          }
+          .mobile-session-pill.active {
+            background: rgba(239, 68, 68, 0.14);
+            border-color: rgba(239, 68, 68, 0.35);
+            color: #f87171;
+          }
+          .mobile-pill-badge {
+            font-size: 9px;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: #71717a;
+          }
+          .mobile-session-pill.active .mobile-pill-badge {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+          }
+
+          /* Overview Header Row */
+          .submission-overview-row {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 14px !important;
+          }
+          .overview-title-group {
+            align-items: flex-start !important;
+          }
+          .overview-title-group h1 {
+            font-size: 17px !important;
+          }
+          .submission-start-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 12px 20px !important;
+          }
+
+          /* Step 2 Testcase Ladder */
+          .step2-ladder-grid {
+            display: flex !important;
+            overflow-x: auto !important;
+            gap: 10px !important;
+            padding-bottom: 8px !important;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x proximity;
+          }
+          .step2-ladder-card {
+            min-width: 135px !important;
+            flex-shrink: 0 !important;
+            scroll-snap-align: start;
+          }
+
+          /* Step 3 Stepper & Variables */
+          .step3-stepper-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+          .stepper-header-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+          }
+          .stepper-btn-group {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+          }
+          .stepper-btn-group button {
+            flex: 1;
+            text-align: center;
+          }
+          .code-line {
+            font-size: 12px !important;
+            padding: 3px 8px !important;
+            white-space: pre !important;
+          }
+        }
       `}</style>
 
-      {/* ── Left Sidebar: Dynamic Problem Preset Selector ── */}
-      <div style={{
-        width: 260, borderRight: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto', background: '#0d0d0f'
-      }}>
-        <div style={{ padding: '16px 16px 10px', fontSize: 10, fontWeight: 800, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Select Problem Session
+      {/* ── Left Sidebar: Open Failures Session Queue ── */}
+      <div className="failure-replay-sidebar">
+        <div style={{
+          padding: '16px 16px 10px',
+          fontSize: 10,
+          fontWeight: 800,
+          color: '#71717a',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <span>Select Problem Session</span>
+          <span style={{
+            fontSize: 10,
+            background: 'rgba(239, 68, 68, 0.15)',
+            color: '#f87171',
+            padding: '1px 6px',
+            borderRadius: 10,
+            fontWeight: 700,
+          }}>
+            {openFailures.length} open
+          </span>
         </div>
 
         <div style={{ padding: 8 }}>
-          {PROBLEM_PRESETS.map(p => (
+          {openFailures.map(p => (
             <button
               key={p.id}
               onClick={() => handleSelectPreset(p)}
@@ -545,21 +1094,69 @@ export function FailureReplayTab() {
       </div>
 
       {/* ── Main Workspace ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div className="failure-replay-workspace custom-scrollbar">
+
+        {/* ── MOBILE SESSION PICKER (< 900px) ─────────────────────────────── */}
+        <div className="mobile-session-picker">
+          <div className="mobile-session-header">
+            <span>Active Failure Session</span>
+            <span className="mobile-session-count">{openFailures.length} open</span>
+          </div>
+          <div className="mobile-session-pills custom-scrollbar">
+            {openFailures.map(p => {
+              const isActive = selectedPreset.id === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => handleSelectPreset(p)}
+                  className={`mobile-session-pill ${isActive ? 'active' : ''}`}
+                >
+                  <span>{p.problemTitle}</span>
+                  <span className="mobile-pill-badge">{p.status}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── LIVE WEAKNESS BANNER ────────────────────────────────────────── */}
+        {weaknessInfo && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            borderRadius: 12,
+            padding: '12px 18px',
+            fontSize: 13,
+            color: '#fbbf24',
+          }}>
+            <AlertTriangle size={17} style={{ color: '#f59e0b', flexShrink: 0 }} />
+            <div style={{ lineHeight: 1.5 }}>
+              This links to your <strong style={{ color: '#fef08a' }}>{weaknessInfo.name}</strong> weakness —{' '}
+              {relatedOpenCount > 0 ? (
+                <span><strong>{relatedOpenCount} more open problem{relatedOpenCount > 1 ? 's' : ''}</strong> target it</span>
+              ) : (
+                <span>no other open problems currently target it</span>
+              )}.
+            </div>
+          </div>
+        )}
 
         {/* ── STEP 1: Submission Overview Header ───────────────────────────── */}
         <div className="card-panel">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div className="submission-overview-row">
+            <div className="overview-title-group">
               <div style={{
-                width: 48, height: 48, borderRadius: 14,
+                width: 48, height: 48, borderRadius: 14, flexShrink: 0,
                 background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
                 <Bug size={24} style={{ color: '#ef4444' }} />
               </div>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#f4f4f5' }}>{selectedPreset.problemTitle}</h1>
                   <span style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
                     {selectedPreset.status}
@@ -573,14 +1170,8 @@ export function FailureReplayTab() {
 
             {!debugStarted && (
               <button
-                className="start-btn"
+                className="start-btn submission-start-btn"
                 onClick={handleStartDebugging}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '14px 28px', borderRadius: 12,
-                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                  color: '#ffffff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer'
-                }}
               >
                 <Zap size={18} />
                 Start Debugging
@@ -598,205 +1189,186 @@ export function FailureReplayTab() {
             <p style={{ fontSize: 13, color: '#71717a', maxWidth: 480, margin: '0 auto 24px', lineHeight: 1.6 }}>
               Praxis generates progressive testcases, animates pointer execution, tracks live variables VS Code-style, and pauses to quiz your reasoning.
             </p>
-            <button className="start-btn" onClick={handleStartDebugging} style={{ padding: '12px 24px', borderRadius: 10, background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
-              Start Debugging Session
+            <button
+              onClick={handleStartDebugging}
+              style={{
+                padding: '12px 24px', borderRadius: 10, background: '#ef4444',
+                color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer'
+              }}
+            >
+              Begin Level 1 Execution →
             </button>
           </div>
         ) : (
           <>
-            {/* ── STEP 1: Progressive Testcase Bar ─────────────────────────────── */}
-            <div className="card-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Layers size={16} style={{ color: '#ef4444' }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#a1a1aa', textTransform: 'uppercase' }}>
-                  Progressive Test Levels
-                </span>
+            {/* ── STEP 2: Progressive Dynamic Testcases Row ────────────────── */}
+            <div className="card-panel">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f4f4f5' }}>Progressive Testcase Ladder</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#71717a' }}>5 adaptive test levels attacking your algorithm&apos;s exact invariants</p>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                {levels.map((lvl, idx) => (
-                  <button
-                    key={lvl.level}
-                    onClick={() => lvl.status !== 'locked' && setCurrentLevelIdx(idx)}
-                    disabled={lvl.status === 'locked'}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8,
-                      background: idx === currentLevelIdx ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${idx === currentLevelIdx ? '#ef4444' : 'rgba(255,255,255,0.08)'}`,
-                      color: idx === currentLevelIdx ? '#f87171' : lvl.status === 'passed' ? '#4ade80' : lvl.status === 'failed' ? '#f87171' : '#52525b',
-                      fontSize: 12, fontWeight: 700, cursor: lvl.status === 'locked' ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    {lvl.status === 'passed' ? <CheckCircle2 size={14} /> : lvl.status === 'failed' ? <XCircle size={14} /> : lvl.status === 'locked' ? <Lock size={12} /> : <Unlock size={12} />}
-                    Level {lvl.level}: {lvl.categoryName}
-                  </button>
-                ))}
+              <div className="step2-ladder-grid custom-scrollbar">
+                {levels.map((lvl, idx) => {
+                  const isCurrent = idx === currentLevelIdx;
+                  return (
+                    <div
+                      key={lvl.level}
+                      className="step2-ladder-card"
+                      onClick={() => {
+                        if (lvl.status !== 'locked') {
+                          setCurrentLevelIdx(idx);
+                          setCurrentStepIdx(0);
+                        }
+                      }}
+                      style={{
+                        padding: '14px 16px', borderRadius: 12,
+                        background: isCurrent ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                        border: `1px solid ${isCurrent ? '#ef4444' : 'rgba(255, 255, 255, 0.06)'}`,
+                        cursor: lvl.status !== 'locked' ? 'pointer' : 'not-allowed',
+                        opacity: lvl.status === 'locked' ? 0.4 : 1,
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: isCurrent ? '#ef4444' : '#71717a' }}>
+                          LVL {lvl.level} · {lvl.categoryName}
+                        </span>
+                        {lvl.status === 'passed' && <CheckCircle2 size={16} style={{ color: '#22c55e' }} />}
+                        {lvl.status === 'failed' && <XCircle size={16} style={{ color: '#ef4444' }} />}
+                        {lvl.status === 'locked' && <Lock size={14} style={{ color: '#52525b' }} />}
+                        {lvl.status === 'untested' && <Unlock size={14} style={{ color: '#f59e0b' }} />}
+                      </div>
+
+                      <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#e4e4e7', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 6 }}>
+                        {lvl.input}
+                      </div>
+
+                      {lvl.status !== 'locked' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRunLevel(idx); }}
+                          style={{
+                            width: '100%', padding: '6px 0', fontSize: 11, fontWeight: 700,
+                            borderRadius: 6, border: 'none', cursor: 'pointer',
+                            background: lvl.status === 'failed' ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.08)',
+                            color: lvl.status === 'failed' ? '#f87171' : '#e4e4e7'
+                          }}
+                        >
+                          {lvl.status === 'untested' ? 'Run Test' : 'Rerun'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* ── STEP 6: Execution Timeline Stepper ─────────────────────────── */}
-            <div className="card-panel" style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Activity size={14} style={{ color: '#38bdf8' }} /> Execution Timeline & Jump Stepper
-              </div>
-
-              <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
-                {currentLevel.steps.map((st, idx) => (
-                  <button
-                    key={st.stepIndex}
-                    onClick={() => setCurrentStepIdx(idx)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 10,
-                      background: idx === currentStepIdx ? 'rgba(56, 189, 248, 0.15)' : 'rgba(0,0,0,0.3)',
-                      border: `1px solid ${idx === currentStepIdx ? '#38bdf8' : 'rgba(255,255,255,0.08)'}`,
-                      color: idx === currentStepIdx ? '#38bdf8' : '#a1a1aa',
-                      fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0
-                    }}
-                  >
-                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
-                      #{st.stepIndex}
-                    </span>
-                    Step {st.stepIndex} (Line {st.lineNumber})
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* ── STEP 2, 3, 4: Visual Debugger Workspace (Split Code & Variables) ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>
-
-              {/* Code Panel with Line Highlighting */}
-              <div className="card-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            {/* ── STEP 3: Execution Stepper & Variables Inspector ──────────── */}
+            <div className="step3-stepper-grid">
+              {/* Stepper & Animated Code */}
+              <div className="card-panel">
+                <div className="stepper-header-row">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Code2 size={18} style={{ color: '#f59e0b' }} />
-                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f4f4f5' }}>Code Execution</h3>
+                    <Terminal size={18} style={{ color: '#ef4444' }} />
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f4f4f5' }}>
+                      Step-by-Step Code Trace ({currentLevel.categoryName} Level)
+                    </h3>
                   </div>
-                  <span style={{ fontSize: 11, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
-                    Line {currentStep.lineNumber} Active
-                  </span>
+
+                  <div className="stepper-btn-group">
+                    <button
+                      disabled={currentStepIdx === 0}
+                      onClick={() => setCurrentStepIdx(prev => Math.max(0, prev - 1))}
+                      style={{ padding: '6px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', color: '#fff', border: 'none', cursor: currentStepIdx === 0 ? 'not-allowed' : 'pointer' }}
+                    >
+                      ← Prev Step
+                    </button>
+                    <button
+                      disabled={currentStepIdx >= currentLevel.steps.length - 1}
+                      onClick={() => setCurrentStepIdx(prev => Math.min(currentLevel.steps.length - 1, prev + 1))}
+                      style={{ padding: '6px 12px', borderRadius: 6, background: '#ef4444', color: '#fff', border: 'none', cursor: currentStepIdx >= currentLevel.steps.length - 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                      Next Step →
+                    </button>
+                  </div>
                 </div>
 
-                <div style={{ background: '#000000', borderRadius: 12, padding: 16, flex: 1, fontFamily: "'Fira Code', monospace" }}>
-                  {selectedPreset.code.split('\n').map((lineText, idx) => {
-                    const lineNum = idx + 1;
-                    const isActive = lineNum === currentStep.lineNumber;
+                {/* Code Viewer with active line highlight */}
+                <div style={{ background: '#09090b', borderRadius: 10, padding: 16, border: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto' }} className="custom-scrollbar">
+                  {selectedPreset.code.split('\n').map((line, idx) => {
+                    const lineNo = idx + 1;
+                    const isActive = currentStep && currentStep.lineNumber === lineNo;
                     return (
-                      <div key={lineNum} className={`code-line ${isActive ? 'active' : ''}`} style={{ display: 'flex', gap: 16 }}>
-                        <span style={{ color: '#52525b', width: 24, textWrap: 'nowrap', userSelect: 'none' }}>{lineNum}</span>
-                        <span style={{ flex: 1 }}>{lineText}</span>
+                      <div key={idx} className={`code-line ${isActive ? 'active' : ''}`}>
+                        <span style={{ color: '#52525b', width: 28, display: 'inline-block', userSelect: 'none' }}>{lineNo}</span>
+                        <span>{line}</span>
                       </div>
                     );
                   })}
                 </div>
-              </div>
 
-              {/* Live Variable Inspector (VS Code Style) */}
-              <div className="card-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                  <Eye size={18} style={{ color: '#38bdf8' }} />
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f4f4f5' }}>Live Variable Inspector</h3>
-                </div>
-
-                <div style={{ background: '#000000', borderRadius: 12, padding: 16, flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {Object.entries(currentStep.variables).map(([key, val]) => (
-                    <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#a78bfa', fontWeight: 700 }}>{key}</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#4ade80', fontWeight: 800 }}>{String(val)}</span>
-                    </div>
-                  ))}
-
-                  {/* Visual Pointer Indicator for Strings/Arrays */}
-                  {currentStep.pointerPos !== undefined && (
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#71717a', textTransform: 'uppercase', marginBottom: 6 }}>
-                        Pointer Traversal View
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        {String(currentStep.variables.s || '').split('').map((char, cIdx) => (
-                          <div key={cIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <div style={{ width: 32, height: 32, borderRadius: 6, background: cIdx === currentStep.pointerPos ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${cIdx === currentStep.pointerPos ? '#38bdf8' : 'rgba(255,255,255,0.08)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: cIdx === currentStep.pointerPos ? '#38bdf8' : '#e4e4e7' }}>
-                              {char}
-                            </div>
-                            {cIdx === currentStep.pointerPos && <ArrowUp size={14} style={{ color: '#38bdf8', marginTop: 4 }} />}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* ── STEP 5: AI Observation & Decision Explanation Callout ─────── */}
-            <div className="card-panel" style={{ background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#38bdf8', fontWeight: 800, fontSize: 14, marginBottom: 8 }}>
-                <Brain size={18} /> AI OBSERVATION (Line {currentStep.lineNumber})
-              </div>
-              <p style={{ margin: 0, fontSize: 13, color: '#d4d4d8', lineHeight: 1.6 }}>
-                {currentStep.explanation}
-              </p>
-            </div>
-
-            {/* ── STEP 7 & 10: AI Pause & Active Quiz ─────────────────────────── */}
-            {currentStep.quiz && (
-              <div className="card-panel" style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c084fc', fontWeight: 800, fontSize: 14, marginBottom: 12 }}>
-                  <HelpCircle size={18} /> AI PAUSE & QUESTION: What should happen here?
-                </div>
-                <p style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#f4f4f5' }}>
-                  {currentStep.quiz.question}
-                </p>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-                  {currentStep.quiz.options.map((opt, oIdx) => (
-                    <button
-                      key={oIdx}
-                      onClick={() => handleSelectQuizOption(oIdx)}
-                      style={{
-                        padding: '12px 16px', borderRadius: 10,
-                        background: quizAnswer === oIdx ? (isQuizSolved ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)') : 'rgba(0,0,0,0.3)',
-                        border: `1px solid ${quizAnswer === oIdx ? (isQuizSolved ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.08)'}`,
-                        color: quizAnswer === oIdx ? (isQuizSolved ? '#4ade80' : '#f87171') : '#e4e4e7',
-                        fontSize: 13, fontWeight: 700, cursor: 'pointer', textAlign: 'left'
-                      }}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-
-                {quizFeedback && (
-                  <div style={{ fontSize: 13, fontWeight: 600, color: isQuizSolved ? '#4ade80' : '#f87171' }}>
-                    {quizFeedback}
+                {/* Current Step Explanation */}
+                {currentStep && (
+                  <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: 10, background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: 13, color: '#fbbf24' }}>
+                    <strong>Step {currentStep.stepIndex}:</strong> {currentStep.explanation}
                   </div>
                 )}
               </div>
-            )}
 
-            {/* ── STEP 11: Evidence-backed Root Cause Confidence ───────────────── */}
-            {level3Failed && (
-              <div className="card-panel" style={{ background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#f87171', fontWeight: 800, fontSize: 14 }}>
-                    <AlertTriangle size={18} /> ROOT CAUSE REVEALED
+              {/* Variables & State Inspector */}
+              <div className="card-panel">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <Activity size={18} style={{ color: '#22c55e' }} />
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f4f4f5' }}>VS Code Variable Watcher</h3>
+                </div>
+
+                {currentStep?.variables && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                    {Object.entries(currentStep.variables).map(([k, v]) => (
+                      <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 8, background: '#09090b', border: '1px solid rgba(255,255,255,0.04)', fontSize: 13 }}>
+                        <span style={{ color: '#93c5fd', fontFamily: 'monospace' }}>{k}</span>
+                        <span style={{ color: '#4ade80', fontFamily: 'monospace', fontWeight: 700 }}>{String(v)}</span>
+                      </div>
+                    ))}
                   </div>
-                  <span style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.4)', padding: '4px 12px', borderRadius: 12, fontSize: 12, fontWeight: 800 }}>
-                    {selectedPreset.confidence}% Confidence
-                  </span>
-                </div>
+                )}
 
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f4f4f5', margin: '0 0 12px' }}>{selectedPreset.rootCause}</h2>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {selectedPreset.evidenceItems.map((ev, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#f87171', fontWeight: 600 }}>
-                      <CheckCircle2 size={14} /> {ev}
+                {/* Interactive Checkpoint Quiz */}
+                {currentStep?.quiz && (
+                  <div style={{ padding: '16px', borderRadius: 12, background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', marginTop: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, color: '#38bdf8', fontWeight: 800, fontSize: 13 }}>
+                      <QuestionIcon size={16} /> PAUSE & REFLECT QUIZ
                     </div>
-                  ))}
-                </div>
+                    <p style={{ fontSize: 13, color: '#f4f4f5', marginBottom: 12 }}>{currentStep.quiz.question}</p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {currentStep.quiz.options.map((opt, oIdx) => (
+                        <button
+                          key={oIdx}
+                          onClick={() => handleSelectQuizOption(oIdx)}
+                          style={{
+                            padding: '10px 14px', borderRadius: 8, textAlign: 'left', fontSize: 12,
+                            background: quizAnswer === oIdx ? (isQuizSolved ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)') : 'rgba(255,255,255,0.04)',
+                            border: `1px solid ${quizAnswer === oIdx ? (isQuizSolved ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.08)'}`,
+                            color: '#e4e4e7', cursor: 'pointer'
+                          }}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+
+                    {quizFeedback && (
+                      <div style={{ marginTop: 12, fontSize: 12, fontWeight: 600, color: isQuizSolved ? '#4ade80' : '#f87171' }}>
+                        {quizFeedback}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* ── STEP 12: Interactive Sandbox Code Editor ─────────────────────── */}
             {level3Failed && (
@@ -888,5 +1460,17 @@ export function FailureReplayTab() {
         )}
       </div>
     </div>
+  );
+}
+
+export function FailureReplayTab() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', background: '#09090b', color: '#71717a' }}>
+        Loading failure replay sessions...
+      </div>
+    }>
+      <FailureReplayContent />
+    </Suspense>
   );
 }

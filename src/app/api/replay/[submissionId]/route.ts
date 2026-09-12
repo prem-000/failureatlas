@@ -43,6 +43,33 @@ export async function POST(
       );
     }
 
+    // ── Check if the problem was already solved on a subsequent attempt ────────
+    const subsequentAccepted = await prisma.submissionEvent.findFirst({
+      where: {
+        userId,
+        problemId: submission.problemId,
+        status: 'Accepted',
+      },
+      orderBy: { timestamp: 'desc' },
+    });
+
+    if (subsequentAccepted) {
+      return NextResponse.json({
+        success: true,
+        isResolved: true,
+        data: {
+          isResolved: true,
+          problemTitle: submission.problem.title,
+          problemSlug: submission.problem.slug,
+          acceptedSubmission: {
+            id: subsequentAccepted.id,
+            timestamp: subsequentAccepted.timestamp.toISOString(),
+            status: subsequentAccepted.status,
+          },
+        },
+      });
+    }
+
     // ── Only makes sense for failed submissions ────────────────────────────────
     const isFailedVerdict = ['Wrong Answer', 'Time Limit Exceeded', 'Runtime Error', 'Memory Limit Exceeded'].includes(submission.status);
     if (!isFailedVerdict) {
@@ -112,6 +139,33 @@ export async function GET(
       { success: false, error: { code: 'NOT_FOUND', message: 'Submission not found.' } },
       { status: 404 }
     );
+  }
+
+  // Check if solved on a later attempt
+  const subsequentAccepted = await prisma.submissionEvent.findFirst({
+    where: {
+      userId,
+      problemId: submission.problemId,
+      status: 'Accepted',
+    },
+    orderBy: { timestamp: 'desc' },
+  });
+
+  if (subsequentAccepted) {
+    return NextResponse.json({
+      success: true,
+      data: {
+        isResolved: true,
+        submissionId: submission.id,
+        problemTitle: submission.problem.title,
+        problemSlug: submission.problem.slug,
+        acceptedSubmission: {
+          id: subsequentAccepted.id,
+          timestamp: subsequentAccepted.timestamp.toISOString(),
+          status: subsequentAccepted.status,
+        },
+      },
+    });
   }
 
   return NextResponse.json({

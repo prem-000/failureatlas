@@ -1,0 +1,58 @@
+{
+  "id": "basic-leetcode",
+  "name": "Basic Problems (LeetCode)",
+  "source": "Curated beginner set",
+  "levels": [
+    {
+      "levelNumber": 1,
+      "label": "Arrays & Strings Basics",
+      "problems": [
+        { "id": "basic-1", "leetcodeId": 1,    "slug": "two-sum", "title": "Two Sum", "difficulty": "Easy", "topics": ["Array", "Hash Table"], "whyThisProblem": "First hash-map lookup pattern.", "patterns": ["hash-complement"] },
+        { "id": "basic-2", "leetcodeId": 20,   "slug": "valid-parentheses", "title": "Valid Parentheses", "difficulty": "Easy", "topics": ["Stack", "String"], "whyThisProblem": "Stack-based matching intro.", "patterns": ["stack-match"] },
+        { "id": "basic-3", "leetcodeId": 121,  "slug": "best-time-to-buy-and-sell-stock", "title": "Best Time to Buy and Sell Stock", "difficulty": "Easy", "topics": ["Array", "DP"], "whyThisProblem": "Single-pass greedy.", "patterns": ["running-min"] },
+        { "id": "basic-4", "leetcodeId": 125,  "slug": "valid-palindrome", "title": "Valid Palindrome", "difficulty": "Easy", "topics": ["String", "Two Pointers"], "whyThisProblem": "Two-pointer string scanning.", "patterns": ["two-pointer"] }
+      ]
+    },
+    {
+      "levelNumber": 2,
+      "label": "Binary Search Basics",
+      "problems": [
+        { "id": "basic-5", "leetcodeId": 704,  "slug": "binary-search", "title": "Binary Search", "difficulty": "Easy", "topics": ["Array", "Binary Search"], "whyThisProblem": "Loop-invariant fundamentals.", "patterns": ["binary-search"] },
+        { "id": "basic-6", "leetcodeId": 35,   "slug": "search-insert-position", "title": "Search Insert Position", "difficulty": "Easy", "topics": ["Array", "Binary Search"], "whyThisProblem": "Boundary-condition binary search.", "patterns": ["binary-search"] },
+        { "id": "basic-7", "leetcodeId": 278,  "slug": "first-bad-version", "title": "First Bad Version", "difficulty": "Easy", "topics": ["Binary Search"], "whyThisProblem": "Predicate-based binary search.", "patterns": ["binary-search-predicate"] }
+      ],
+      "remediation": [
+        { "id": "basic-rem-1", "leetcodeId": 852, "slug": "peak-index-in-a-mountain-array", "title": "Peak Index in a Mountain Array", "difficulty": "Medium", "topics": ["Array", "Binary Search"], "whyThisProblem": "Binary search on unimodal array slope.", "patterns": ["binary-search-slope"] }
+      ]
+    },
+    {
+      "levelNumber": 3,
+      "label": "Linked List Basics",
+      "problems": [
+        { "id": "basic-8", "leetcodeId": 206,  "slug": "reverse-linked-list", "title": "Reverse Linked List", "difficulty": "Easy", "topics": ["Linked List"], "whyThisProblem": "Foundational pointer manipulation.", "patterns": ["ll-reverse"] },
+        { "id": "basic-9", "leetcodeId": 876,  "slug": "middle-of-the-linked-list", "title": "Middle of the Linked List", "difficulty": "Easy", "topics": ["Linked List", "Two Pointers"], "whyThisProblem": "Slow and fast pointer technique.", "patterns": ["fast-slow"] },
+        { "id": "basic-10", "leetcodeId": 21,  "slug": "merge-two-sorted-lists", "title": "Merge Two Sorted Lists", "difficulty": "Easy", "topics": ["Linked List"], "whyThisProblem": "In-place comparison and stitching.", "patterns": ["ll-merge"] },
+        { "id": "basic-11", "leetcodeId": 141, "slug": "linked-list-cycle", "title": "Linked List Cycle", "difficulty": "Easy", "topics": ["Linked List"], "whyThisProblem": "Floyd cycle detection fundamentals.", "patterns": ["fast-slow"] }
+      ]
+    },
+    {
+      "levelNumber": 4,
+      "label": "Trees Basics",
+      "problems": [
+        { "id": "basic-12", "leetcodeId": 104, "slug": "maximum-depth-of-binary-tree", "title": "Maximum Depth of Binary Tree", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Basic tree recursion and depth computation.", "patterns": ["tree-depth"] },
+        { "id": "basic-13", "leetcodeId": 226, "slug": "invert-binary-tree", "title": "Invert Binary Tree", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Recursive child swap symmetry.", "patterns": ["tree-invert"] },
+        { "id": "basic-14", "leetcodeId": 100, "slug": "same-tree", "title": "Same Tree", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Simultaneous recursive structure comparison.", "patterns": ["tree-compare"] },
+        { "id": "basic-15", "leetcodeId": 101, "slug": "symmetric-tree", "title": "Symmetric Tree", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Mirror symmetry checking on binary tree.", "patterns": ["tree-mirror"] }
+      ]
+    },
+    {
+      "levelNumber": 5,
+      "label": "Dynamic Programming Basics",
+      "problems": [
+        { "id": "basic-16", "leetcodeId": 70,  "slug": "climbing-stairs", "title": "Climbing Stairs", "difficulty": "Easy", "topics": ["DP", "Math"], "whyThisProblem": "1D Fibonacci recurrence relation.", "patterns": ["fibonacci-dp"] },
+        { "id": "basic-17", "leetcodeId": 746, "slug": "min-cost-climbing-stairs", "title": "Min Cost Climbing Stairs", "difficulty": "Easy", "topics": ["Array", "DP"], "whyThisProblem": "State transition with min cost selection.", "patterns": ["1d-dp"] },
+        { "id": "basic-18", "leetcodeId": 53,  "slug": "maximum-subarray", "title": "Maximum Subarray", "difficulty": "Medium", "topics": ["Array", "DP"], "whyThisProblem": "Kadane's algorithm single-pass max subarray.", "patterns": ["kadane"] }
+      ]
+    }
+  ]
+}

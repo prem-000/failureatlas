@@ -230,6 +230,19 @@ export interface LearningResource {
 }
 
 // Diagnosis types
+export type DiagnosisStage =
+  | 'retrieving_embeddings'
+  | 'traversing_graph'
+  | 'fusing_evidence'
+  | 'reasoning';
+
+export const STAGE_LABELS: Record<DiagnosisStage, string> = {
+  retrieving_embeddings: 'Searching similar past failures',
+  traversing_graph: 'Traversing your knowledge graph',
+  fusing_evidence: 'Building evidence context',
+  reasoning: 'Reasoning through the diagnosis',
+};
+
 export interface DiagnosisResult {
   diagnosisId: string;
   generatedAt: Date;
@@ -827,4 +840,6 @@ export interface PraxisJudgeSuite {
   judgePersona: JudgePersona;
   mode: string;
 }
+
+export * from './sheets';
 

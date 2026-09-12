@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, AlertTriangle, Lightbulb, ChevronRight, ExternalLink } from 'lucide-react';
+import { X, AlertTriangle, Lightbulb, ChevronRight, ExternalLink, CheckCircle, CheckCircle2 } from 'lucide-react';
 import type { RoadmapProblem } from '@/hooks/usePhase3Queries';
 import type { FailureData } from '@/hooks/usePhase3Queries';
 
@@ -9,6 +9,8 @@ interface ProblemDrawerProps {
   problem: RoadmapProblem | null;
   relatedFailures: FailureData[];
   onClose: () => void;
+  isSolved?: boolean;
+  onToggleSolved?: (slug: string, leetcodeId: number) => void;
 }
 
 const DIFF_COLORS: Record<string, string> = {
@@ -24,7 +26,7 @@ function getTimeAgo(ts: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDrawerProps) {
+export function ProblemDrawer({ problem, relatedFailures, onClose, isSolved, onToggleSolved }: ProblemDrawerProps) {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchTranslation, setTouchTranslation] = useState<number>(0);
 
@@ -215,20 +217,54 @@ export function ProblemDrawer({ problem, relatedFailures, onClose }: ProblemDraw
             ))}
           </div>
  
-          {/* Open on LeetCode */}
-          <a
-            href={`https://leetcode.com/problems/${problem.slug}/`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 10,
-              fontSize: '11px', fontWeight: 600, color: '#f59e0b', textDecoration: 'none',
-            }}
-          >
-            <ExternalLink size={11} />
-            Open on LeetCode
-            <ChevronRight size={11} />
-          </a>
+          {/* Open on LeetCode & Solve Action */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 10 }}>
+            <a
+              href={`https://leetcode.com/problems/${problem.slug}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: '11px', fontWeight: 600, color: '#f59e0b', textDecoration: 'none',
+              }}
+            >
+              <ExternalLink size={11} />
+              Open on LeetCode
+              <ChevronRight size={11} />
+            </a>
+
+            {onToggleSolved && (
+              <button
+                onClick={() => onToggleSolved(problem.slug, problem.leetcodeId)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  border: isSolved ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                  background: isSolved ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
+                  color: isSolved ? '#4ade80' : '#a1a1aa',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease',
+                }}
+              >
+                {isSolved ? (
+                  <>
+                    <CheckCircle2 size={13} color="#22c55e" />
+                    <span>Solved ✓</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={13} color="#71717a" />
+                    <span>Mark Solved</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
  
         {/* Scrollable content */}

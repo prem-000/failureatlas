@@ -26,7 +26,7 @@ interface TabBarProps {
 
 export function TabBar({ activeTab, onChange }: TabBarProps) {
   return (
-    <header style={{
+    <header className="graph-tab-header" style={{
       display: 'flex',
       alignItems: 'center',
       gap: 0,
@@ -139,7 +139,21 @@ export function TabBar({ activeTab, onChange }: TabBarProps) {
           border: 1px solid rgba(239,68,68,0.25);
         }
         @media (max-width: 767px) {
-          .tab-btn { padding: 5px 10px; font-size: 12px; }
+          .graph-tab-header {
+            padding: 0 8px !important;
+            height: 46px !important;
+          }
+          .tab-btn {
+            padding: 6px 9px !important;
+            font-size: 11.5px !important;
+            gap: 5px !important;
+            border-radius: 8px !important;
+          }
+          .tab-badge, .tab-badge-replay {
+            font-size: 8px !important;
+            padding: 0 4px !important;
+            border-radius: 4px !important;
+          }
         }
       `}</style>
 

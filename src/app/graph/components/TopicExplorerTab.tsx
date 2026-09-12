@@ -16,6 +16,7 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   ExternalLink,
   BookOpen,
   Layers,
@@ -70,8 +71,11 @@ export function TopicExplorerTab() {
   // Currently expanded Level 1 main topic (Accordion: max 1 open at once)
   const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null);
 
-  // Currently selected node for the left sidebar (Level 0, 1, or 2)
+  // Currently selected node for practice problems (Level 0, 1, or 2)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  // Mobile bottom sheet / drawer visibility
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const selectedNode = useMemo(() => {
     return selectedNodeId ? getTopicById(selectedNodeId) : null;
@@ -88,12 +92,12 @@ export function TopicExplorerTab() {
   }, [expandedTopicId]);
 
   // Handler for clicking a main topic:
-  // - Sets sidebar to that topic's 5 problems
+  // - Sets sidebar / drawer to that topic's 5 problems
   // - Toggles accordion expansion
   const handleMainTopicClick = (topicId: string) => {
     setSelectedNodeId(topicId);
+    setMobileDrawerOpen(true);
     if (expandedTopicId === topicId) {
-      // Clicking already expanded topic collapses it
       setExpandedTopicId(null);
     } else {
       setExpandedTopicId(topicId);
@@ -101,11 +105,264 @@ export function TopicExplorerTab() {
   };
 
   // Handler for clicking a subtopic:
-  // - Sets sidebar to that subtopic's 5 problems
+  // - Sets sidebar / drawer to that subtopic's 5 problems
   // - Keeps parent accordion open
   const handleSubtopicClick = (subtopicId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedNodeId(subtopicId);
+    setMobileDrawerOpen(true);
+  };
+
+  // Reusable Problem List Renderer (used in Desktop Sidebar and Mobile Bottom Sheet)
+  const renderProblemsContent = (isMobile = false) => {
+    if (!selectedNode) {
+      return (
+        <div style={{
+          padding: isMobile ? '24px 16px' : '36px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: 16,
+          marginTop: isMobile ? 0 : 'auto',
+          marginBottom: isMobile ? 0 : 'auto',
+        }}>
+          <div style={{
+            width: 48,
+            height: 48,
+            borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#10b981',
+          }}>
+            <Compass size={22} />
+          </div>
+
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#f4f4f5', margin: '0 0 6px 0' }}>
+              Select a Topic
+            </h3>
+            <p style={{ fontSize: 12, color: '#71717a', margin: 0, lineHeight: 1.5 }}>
+              Click any main topic or subtopic on the roadmap to immediately view 5 targeted practice problems.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              setSelectedNodeId('dsa-roadmap');
+              if (isMobile) setMobileDrawerOpen(true);
+            }}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#10b981',
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.2)',
+              borderRadius: 8,
+              padding: '8px 14px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Sparkles size={12} /> Explore Overall Starter Set
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ padding: isMobile ? '16px 18px 28px 18px' : '24px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {/* Header: Selected Node Info */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              padding: '3px 8px',
+              borderRadius: 4,
+              background: selectedNode.level === 0 ? 'rgba(16, 185, 129, 0.15)' : selectedNode.level === 1 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(168, 85, 247, 0.15)',
+              color: selectedNode.level === 0 ? '#34d399' : selectedNode.level === 1 ? '#38bdf8' : '#c084fc',
+              border: `1px solid ${selectedNode.level === 0 ? 'rgba(16, 185, 129, 0.3)' : selectedNode.level === 1 ? 'rgba(56, 189, 248, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
+            }}>
+              {selectedNode.level === 0 ? 'Curriculum Root' : selectedNode.level === 1 ? 'Main Topic' : 'Pattern / Subtopic'}
+            </span>
+
+            <button
+              onClick={() => {
+                if (isMobile) {
+                  setMobileDrawerOpen(false);
+                } else {
+                  setSelectedNodeId(null);
+                }
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#71717a',
+                cursor: 'pointer',
+                padding: 4,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+              title={isMobile ? 'Close drawer' : 'Clear selection'}
+            >
+              <X size={15} />
+            </button>
+          </div>
+
+          <h2 style={{ fontSize: isMobile ? 17 : 18, fontWeight: 700, color: '#f4f4f5', margin: '0 0 6px 0', lineHeight: 1.3 }}>
+            {selectedNode.name}
+          </h2>
+
+          {selectedNode.summary && (
+            <p style={{ fontSize: 12, color: '#a1a1aa', margin: 0, lineHeight: 1.5 }}>
+              {selectedNode.summary}
+            </p>
+          )}
+        </div>
+
+        {/* Suggested Practice Problems Header */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', color: '#71717a', textTransform: 'uppercase' }}>
+              Suggested Practice ({selectedNode.problems.length})
+            </span>
+            <span style={{ fontSize: 10, color: '#52525b', fontFamily: 'monospace' }}>
+              Easy → Hard
+            </span>
+          </div>
+
+          {/* 5 Problem Cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {selectedNode.problems.map((prob, idx) => {
+              const diff = DIFFICULTY_CONFIG[prob.difficulty] || DIFFICULTY_CONFIG.Medium;
+              return (
+                <div
+                  key={prob.slug || prob.title}
+                  className="problem-card"
+                  style={{
+                    background: '#111116',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    borderRadius: 10,
+                    padding: '12px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#52525b',
+                        fontFamily: 'monospace',
+                        flexShrink: 0,
+                      }}>
+                        #{idx + 1}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#f4f4f5', lineHeight: 1.4 }}>
+                        {prob.title}
+                      </span>
+                    </div>
+
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 7px',
+                      borderRadius: 4,
+                      background: diff.bg,
+                      color: diff.text,
+                      border: `1px solid ${diff.border}`,
+                      flexShrink: 0,
+                    }}>
+                      {prob.difficulty}
+                    </span>
+                  </div>
+
+                  {/* Shared With cross-pattern badges */}
+                  {prob.sharedWith && prob.sharedWith.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                      <span style={{ fontSize: 9, color: '#52525b', fontWeight: 600 }}>CROSS-PATTERN:</span>
+                      {prob.sharedWith.map(sw => {
+                        const related = getTopicById(sw);
+                        return (
+                          <span
+                            key={sw}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedNodeId(sw);
+                            }}
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 600,
+                              padding: '1px 5px',
+                              borderRadius: 3,
+                              background: 'rgba(168, 85, 247, 0.1)',
+                              color: '#c084fc',
+                              border: '1px solid rgba(168, 85, 247, 0.2)',
+                              cursor: 'pointer',
+                            }}
+                            title={`Jump to ${related?.name || sw}`}
+                          >
+                            {related?.name || sw}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Action Links */}
+                  <div style={{ display: 'flex', gap: 10, marginTop: 2, alignItems: 'center' }}>
+                    {prob.slug && (
+                      <Link
+                        href={`/problems/${prob.slug}`}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: '#10b981',
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        Solve in FailureAtlas <ArrowUpRight size={11} />
+                      </Link>
+                    )}
+                    {prob.url && (
+                      <a
+                        href={prob.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: 11,
+                          color: '#71717a',
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          marginLeft: 'auto',
+                        }}
+                      >
+                        LeetCode <ExternalLink size={10} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -116,8 +373,10 @@ export function TopicExplorerTab() {
       background: '#0a0a0c',
       color: '#e4e4e7',
       overflow: 'hidden',
+      position: 'relative',
     }}>
       <style>{`
+        /* ─── Desktop Layout ─── */
         .explorer-sidebar {
           width: 380px;
           flex-shrink: 0;
@@ -129,11 +388,7 @@ export function TopicExplorerTab() {
           overflow-x: hidden;
           transition: width 0.2s ease;
         }
-        @media (max-width: 900px) {
-          .explorer-sidebar {
-            width: 320px;
-          }
-        }
+
         .main-canvas {
           flex: 1;
           display: flex;
@@ -142,6 +397,40 @@ export function TopicExplorerTab() {
           overflow-x: hidden;
           background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.03) 0%, transparent 60%), #0a0a0c;
         }
+
+        .top-control-bar {
+          padding: 16px 28px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          background: rgba(10, 10, 12, 0.85);
+          backdrop-filter: blur(12px);
+          position: sticky;
+          top: 0;
+          z-index: 20;
+        }
+
+        .dag-visual-container {
+          padding: 36px 32px 64px 32px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0;
+        }
+
+        .topic-pill-container {
+          width: 100%;
+          max-width: 1100px;
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 12px;
+          padding: 4px 0;
+        }
+
         .topic-pill {
           transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         }
@@ -149,6 +438,7 @@ export function TopicExplorerTab() {
           transform: translateY(-2px);
           border-color: rgba(255, 255, 255, 0.18) !important;
         }
+
         .subtopic-card {
           transition: all 0.16s ease;
         }
@@ -156,6 +446,7 @@ export function TopicExplorerTab() {
           background: rgba(255, 255, 255, 0.05) !important;
           border-color: rgba(255, 255, 255, 0.15) !important;
         }
+
         .problem-card {
           transition: all 0.16s ease;
         }
@@ -164,12 +455,14 @@ export function TopicExplorerTab() {
           border-color: rgba(255, 255, 255, 0.14) !important;
           transform: translateX(2px);
         }
+
         .tier-btn {
           transition: all 0.15s ease;
         }
         .tier-btn:hover {
           color: #f4f4f5;
         }
+
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(6px); }
           to { opacity: 1; transform: translateY(0); }
@@ -177,267 +470,143 @@ export function TopicExplorerTab() {
         .animate-fade-in {
           animation: fadeIn 0.22s ease-out forwards;
         }
+
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        .animate-slide-up {
+          animation: slideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* ─── Mobile Drawer & Floating Trigger ─── */
+        .mobile-drawer-backdrop {
+          display: none;
+        }
+        .mobile-drawer-sheet {
+          display: none;
+        }
+        .mobile-floating-pill {
+          display: none;
+        }
+
+        /* ─── Responsive Media Queries (Mobile & Small Screens < 900px) ─── */
+        @media (max-width: 899px) {
+          /* Hide fixed side-by-side sidebar so canvas takes 100% width without merging */
+          .explorer-sidebar {
+            display: none !important;
+          }
+
+          .main-canvas {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+          }
+
+          .top-control-bar {
+            padding: 12px 14px !important;
+            gap: 12px !important;
+          }
+
+          .search-input-wrapper {
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+
+          .tier-switcher-wrapper {
+            width: 100% !important;
+            overflow-x: auto !important;
+            padding-bottom: 2px !important;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .tier-switcher-wrapper::-webkit-scrollbar {
+            display: none;
+          }
+
+          .topic-counter-text {
+            width: 100% !important;
+            text-align: right !important;
+          }
+
+          .dag-visual-container {
+            padding: 18px 12px 88px 12px !important;
+          }
+
+          .topic-pill-container {
+            gap: 8px !important;
+          }
+
+          .topic-pill {
+            flex: 1 1 100% !important;
+            max-width: 100% !important;
+            padding: 10px 12px !important;
+          }
+
+          .subtopic-accordion-box {
+            padding: 14px 12px !important;
+            border-radius: 12px !important;
+          }
+
+          .subtopic-pill-row {
+            gap: 6px !important;
+          }
+
+          .subtopic-card {
+            flex: 1 1 100% !important;
+            justify-content: space-between !important;
+            padding: 8px 12px !important;
+          }
+
+          /* Mobile Bottom Sheet Drawer */
+          .mobile-drawer-backdrop {
+            display: block !important;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 10000;
+          }
+
+          .mobile-drawer-sheet {
+            display: flex !important;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 82vh;
+            background: #0e0e13;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px 20px 0 0;
+            z-index: 10001;
+            flex-direction: column;
+            box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.85);
+            overflow: hidden;
+          }
+
+          /* Mobile Floating Pill Trigger */
+          .mobile-floating-pill {
+            display: flex !important;
+            position: fixed;
+            bottom: calc(76px + env(safe-area-inset-bottom, 0px) + 12px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            white-space: nowrap;
+          }
+        }
       `}</style>
 
-      {/* ─── LEFT SIDEBAR: Practice Problems ─── */}
+      {/* ─── DESKTOP SIDEBAR: Practice Problems ─── */}
       <aside className="explorer-sidebar custom-scrollbar">
-        {selectedNode ? (
-          <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Header: Selected Node Info */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  padding: '3px 8px',
-                  borderRadius: 4,
-                  background: selectedNode.level === 0 ? 'rgba(16, 185, 129, 0.15)' : selectedNode.level === 1 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(168, 85, 247, 0.15)',
-                  color: selectedNode.level === 0 ? '#34d399' : selectedNode.level === 1 ? '#38bdf8' : '#c084fc',
-                  border: `1px solid ${selectedNode.level === 0 ? 'rgba(16, 185, 129, 0.3)' : selectedNode.level === 1 ? 'rgba(56, 189, 248, 0.3)' : 'rgba(168, 85, 247, 0.3)'}`,
-                }}>
-                  {selectedNode.level === 0 ? 'Curriculum Root' : selectedNode.level === 1 ? 'Main Topic' : 'Pattern / Subtopic'}
-                </span>
-
-                <button
-                  onClick={() => setSelectedNodeId(null)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#71717a',
-                    cursor: 'pointer',
-                    padding: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                  title="Clear selection"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f4f4f5', margin: '0 0 6px 0', lineHeight: 1.3 }}>
-                {selectedNode.name}
-              </h2>
-
-              {selectedNode.summary && (
-                <p style={{ fontSize: 12, color: '#a1a1aa', margin: 0, lineHeight: 1.5 }}>
-                  {selectedNode.summary}
-                </p>
-              )}
-            </div>
-
-            {/* Suggested Practice Problems Header */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', color: '#71717a', textTransform: 'uppercase' }}>
-                  Suggested Practice ({selectedNode.problems.length})
-                </span>
-                <span style={{ fontSize: 10, color: '#52525b', fontFamily: 'monospace' }}>
-                  Easy → Hard
-                </span>
-              </div>
-
-              {/* 5 Problem Cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {selectedNode.problems.map((prob, idx) => {
-                  const diff = DIFFICULTY_CONFIG[prob.difficulty] || DIFFICULTY_CONFIG.Medium;
-                  return (
-                    <div
-                      key={prob.slug || prob.title}
-                      className="problem-card"
-                      style={{
-                        background: '#111116',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
-                        borderRadius: 10,
-                        padding: '12px 14px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 8,
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                          <span style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: '#52525b',
-                            fontFamily: 'monospace',
-                            flexShrink: 0,
-                          }}>
-                            #{idx + 1}
-                          </span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#f4f4f5', lineHeight: 1.4 }}>
-                            {prob.title}
-                          </span>
-                        </div>
-
-                        <span style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          padding: '2px 7px',
-                          borderRadius: 4,
-                          background: diff.bg,
-                          color: diff.text,
-                          border: `1px solid ${diff.border}`,
-                          flexShrink: 0,
-                        }}>
-                          {prob.difficulty}
-                        </span>
-                      </div>
-
-                      {/* Shared With cross-pattern badges */}
-                      {prob.sharedWith && prob.sharedWith.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-                          <span style={{ fontSize: 9, color: '#52525b', fontWeight: 600 }}>CROSS-PATTERN:</span>
-                          {prob.sharedWith.map(sw => {
-                            const related = getTopicById(sw);
-                            return (
-                              <span
-                                key={sw}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedNodeId(sw);
-                                }}
-                                style={{
-                                  fontSize: 9,
-                                  fontWeight: 600,
-                                  padding: '1px 5px',
-                                  borderRadius: 3,
-                                  background: 'rgba(168, 85, 247, 0.1)',
-                                  color: '#c084fc',
-                                  border: '1px solid rgba(168, 85, 247, 0.2)',
-                                  cursor: 'pointer',
-                                }}
-                                title={`Jump to ${related?.name || sw}`}
-                              >
-                                {related?.name || sw}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Action Links */}
-                      <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-                        {prob.slug && (
-                          <Link
-                            href={`/problems/${prob.slug}`}
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 600,
-                              color: '#10b981',
-                              textDecoration: 'none',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                          >
-                            Solve in FailureAtlas <ArrowUpRight size={11} />
-                          </Link>
-                        )}
-                        {prob.url && (
-                          <a
-                            href={prob.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              fontSize: 11,
-                              color: '#71717a',
-                              textDecoration: 'none',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              marginLeft: 'auto',
-                            }}
-                          >
-                            LeetCode <ExternalLink size={10} />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Neutral Initial State */
-          <div style={{
-            padding: '36px 24px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            gap: 16,
-            marginTop: 'auto',
-            marginBottom: 'auto',
-          }}>
-            <div style={{
-              width: 52,
-              height: 52,
-              borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#10b981',
-            }}>
-              <Compass size={24} />
-            </div>
-
-            <div>
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#f4f4f5', margin: '0 0 6px 0' }}>
-                Select a Topic
-              </h3>
-              <p style={{ fontSize: 12, color: '#71717a', margin: 0, lineHeight: 1.5 }}>
-                Click any main topic or subtopic on the roadmap to immediately view 5 targeted practice problems.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setSelectedNodeId('dsa-roadmap')}
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: '#10b981',
-                background: 'rgba(16, 185, 129, 0.08)',
-                border: '1px solid rgba(16, 185, 129, 0.2)',
-                borderRadius: 8,
-                padding: '8px 14px',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <Sparkles size={12} /> Explore Overall Starter Set
-            </button>
-          </div>
-        )}
+        {renderProblemsContent(false)}
       </aside>
 
       {/* ─── MAIN CANVAS: Horizontal Flow DAG ─── */}
       <main className="main-canvas custom-scrollbar">
         {/* Top Control Bar: Search & Tier Filter */}
-        <div style={{
-          padding: '16px 28px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          background: 'rgba(10, 10, 12, 0.85)',
-          backdropFilter: 'blur(12px)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
-        }}>
+        <div className="top-control-bar">
           {/* Live Search Input */}
-          <div style={{
+          <div className="search-input-wrapper" style={{
             position: 'relative',
             width: '100%',
             maxWidth: 320,
@@ -483,8 +652,8 @@ export function TopicExplorerTab() {
           </div>
 
           {/* Tier Switcher Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11, color: '#52525b', fontWeight: 600, marginRight: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div className="tier-switcher-wrapper" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, color: '#52525b', fontWeight: 600, marginRight: 4, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
               <Filter size={11} /> TIER:
             </span>
             {(['all', 'basic', 'intermediate', 'advanced'] as const).map(tier => {
@@ -504,6 +673,7 @@ export function TopicExplorerTab() {
                     fontWeight: 600,
                     textTransform: 'capitalize',
                     cursor: 'pointer',
+                    flexShrink: 0,
                   }}
                 >
                   {tier}
@@ -513,18 +683,21 @@ export function TopicExplorerTab() {
           </div>
 
           {/* Topic Count Indicator */}
-          <div style={{ fontSize: 11, color: '#71717a', fontFamily: 'monospace' }}>
+          <div className="topic-counter-text" style={{ fontSize: 11, color: '#71717a', fontFamily: 'monospace' }}>
             {visibleMainTopics.length} of {MAIN_TOPICS.length} Topics Shown
           </div>
         </div>
 
         {/* ─── DAG Visual Container ─── */}
-        <div style={{ padding: '36px 32px 64px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+        <div className="dag-visual-container">
           
           {/* ── Level 0: Root Node ("DSA Roadmap") ── */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <button
-              onClick={() => setSelectedNodeId('dsa-roadmap')}
+              onClick={() => {
+                setSelectedNodeId('dsa-roadmap');
+                setMobileDrawerOpen(true);
+              }}
               className="topic-pill"
               style={{
                 background: selectedNodeId === 'dsa-roadmap' ? '#064e3b' : '#121217',
@@ -570,15 +743,7 @@ export function TopicExplorerTab() {
           </div>
 
           {/* ── Level 1: Main Topics Row (Wrapped Horizontal Row) ── */}
-          <div style={{
-            width: '100%',
-            maxWidth: 1100,
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-            gap: 12,
-            padding: '4px 0',
-          }}>
+          <div className="topic-pill-container">
             {visibleMainTopics.map(topic => {
               const IconComponent = TOPIC_ICONS[topic.id] || BookOpen;
               const isSelected = selectedNodeId === topic.id;
@@ -619,8 +784,8 @@ export function TopicExplorerTab() {
                     <IconComponent size={15} />
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#f4f4f5', whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#f4f4f5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {topic.name}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -647,7 +812,8 @@ export function TopicExplorerTab() {
                     color: isExpanded ? '#38bdf8' : '#52525b',
                     display: 'flex',
                     alignItems: 'center',
-                    marginLeft: 2,
+                    marginLeft: 'auto',
+                    flexShrink: 0,
                   }}>
                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </div>
@@ -677,7 +843,7 @@ export function TopicExplorerTab() {
               }} />
 
               {/* Subtopics Container Box */}
-              <div style={{
+              <div className="subtopic-accordion-box" style={{
                 width: '100%',
                 background: '#0e0e14',
                 border: '1px solid rgba(168, 85, 247, 0.25)',
@@ -688,7 +854,7 @@ export function TopicExplorerTab() {
                 flexDirection: 'column',
                 gap: 14,
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{
                       fontSize: 10,
@@ -708,12 +874,12 @@ export function TopicExplorerTab() {
                   </div>
 
                   <span style={{ fontSize: 11, color: '#71717a' }}>
-                    Click any pattern to view its 5 problems
+                    Click any pattern to view 5 practice problems
                   </span>
                 </div>
 
                 {/* Subtopic Pill Row */}
-                <div style={{
+                <div className="subtopic-pill-row" style={{
                   display: 'flex',
                   flexWrap: 'wrap',
                   gap: 10,
@@ -744,6 +910,7 @@ export function TopicExplorerTab() {
                           height: 6,
                           borderRadius: '50%',
                           background: isSelected ? '#c084fc' : '#52525b',
+                          flexShrink: 0,
                         }} />
                         <span style={{ fontSize: 12, fontWeight: 600 }}>
                           {sub.name}
@@ -754,6 +921,8 @@ export function TopicExplorerTab() {
                           background: 'rgba(255, 255, 255, 0.04)',
                           padding: '1px 5px',
                           borderRadius: 4,
+                          flexShrink: 0,
+                          marginLeft: 'auto',
                         }}>
                           5 Qs
                         </span>
@@ -805,6 +974,58 @@ export function TopicExplorerTab() {
 
         </div>
       </main>
+
+      {/* ─── MOBILE ONLY: Floating Action Pill to Open Problems Drawer ─── */}
+      {selectedNode && !mobileDrawerOpen && (
+        <div className="mobile-floating-pill">
+          <button
+            onClick={() => setMobileDrawerOpen(true)}
+            style={{
+              background: 'linear-gradient(135deg, #18181f 0%, #1c1926 100%)',
+              border: '1px solid rgba(168, 85, 247, 0.4)',
+              boxShadow: '0 6px 20px rgba(0, 0, 0, 0.6), 0 0 14px rgba(168, 85, 247, 0.25)',
+              borderRadius: 24,
+              padding: '10px 18px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              color: '#f4f4f5',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            <Sparkles size={13} style={{ color: '#c084fc' }} />
+            <span>Practice Problems: <strong style={{ color: '#38bdf8' }}>{selectedNode.name}</strong></span>
+            <ChevronUp size={14} style={{ color: '#a1a1aa' }} />
+          </button>
+        </div>
+      )}
+
+      {/* ─── MOBILE ONLY: Slide-Up Bottom Sheet Drawer ─── */}
+      {mobileDrawerOpen && (
+        <>
+          <div
+            className="mobile-drawer-backdrop"
+            onClick={() => setMobileDrawerOpen(false)}
+          />
+          <div className="mobile-drawer-sheet animate-slide-up">
+            {/* Grab Handle */}
+            <div style={{
+              width: 36,
+              height: 4,
+              background: 'rgba(255, 255, 255, 0.2)',
+              borderRadius: 2,
+              margin: '10px auto 0 auto',
+            }} />
+            
+            {/* Scrollable Drawer Content */}
+            <div className="custom-scrollbar" style={{ overflowY: 'auto', flex: 1 }}>
+              {renderProblemsContent(true)}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

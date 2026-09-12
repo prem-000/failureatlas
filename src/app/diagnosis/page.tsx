@@ -1,17 +1,11 @@
 'use client';
 import { AppShell } from '@/components/layout/AppShell';
-import { useDiagnosisGenerate, type DiagnosisData, useFailureExplanation, useGenerateFailureExplanation } from '@/hooks/usePhase3Queries';
+import { type DiagnosisData, useFailureExplanation, useGenerateFailureExplanation } from '@/hooks/usePhase3Queries';
 import { FailureExplanationCard } from '@/components/intelligence/FailureExplanationCard';
 import { deduplicateRecommendations } from '@/lib/recommendations/dedup';
 import { useState, useRef, useEffect, useCallback } from 'react';
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+import { DiagnosisStatusLine } from '@/components/diagnosis/DiagnosisStatusLine';
+import { useDiagnosisData, type DiagnosisMessage } from '@/hooks/useDiagnosisData';
 
 type DiagnosisResult = DiagnosisData;
 
@@ -158,7 +152,7 @@ function EvidencePanel({ result }: { result: DiagnosisResult | null }) {
 }
 
 // ─── Chat Bubble ───────────────────────────────────────────────────────────────
-function ChatBubble({ msg, mounted }: { msg: Message; mounted: boolean }) {
+function ChatBubble({ msg, mounted }: { msg: DiagnosisMessage; mounted: boolean }) {
   const isUser = msg.role === 'user';
   return (
     <div style={{
@@ -175,6 +169,13 @@ function ChatBubble({ msg, mounted }: { msg: Message; mounted: boolean }) {
       }}>
         {msg.content}
       </div>
+      {!isUser && msg.elapsedMs !== undefined && (
+        <DiagnosisStatusLine
+          currentStage={null}
+          elapsedMs={msg.elapsedMs}
+          isDone={true}
+        />
+      )}
       <span
         suppressHydrationWarning
         style={{ fontSize: 10, color: '#3f3f46', marginLeft: isUser ? 0 : 4, marginRight: isUser ? 4 : 0 }}
@@ -200,20 +201,19 @@ export default function DiagnosisPage() {
     setMounted(true);
   }, []);
 
-  const diagnosisMutation = useDiagnosisGenerate();
+  const {
+    messages,
+    askQuestion,
+    sendMessage: askDiagnosis,
+    currentStage,
+    elapsedMs,
+    isLoading: loading,
+    lastResult,
+    latestSubmissionId,
+  } = useDiagnosisData();
+
   const generateExplanation = useGenerateFailureExplanation();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'initial-welcome-message',
-      role: 'assistant',
-      content: "Hello! I'm your AI Failure Analyst. Ask me anything about your competitive programming patterns — I'll retrieve your past failures, analyze the evidence, and give you a targeted diagnosis.",
-      timestamp: new Date(),
-    },
-  ]);
   const [input, setInput] = useState('');
-  const loading = diagnosisMutation.isPending;
-  const [lastResult, setLastResult] = useState<DiagnosisResult | null>(null);
-  const [latestSubmissionId, setLatestSubmissionId] = useState<string | undefined>(undefined);
   const [activePanel, setActivePanel] = useState<'evidence' | 'explanation'>('evidence');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -225,40 +225,18 @@ export default function DiagnosisPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (latestSubmissionId) {
+      generateExplanation.mutate({ submissionId: latestSubmissionId });
+      setActivePanel('explanation');
+    }
+  }, [latestSubmissionId, generateExplanation]);
+
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
-    const userMsg: Message = { id: uuid(), role: 'user', content: text.trim(), timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
     setInput('');
-
-    try {
-      const d = await diagnosisMutation.mutateAsync(text.trim());
-      setLastResult(d);
-
-      // If the diagnosis returned a submission ID, fetch the explanation
-      if (d.latestSubmissionId) {
-        setLatestSubmissionId(d.latestSubmissionId);
-        // Trigger explanation generation in the background
-        generateExplanation.mutate({ submissionId: d.latestSubmissionId });
-        setActivePanel('explanation');
-      }
-
-      const assistantMsg: Message = {
-        id: uuid(),
-        role: 'assistant',
-        content: d.analysis || 'Analysis complete. Check the evidence panel for detailed results.',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, assistantMsg]);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to generate diagnosis. Please try again.';
-      setMessages(prev => [...prev, {
-        id: uuid(), role: 'assistant',
-        content: `❌ ${message}`,
-        timestamp: new Date(),
-      }]);
-    }
-  }, [loading, diagnosisMutation, generateExplanation]);
+    await askDiagnosis(text.trim());
+  }, [loading, askDiagnosis]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -299,15 +277,11 @@ export default function DiagnosisPage() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {messages.map(m => <ChatBubble key={m.id} msg={m} mounted={mounted} />)}
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#1e1e1e', borderRadius: '16px 16px 16px 4px', border: '1px solid #2a2a2a', width: 'fit-content' }}>
-                {[0, 1, 2].map(i => (
-                  <div key={i} style={{
-                    width: 8, height: 8, borderRadius: '50%', background: '#ff5f52',
-                    animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
-                  }} />
-                ))}
-                <style>{`@keyframes bounce { 0%,80%,100%{transform:scale(0)} 40%{transform:scale(1)} }`}</style>
-              </div>
+              <DiagnosisStatusLine
+                currentStage={currentStage}
+                elapsedMs={elapsedMs}
+                isDone={false}
+              />
             )}
             <div ref={messagesEndRef} />
           </div>

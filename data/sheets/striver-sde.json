@@ -1,0 +1,318 @@
+{
+  "id": "striver-sde",
+  "name": "Striver's SDE Sheet",
+  "source": "takeuforward.org — Striver's SDE Sheet",
+  "levels": [
+    {
+      "levelNumber": 1,
+      "label": "Day 1 — Arrays",
+      "problems": [
+        { "id": "sde-d1-p1", "leetcodeId": 287, "slug": "find-the-duplicate-number", "title": "Find the Duplicate Number", "difficulty": "Medium", "topics": ["Array", "Binary Search"], "whyThisProblem": "Cycle-detection trick on an array of indices.", "patterns": ["floyd-cycle"] },
+        { "id": "sde-d1-p2", "leetcodeId": 75,  "slug": "sort-colors", "title": "Sort Colors (0s, 1s, 2s)", "difficulty": "Medium", "topics": ["Array", "Two Pointers"], "whyThisProblem": "Dutch National Flag without extra space.", "patterns": ["three-pointer"] },
+        { "id": "sde-d1-p3", "leetcodeId": 645, "slug": "set-mismatch", "title": "Repeat and Missing Number", "difficulty": "Easy", "topics": ["Array", "Math"], "whyThisProblem": "Find the duplicate and the missing value together.", "patterns": ["math-xor"] },
+        { "id": "sde-d1-p4", "leetcodeId": 88,  "slug": "merge-sorted-array", "title": "Merge Two Sorted Arrays (in place)", "difficulty": "Easy", "topics": ["Array", "Sorting"], "whyThisProblem": "In-place merge without extra memory.", "patterns": ["gap-method"] },
+        { "id": "sde-d1-p5", "leetcodeId": 53,  "slug": "maximum-subarray", "title": "Kadane's Algorithm", "difficulty": "Medium", "topics": ["Array", "DP"], "whyThisProblem": "Foundational max-subarray pattern.", "patterns": ["kadane"] },
+        { "id": "sde-d1-p6", "leetcodeId": 56,  "slug": "merge-intervals", "title": "Merge Overlapping Subintervals", "difficulty": "Medium", "topics": ["Array", "Sorting"], "whyThisProblem": "Sort + sweep interval merging.", "patterns": ["interval-sweep"] }
+      ],
+      "remediation": [
+        { "id": "sde-rem-1", "leetcodeId": 442, "slug": "find-all-duplicates-in-an-array", "title": "Find All Duplicates in an Array", "difficulty": "Medium", "topics": ["Array", "Hash Table"], "whyThisProblem": "In-place negative index marking variant.", "patterns": ["index-marking"] }
+      ]
+    },
+    {
+      "levelNumber": 2,
+      "label": "Day 2 — Arrays II",
+      "problems": [
+        { "id": "sde-d2-p1", "leetcodeId": 73,  "slug": "set-matrix-zeroes", "title": "Set Matrix Zeroes", "difficulty": "Medium", "topics": ["Array", "Matrix"], "whyThisProblem": "O(1) space matrix marking trick.", "patterns": ["matrix-marker"] },
+        { "id": "sde-d2-p2", "leetcodeId": 118, "slug": "pascals-triangle", "title": "Pascal's Triangle", "difficulty": "Easy", "topics": ["Array", "DP"], "whyThisProblem": "Combinatorics + array building.", "patterns": ["binomial"] },
+        { "id": "sde-d2-p3", "leetcodeId": 31,  "slug": "next-permutation", "title": "Next Permutation", "difficulty": "Medium", "topics": ["Array"], "whyThisProblem": "In-place lexicographic next arrangement.", "patterns": ["next-permutation"] },
+        { "id": "sde-d2-p4", "leetcodeId": 493, "slug": "reverse-pairs", "title": "Inversion of Array (Reverse Pairs)", "difficulty": "Hard", "topics": ["Array", "Merge Sort"], "whyThisProblem": "Merge sort counting variant.", "patterns": ["merge-count"] },
+        { "id": "sde-d2-p5", "leetcodeId": 121, "slug": "best-time-to-buy-and-sell-stock", "title": "Best Time to Buy and Sell Stock", "difficulty": "Easy", "topics": ["Array", "DP"], "whyThisProblem": "Single-pass min-tracking greedy.", "patterns": ["running-min"] },
+        { "id": "sde-d2-p6", "leetcodeId": 48,  "slug": "rotate-image", "title": "Rotate Matrix", "difficulty": "Medium", "topics": ["Array", "Matrix"], "whyThisProblem": "In-place transpose + reverse.", "patterns": ["matrix-rotate"] }
+      ]
+    },
+    {
+      "levelNumber": 3,
+      "label": "Day 3 — Math & Binary Search",
+      "problems": [
+        { "id": "sde-d3-p1", "leetcodeId": 168, "slug": "excel-sheet-column-title", "title": "Excel Column Number", "difficulty": "Easy", "topics": ["Math"], "whyThisProblem": "Base-26 conversion edge cases.", "patterns": ["base-conversion"] },
+        { "id": "sde-d3-p2", "leetcodeId": 50,  "slug": "powx-n", "title": "Pow(x, n)", "difficulty": "Medium", "topics": ["Math", "Recursion"], "whyThisProblem": "Fast exponentiation in O(log n).", "patterns": ["fast-power"] },
+        { "id": "sde-d3-p3", "leetcodeId": 172, "slug": "factorial-trailing-zeroes", "title": "Count Trailing Zeros in Factorial", "difficulty": "Medium", "topics": ["Math"], "whyThisProblem": "Counting factors of 5.", "patterns": ["math-factor-count"] },
+        { "id": "sde-d3-p4", "leetcodeId": 62,  "slug": "unique-paths", "title": "Grid Unique Paths", "difficulty": "Medium", "topics": ["Math", "DP"], "whyThisProblem": "Combinatorics vs. DP grid counting.", "patterns": ["dp-grid"] }
+      ]
+    },
+    {
+      "levelNumber": 4,
+      "label": "Day 4 — Hashing",
+      "problems": [
+        { "id": "sde-d4-p1", "leetcodeId": 1,   "slug": "two-sum", "title": "Two Sum", "difficulty": "Easy", "topics": ["Array", "Hash Table"], "whyThisProblem": "Complement lookup pattern.", "patterns": ["hash-complement"] },
+        { "id": "sde-d4-p2", "leetcodeId": 18,  "slug": "4sum", "title": "4Sum", "difficulty": "Medium", "topics": ["Array", "Two Pointers"], "whyThisProblem": "Extending two-pointer sum to k terms.", "patterns": ["k-sum"] },
+        { "id": "sde-d4-p3", "leetcodeId": 128, "slug": "longest-consecutive-sequence", "title": "Longest Consecutive Sequence", "difficulty": "Medium", "topics": ["Array", "Hash Table"], "whyThisProblem": "Set-based streak detection in O(n).", "patterns": ["hash-streak"] },
+        { "id": "sde-d4-p4", "leetcodeId": 560, "slug": "subarray-sum-equals-k", "title": "Count Subarrays with Given Sum/XOR", "difficulty": "Medium", "topics": ["Array", "Hash Table"], "whyThisProblem": "Prefix-sum + hashmap counting.", "patterns": ["prefix-hash"] },
+        { "id": "sde-d4-p5", "leetcodeId": 3,   "slug": "longest-substring-without-repeating-characters", "title": "Longest Substring Without Repeating Characters", "difficulty": "Medium", "topics": ["String", "Sliding Window"], "whyThisProblem": "Classic sliding-window + hashmap.", "patterns": ["sliding-window"] }
+      ]
+    },
+    {
+      "levelNumber": 5,
+      "label": "Day 5 — Linked List",
+      "problems": [
+        { "id": "sde-d5-p1", "leetcodeId": 206, "slug": "reverse-linked-list", "title": "Reverse a Linked List", "difficulty": "Easy", "topics": ["Linked List"], "whyThisProblem": "Foundational pointer manipulation.", "patterns": ["ll-reverse"] },
+        { "id": "sde-d5-p2", "leetcodeId": 876, "slug": "middle-of-the-linked-list", "title": "Find Middle of Linked List", "difficulty": "Easy", "topics": ["Linked List", "Two Pointers"], "whyThisProblem": "Slow/fast pointer technique.", "patterns": ["fast-slow"] },
+        { "id": "sde-d5-p3", "leetcodeId": 21,  "slug": "merge-two-sorted-lists", "title": "Merge Two Sorted Linked Lists", "difficulty": "Easy", "topics": ["Linked List"], "whyThisProblem": "In-place merge without extra list.", "patterns": ["ll-merge"] },
+        { "id": "sde-d5-p4", "leetcodeId": 19,  "slug": "remove-nth-node-from-end-of-list", "title": "Remove N-th Node From End of List", "difficulty": "Medium", "topics": ["Linked List", "Two Pointers"], "whyThisProblem": "One-pass with a lead/lag pointer gap.", "patterns": ["fast-slow"] },
+        { "id": "sde-d5-p5", "leetcodeId": 237, "slug": "delete-node-in-a-linked-list", "title": "Delete a Given Node (no head access)", "difficulty": "Medium", "topics": ["Linked List"], "whyThisProblem": "Value-copy + skip trick.", "patterns": ["ll-value-copy"] }
+      ]
+    },
+    {
+      "levelNumber": 6,
+      "label": "Day 6 — Linked List Part-II",
+      "problems": [
+        { "id": "sde-d6-p1", "leetcodeId": 160, "slug": "intersection-of-two-linked-lists", "title": "Intersection of Two Linked Lists", "difficulty": "Easy", "topics": ["Linked List", "Two Pointers"], "whyThisProblem": "Two-pointer alignment traversal.", "patterns": ["two-pointer"] },
+        { "id": "sde-d6-p2", "leetcodeId": 141, "slug": "linked-list-cycle", "title": "Detect a Cycle in Linked List", "difficulty": "Easy", "topics": ["Linked List", "Two Pointers"], "whyThisProblem": "Floyd's tortoise and hare algorithm.", "patterns": ["fast-slow"] },
+        { "id": "sde-d6-p3", "leetcodeId": 25,  "slug": "reverse-nodes-in-k-group", "title": "Reverse Nodes in k-Group", "difficulty": "Hard", "topics": ["Linked List"], "whyThisProblem": "Group reversal with pointer tracking.", "patterns": ["ll-k-reverse"] },
+        { "id": "sde-d6-p4", "leetcodeId": 234, "slug": "palindrome-linked-list", "title": "Check if a LinkedList is Palindrome", "difficulty": "Easy", "topics": ["Linked List", "Two Pointers"], "whyThisProblem": "Middle find + reverse second half.", "patterns": ["fast-slow"] },
+        { "id": "sde-d6-p5", "leetcodeId": 142, "slug": "linked-list-cycle-ii", "title": "Find Starting Point of Loop in LinkedList", "difficulty": "Medium", "topics": ["Linked List", "Two Pointers"], "whyThisProblem": "Floyd cycle starting point mathematics.", "patterns": ["fast-slow"] },
+        { "id": "sde-d6-p6", "leetcodeId": 430, "slug": "flatten-a-multilevel-doubly-linked-list", "title": "Flatten Multilevel Doubly LinkedList", "difficulty": "Medium", "topics": ["Linked List", "DFS"], "whyThisProblem": "Recursive pointer stitching and child traversal.", "patterns": ["ll-flatten"] }
+      ]
+    },
+    {
+      "levelNumber": 7,
+      "label": "Day 7 — Two Pointers",
+      "problems": [
+        { "id": "sde-d7-p1", "leetcodeId": 61,  "slug": "rotate-list", "title": "Rotate a LinkedList", "difficulty": "Medium", "topics": ["Linked List", "Two Pointers"], "whyThisProblem": "K modulo length circular connection.", "patterns": ["circular-ll"] },
+        { "id": "sde-d7-p2", "leetcodeId": 138, "slug": "copy-list-with-random-pointer", "title": "Clone LinkedList with Random Pointers", "difficulty": "Medium", "topics": ["Linked List", "Hash Table"], "whyThisProblem": "3-pass in-place interleaved node duplication.", "patterns": ["ll-clone"] },
+        { "id": "sde-d7-p3", "leetcodeId": 15,  "slug": "3sum", "title": "3Sum", "difficulty": "Medium", "topics": ["Array", "Two Pointers"], "whyThisProblem": "Sort + two-pointer sandwich to eliminate duplicate triplets.", "patterns": ["two-pointer"] },
+        { "id": "sde-d7-p4", "leetcodeId": 42,  "slug": "trapping-rain-water", "title": "Trapping Rainwater", "difficulty": "Hard", "topics": ["Array", "Two Pointers"], "whyThisProblem": "Two-pointer water level bounding and accumulation.", "patterns": ["two-pointer-water"] },
+        { "id": "sde-d7-p5", "leetcodeId": 26,  "slug": "remove-duplicates-from-sorted-array", "title": "Remove Duplicates from Sorted Array", "difficulty": "Easy", "topics": ["Array", "Two Pointers"], "whyThisProblem": "Slow/fast index write in-place.", "patterns": ["two-pointer"] },
+        { "id": "sde-d7-p6", "leetcodeId": 485, "slug": "max-consecutive-ones", "title": "Max Consecutive Ones", "difficulty": "Easy", "topics": ["Array"], "whyThisProblem": "Single-pass counter reset tracking.", "patterns": ["running-count"] }
+      ]
+    },
+    {
+      "levelNumber": 8,
+      "label": "Day 8 — Greedy Algorithm",
+      "problems": [
+        { "id": "sde-d8-p1", "leetcodeId": 435, "slug": "non-overlapping-intervals", "title": "N Meetings in One Room", "difficulty": "Medium", "topics": ["Greedy", "Sorting"], "whyThisProblem": "Sort by finish time and greedily pick earliest ending.", "patterns": ["interval-greedy"] },
+        { "id": "sde-d8-p2", "leetcodeId": 452, "slug": "minimum-number-of-arrows-to-burst-balloons", "title": "Minimum Platforms / Arrows", "difficulty": "Medium", "topics": ["Greedy", "Sorting"], "whyThisProblem": "Interval overlap counting with single-point arrows.", "patterns": ["greedy-overlap"] },
+        { "id": "sde-d8-p3", "leetcodeId": 630, "slug": "course-schedule-iii", "title": "Job Sequencing with Deadlines", "difficulty": "Hard", "topics": ["Greedy", "Heap"], "whyThisProblem": "Greedy deadline scheduling using a max heap.", "patterns": ["greedy-heap"] },
+        { "id": "sde-d8-p4", "leetcodeId": 1710, "slug": "maximum-units-on-a-truck", "title": "Fractional Knapsack / Max Units", "difficulty": "Easy", "topics": ["Greedy", "Sorting"], "whyThisProblem": "Sort by unit density and take maximum greedily.", "patterns": ["fractional-knapsack"] },
+        { "id": "sde-d8-p5", "leetcodeId": 322, "slug": "coin-change", "title": "Find Minimum Number of Coins", "difficulty": "Medium", "topics": ["DP", "Greedy"], "whyThisProblem": "Optimal denomination selection under unbounded supply.", "patterns": ["coin-change"] }
+      ]
+    },
+    {
+      "levelNumber": 9,
+      "label": "Day 9 — Recursion",
+      "problems": [
+        { "id": "sde-d9-p1", "leetcodeId": 78,  "slug": "subsets", "title": "Subset Sums", "difficulty": "Medium", "topics": ["Recursion", "Backtracking"], "whyThisProblem": "Pick or do not pick branching tree.", "patterns": ["subset-generation"] },
+        { "id": "sde-d9-p2", "leetcodeId": 90,  "slug": "subsets-ii", "title": "Subsets II (Unique Subsets)", "difficulty": "Medium", "topics": ["Recursion", "Backtracking"], "whyThisProblem": "Skip duplicate siblings in recursive subset tree.", "patterns": ["backtracking-dup"] },
+        { "id": "sde-d9-p3", "leetcodeId": 39,  "slug": "combination-sum", "title": "Combination Sum", "difficulty": "Medium", "topics": ["Recursion", "Backtracking"], "whyThisProblem": "Unbounded target reduction with element reuse.", "patterns": ["target-combination"] },
+        { "id": "sde-d9-p4", "leetcodeId": 40,  "slug": "combination-sum-ii", "title": "Combination Sum II", "difficulty": "Medium", "topics": ["Recursion", "Backtracking"], "whyThisProblem": "Single-use elements with duplicate avoidance.", "patterns": ["target-combination"] },
+        { "id": "sde-d9-p5", "leetcodeId": 131, "slug": "palindrome-partitioning", "title": "Palindrome Partitioning", "difficulty": "Medium", "topics": ["Backtracking"], "whyThisProblem": "Prefix palindrome check + recursive suffix exploration.", "patterns": ["palindrome-split"] },
+        { "id": "sde-d9-p6", "leetcodeId": 60,  "slug": "permutation-sequence", "title": "K-th Permutation Sequence", "difficulty": "Hard", "topics": ["Math", "Recursion"], "whyThisProblem": "Factorial block index calculation.", "patterns": ["math-permutation"] }
+      ]
+    },
+    {
+      "levelNumber": 10,
+      "label": "Day 10 — Recursion & Backtracking",
+      "problems": [
+        { "id": "sde-d10-p1", "leetcodeId": 46,  "slug": "permutations", "title": "Print all Permutations of Array", "difficulty": "Medium", "topics": ["Backtracking"], "whyThisProblem": "In-place element swapping backtracking recursion.", "patterns": ["swap-backtrack"] },
+        { "id": "sde-d10-p2", "leetcodeId": 51,  "slug": "n-queens", "title": "N Queens Problem", "difficulty": "Hard", "topics": ["Backtracking"], "whyThisProblem": "Column and diagonal safety bitmask checks.", "patterns": ["board-backtrack"] },
+        { "id": "sde-d10-p3", "leetcodeId": 37,  "slug": "sudoku-solver", "title": "Sudoku Solver", "difficulty": "Hard", "topics": ["Backtracking"], "whyThisProblem": "Grid constraint propagation and backtracking.", "patterns": ["grid-backtrack"] },
+        { "id": "sde-d10-p4", "leetcodeId": 785, "slug": "is-graph-bipartite", "title": "M-Coloring Problem / Bipartite", "difficulty": "Medium", "topics": ["Graph", "BFS"], "whyThisProblem": "2-color BFS/DFS alternating state assignment.", "patterns": ["bipartite-color"] },
+        { "id": "sde-d10-p5", "leetcodeId": 79,  "slug": "word-search", "title": "Rat in a Maze / Word Search", "difficulty": "Medium", "topics": ["Backtracking", "Matrix"], "whyThisProblem": "4-directional grid search with in-place backtrack restore.", "patterns": ["grid-dfs"] }
+      ]
+    },
+    {
+      "levelNumber": 11,
+      "label": "Day 11 — Binary Search",
+      "problems": [
+        { "id": "sde-d11-p1", "leetcodeId": 540, "slug": "single-element-in-a-sorted-array", "title": "Single Element in a Sorted Array", "difficulty": "Medium", "topics": ["Binary Search"], "whyThisProblem": "Even/odd index parity checks in sorted array.", "patterns": ["parity-binary-search"] },
+        { "id": "sde-d11-p2", "leetcodeId": 33,  "slug": "search-in-rotated-sorted-array", "title": "Search in Rotated Sorted Array", "difficulty": "Medium", "topics": ["Binary Search"], "whyThisProblem": "Identify sorted half and prune search space.", "patterns": ["rotated-binary-search"] },
+        { "id": "sde-d11-p3", "leetcodeId": 4,   "slug": "median-of-two-sorted-arrays", "title": "Median of Two Sorted Arrays", "difficulty": "Hard", "topics": ["Binary Search"], "whyThisProblem": "Binary search on partition point in log(min(N,M)).", "patterns": ["partition-binary-search"] },
+        { "id": "sde-d11-p4", "leetcodeId": 1011, "slug": "capacity-to-ship-packages-within-d-days", "title": "Allocate Books / Ship Packages", "difficulty": "Medium", "topics": ["Binary Search"], "whyThisProblem": "Binary search on monotonic answer feasibility space.", "patterns": ["search-on-answer"] },
+        { "id": "sde-d11-p5", "leetcodeId": 1552, "slug": "magnetic-force-between-two-balls", "title": "Aggressive Cows / Magnetic Force", "difficulty": "Medium", "topics": ["Binary Search"], "whyThisProblem": "Maximize minimum distance predicate search.", "patterns": ["search-on-answer"] }
+      ]
+    },
+    {
+      "levelNumber": 12,
+      "label": "Day 12 — Heaps",
+      "problems": [
+        { "id": "sde-d12-p1", "leetcodeId": 215, "slug": "kth-largest-element-in-an-array", "title": "Kth Largest Element in an Array", "difficulty": "Medium", "topics": ["Heap", "Quickselect"], "whyThisProblem": "Min-heap of size k for rank tracking.", "patterns": ["min-heap-k"] },
+        { "id": "sde-d12-p2", "leetcodeId": 295, "slug": "find-median-from-data-stream", "title": "Find Median from Data Stream", "difficulty": "Hard", "topics": ["Heap", "Design"], "whyThisProblem": "Two heaps balance technique.", "patterns": ["two-heaps"] },
+        { "id": "sde-d12-p3", "leetcodeId": 347, "slug": "top-k-frequent-elements", "title": "Top K Frequent Elements", "difficulty": "Medium", "topics": ["Heap", "Hash Table"], "whyThisProblem": "Frequency map + min-heap maintenance.", "patterns": ["freq-heap"] },
+        { "id": "sde-d12-p4", "leetcodeId": 23,  "slug": "merge-k-sorted-lists", "title": "Merge K Sorted Lists", "difficulty": "Hard", "topics": ["Heap", "Linked List"], "whyThisProblem": "Min-heap of k linked list head pointers.", "patterns": ["k-way-merge"] }
+      ]
+    },
+    {
+      "levelNumber": 13,
+      "label": "Day 13 — Stack and Queue",
+      "problems": [
+        { "id": "sde-d13-p1", "leetcodeId": 232, "slug": "implement-queue-using-stacks", "title": "Implement Queue using Stacks", "difficulty": "Easy", "topics": ["Stack", "Design"], "whyThisProblem": "Two stacks with amortized O(1) pop.", "patterns": ["two-stacks"] },
+        { "id": "sde-d13-p2", "leetcodeId": 225, "slug": "implement-stack-using-queues", "title": "Implement Stack using Queues", "difficulty": "Easy", "topics": ["Queue", "Design"], "whyThisProblem": "Single queue element rotation.", "patterns": ["queue-rotate"] },
+        { "id": "sde-d13-p3", "leetcodeId": 20,  "slug": "valid-parentheses", "title": "Valid Parentheses", "difficulty": "Easy", "topics": ["Stack"], "whyThisProblem": "Bracket matching with LIFO stack.", "patterns": ["stack-match"] },
+        { "id": "sde-d13-p4", "leetcodeId": 496, "slug": "next-greater-element-i", "title": "Next Greater Element", "difficulty": "Easy", "topics": ["Stack", "Monotonic Stack"], "whyThisProblem": "Monotonic decreasing stack for next greater.", "patterns": ["monotonic-stack"] },
+        { "id": "sde-d13-p5", "leetcodeId": 84,  "slug": "largest-rectangle-in-histogram", "title": "Largest Rectangle in Histogram", "difficulty": "Hard", "topics": ["Stack", "Monotonic Stack"], "whyThisProblem": "Monotonic increasing stack width calculation.", "patterns": ["histogram-stack"] }
+      ]
+    },
+    {
+      "levelNumber": 14,
+      "label": "Day 14 — Stack & Queue Part-II",
+      "problems": [
+        { "id": "sde-d14-p1", "leetcodeId": 901, "slug": "online-stock-span", "title": "Next Smaller Element / Stock Span", "difficulty": "Medium", "topics": ["Stack", "Monotonic Stack"], "whyThisProblem": "Monotonic stack state aggregation.", "patterns": ["stock-span"] },
+        { "id": "sde-d14-p2", "leetcodeId": 239, "slug": "sliding-window-maximum", "title": "Sliding Window Maximum", "difficulty": "Hard", "topics": ["Queue", "Monotonic Queue"], "whyThisProblem": "Monotonic decreasing deque in O(n).", "patterns": ["monotonic-deque"] },
+        { "id": "sde-d14-p3", "leetcodeId": 155, "slug": "min-stack", "title": "Implement Min Stack", "difficulty": "Medium", "topics": ["Stack", "Design"], "whyThisProblem": "Stack with companion running min tracking.", "patterns": ["min-stack"] },
+        { "id": "sde-d14-p4", "leetcodeId": 994, "slug": "rotting-oranges", "title": "Rotten Oranges", "difficulty": "Medium", "topics": ["BFS", "Matrix"], "whyThisProblem": "Multi-source BFS grid traversal time calculation.", "patterns": ["multi-source-bfs"] },
+        { "id": "sde-d14-p5", "leetcodeId": 146, "slug": "lru-cache", "title": "LRU Cache Implementation", "difficulty": "Medium", "topics": ["Hash Table", "Linked List"], "whyThisProblem": "Hash map + doubly linked list design.", "patterns": ["lru-cache"] },
+        { "id": "sde-d14-p6", "leetcodeId": 460, "slug": "lfu-cache", "title": "LFU Cache Implementation", "difficulty": "Hard", "topics": ["Hash Table", "Linked List"], "whyThisProblem": "Frequency buckets + min-frequency pointer tracking.", "patterns": ["lfu-cache"] }
+      ]
+    },
+    {
+      "levelNumber": 15,
+      "label": "Day 15 — String",
+      "problems": [
+        { "id": "sde-d15-p1", "leetcodeId": 151, "slug": "reverse-words-in-a-string", "title": "Reverse Words in a String", "difficulty": "Medium", "topics": ["String", "Two Pointers"], "whyThisProblem": "In-place trim and word boundary reversal.", "patterns": ["string-reverse"] },
+        { "id": "sde-d15-p2", "leetcodeId": 5,   "slug": "longest-palindromic-substring", "title": "Longest Palindromic Substring", "difficulty": "Medium", "topics": ["String", "DP"], "whyThisProblem": "Expand around centers across all 2N-1 seeds.", "patterns": ["center-expand"] },
+        { "id": "sde-d15-p3", "leetcodeId": 13,  "slug": "roman-to-integer", "title": "Roman to Integer", "difficulty": "Easy", "topics": ["Hash Table", "Math"], "whyThisProblem": "Subtractive Roman numeral linear parse.", "patterns": ["roman-math"] },
+        { "id": "sde-d15-p4", "leetcodeId": 8,   "slug": "string-to-integer-atoi", "title": "String to Integer (atoi)", "difficulty": "Medium", "topics": ["String"], "whyThisProblem": "Deterministic finite automaton digit parsing.", "patterns": ["atoi-clamp"] },
+        { "id": "sde-d15-p5", "leetcodeId": 14,  "slug": "longest-common-prefix", "title": "Longest Common Prefix", "difficulty": "Easy", "topics": ["String"], "whyThisProblem": "Vertical character column matching across strings.", "patterns": ["vertical-scan"] },
+        { "id": "sde-d15-p6", "leetcodeId": 686, "slug": "repeated-string-match", "title": "Rabin Karp / Repeated String Match", "difficulty": "Medium", "topics": ["String", "String Matching"], "whyThisProblem": "Rolling hash and minimum repeat bounds.", "patterns": ["rabin-karp"] }
+      ]
+    },
+    {
+      "levelNumber": 16,
+      "label": "Day 16 — String Part-II",
+      "problems": [
+        { "id": "sde-d16-p1", "leetcodeId": 28,  "slug": "find-the-index-of-the-first-occurrence-in-a-string", "title": "String Matching / Z-Function", "difficulty": "Easy", "topics": ["String", "Two Pointers"], "whyThisProblem": "Sub-string search pattern matching.", "patterns": ["kmp-z"] },
+        { "id": "sde-d16-p2", "leetcodeId": 214, "slug": "shortest-palindrome", "title": "KMP / Shortest Palindrome", "difficulty": "Hard", "topics": ["String"], "whyThisProblem": "KMP prefix lookup table on s + '#' + rev(s).", "patterns": ["kmp-prefix"] },
+        { "id": "sde-d16-p3", "leetcodeId": 242, "slug": "valid-anagram", "title": "Valid Anagram", "difficulty": "Easy", "topics": ["Hash Table", "String"], "whyThisProblem": "Character frequency matching vector.", "patterns": ["char-count"] },
+        { "id": "sde-d16-p4", "leetcodeId": 38,  "slug": "count-and-say", "title": "Count and Say", "difficulty": "Medium", "topics": ["String"], "whyThisProblem": "Run-length string recurrence simulation.", "patterns": ["run-length"] },
+        { "id": "sde-d16-p5", "leetcodeId": 165, "slug": "compare-version-numbers", "title": "Compare Version Numbers", "difficulty": "Medium", "topics": ["Two Pointers", "String"], "whyThisProblem": "Segmented numerical tokens comparison.", "patterns": ["version-compare"] }
+      ]
+    },
+    {
+      "levelNumber": 17,
+      "label": "Day 17 — Binary Tree",
+      "problems": [
+        { "id": "sde-d17-p1", "leetcodeId": 94,  "slug": "binary-tree-inorder-traversal", "title": "Inorder Traversal", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Left-Root-Right traversal with auxiliary stack.", "patterns": ["inorder-tree"] },
+        { "id": "sde-d17-p2", "leetcodeId": 144, "slug": "binary-tree-preorder-traversal", "title": "Preorder Traversal", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Root-Left-Right iterative stack traversal.", "patterns": ["preorder-tree"] },
+        { "id": "sde-d17-p3", "leetcodeId": 145, "slug": "binary-tree-postorder-traversal", "title": "Postorder Traversal", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Left-Right-Root stack traversal.", "patterns": ["postorder-tree"] },
+        { "id": "sde-d17-p4", "leetcodeId": 199, "slug": "binary-tree-right-side-view", "title": "Right View of Binary Tree", "difficulty": "Medium", "topics": ["Tree", "BFS"], "whyThisProblem": "Level-order last node tracking in BFS.", "patterns": ["level-order-view"] },
+        { "id": "sde-d17-p5", "leetcodeId": 102, "slug": "binary-tree-level-order-traversal", "title": "Level Order Traversal", "difficulty": "Medium", "topics": ["Tree", "BFS"], "whyThisProblem": "Queue-based level-by-level array grouping.", "patterns": ["bfs-level"] },
+        { "id": "sde-d17-p6", "leetcodeId": 104, "slug": "maximum-depth-of-binary-tree", "title": "Maximum Depth of Binary Tree", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "1 + max(left, right) tree depth induction.", "patterns": ["tree-depth"] },
+        { "id": "sde-d17-p7", "leetcodeId": 543, "slug": "diameter-of-binary-tree", "title": "Diameter of Binary Tree", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Longest path between any two nodes.", "patterns": ["tree-diameter"] },
+        { "id": "sde-d17-p8", "leetcodeId": 110, "slug": "balanced-binary-tree", "title": "Check if Tree is Height-Balanced", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Bottom-up height check with early exit.", "patterns": ["tree-balance"] },
+        { "id": "sde-d17-p9", "leetcodeId": 236, "slug": "lowest-common-ancestor-of-a-binary-tree", "title": "LCA of Binary Tree", "difficulty": "Medium", "topics": ["Tree", "DFS"], "whyThisProblem": "Recursive node split propagation.", "patterns": ["tree-lca"] },
+        { "id": "sde-d17-p10", "leetcodeId": 100, "slug": "same-tree", "title": "Check if Two Trees are Identical", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Simultaneous recursive structure comparison.", "patterns": ["tree-compare"] }
+      ]
+    },
+    {
+      "levelNumber": 18,
+      "label": "Day 18 — Binary Tree Part-II",
+      "problems": [
+        { "id": "sde-d18-p1", "leetcodeId": 103, "slug": "binary-tree-zigzag-level-order-traversal", "title": "Zigzag Level Order Traversal", "difficulty": "Medium", "topics": ["Tree", "BFS"], "whyThisProblem": "Alternating level direction deque management.", "patterns": ["zigzag-bfs"] },
+        { "id": "sde-d18-p2", "leetcodeId": 124, "slug": "binary-tree-maximum-path-sum", "title": "Maximum Path Sum in Binary Tree", "difficulty": "Hard", "topics": ["Tree", "DFS"], "whyThisProblem": "Max path split with positive branch clamping.", "patterns": ["path-sum-dfs"] },
+        { "id": "sde-d18-p3", "leetcodeId": 105, "slug": "construct-binary-tree-from-preorder-and-inorder-traversal", "title": "Construct Tree from Preorder & Inorder", "difficulty": "Medium", "topics": ["Tree", "Hash Table"], "whyThisProblem": "Root index lookup + subarray range bounds.", "patterns": ["tree-reconstruct"] },
+        { "id": "sde-d18-p4", "leetcodeId": 106, "slug": "construct-binary-tree-from-inorder-and-postorder-traversal", "title": "Construct Tree from Inorder & Postorder", "difficulty": "Medium", "topics": ["Tree", "Hash Table"], "whyThisProblem": "Postorder root selection and left/right partition.", "patterns": ["tree-reconstruct"] },
+        { "id": "sde-d18-p5", "leetcodeId": 101, "slug": "symmetric-tree", "title": "Symmetric Tree", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Mirror symmetry checking on binary tree.", "patterns": ["tree-mirror"] },
+        { "id": "sde-d18-p6", "leetcodeId": 114, "slug": "flatten-binary-tree-to-linked-list", "title": "Flatten Binary Tree to Linked List", "difficulty": "Medium", "topics": ["Tree", "DFS"], "whyThisProblem": "Right-to-left reverse postorder pointer wiring.", "patterns": ["tree-flatten"] }
+      ]
+    },
+    {
+      "levelNumber": 19,
+      "label": "Day 19 — Binary Tree Part-III",
+      "problems": [
+        { "id": "sde-d19-p1", "leetcodeId": 226, "slug": "invert-binary-tree", "title": "Invert / Mirror Binary Tree", "difficulty": "Easy", "topics": ["Tree", "DFS"], "whyThisProblem": "Recursive swap of left and right children.", "patterns": ["tree-invert"] },
+        { "id": "sde-d19-p2", "leetcodeId": 297, "slug": "serialize-and-deserialize-binary-tree", "title": "Serialize & Deserialize Binary Tree", "difficulty": "Hard", "topics": ["Tree", "Design"], "whyThisProblem": "Preorder string traversal with null sentinel tokens.", "patterns": ["tree-serialize"] }
+      ]
+    },
+    {
+      "levelNumber": 20,
+      "label": "Day 20 — Binary Search Tree",
+      "problems": [
+        { "id": "sde-d20-p1", "leetcodeId": 116, "slug": "populating-next-right-pointers-in-each-node", "title": "Populate Next Right Pointers", "difficulty": "Medium", "topics": ["Tree", "BFS"], "whyThisProblem": "Connect siblings using already-linked parent pointers.", "patterns": ["tree-next-pointer"] },
+        { "id": "sde-d20-p2", "leetcodeId": 700, "slug": "search-in-a-binary-search-tree", "title": "Search in a Binary Search Tree", "difficulty": "Easy", "topics": ["BST"], "whyThisProblem": "Left/right BST comparison traversal.", "patterns": ["bst-search"] },
+        { "id": "sde-d20-p3", "leetcodeId": 108, "slug": "convert-sorted-array-to-binary-search-tree", "title": "Convert Sorted Array to BST", "difficulty": "Easy", "topics": ["BST", "Divide and Conquer"], "whyThisProblem": "Midpoint root divide-and-conquer recursion.", "patterns": ["bst-build"] },
+        { "id": "sde-d20-p4", "leetcodeId": 1008, "slug": "construct-binary-search-tree-from-preorder-traversal", "title": "Construct BST from Preorder", "difficulty": "Medium", "topics": ["BST"], "whyThisProblem": "Upper-bound recursion in O(n).", "patterns": ["bst-preorder"] },
+        { "id": "sde-d20-p5", "leetcodeId": 98,  "slug": "validate-binary-search-tree", "title": "Validate Binary Search Tree", "difficulty": "Medium", "topics": ["BST", "DFS"], "whyThisProblem": "(min, max) valid value range propagation.", "patterns": ["bst-valid"] },
+        { "id": "sde-d20-p6", "leetcodeId": 235, "slug": "lowest-common-ancestor-of-a-binary-search-tree", "title": "LCA of BST", "difficulty": "Medium", "topics": ["BST"], "whyThisProblem": "Value comparison divergence point in O(h).", "patterns": ["bst-lca"] }
+      ]
+    },
+    {
+      "levelNumber": 21,
+      "label": "Day 21 — BST Part-II",
+      "problems": [
+        { "id": "sde-d21-p1", "leetcodeId": 230, "slug": "kth-smallest-element-in-a-bst", "title": "Find Kth Smallest Element in BST", "difficulty": "Medium", "topics": ["BST"], "whyThisProblem": "Inorder traversal counter stopping at k.", "patterns": ["bst-kth"] },
+        { "id": "sde-d21-p2", "leetcodeId": 653, "slug": "two-sum-iv-input-is-a-bst", "title": "Two Sum in BST", "difficulty": "Easy", "topics": ["BST", "Two Pointers"], "whyThisProblem": "BST forward and reverse iterator pointers.", "patterns": ["bst-iter"] },
+        { "id": "sde-d21-p3", "leetcodeId": 173, "slug": "binary-search-tree-iterator", "title": "BST Iterator", "difficulty": "Medium", "topics": ["BST", "Design"], "whyThisProblem": "Controlled stack push of left spine nodes in O(h).", "patterns": ["bst-iterator"] },
+        { "id": "sde-d21-p4", "leetcodeId": 1373, "slug": "maximum-sum-bst-in-binary-tree", "title": "Size/Max Sum of Largest BST in Tree", "difficulty": "Hard", "topics": ["BST", "Tree"], "whyThisProblem": "Bottom-up (isBST, size, min, max, sum) tuple recursion.", "patterns": ["bst-sub-validate"] }
+      ]
+    },
+    {
+      "levelNumber": 22,
+      "label": "Day 22 — Trees & Stream Mix",
+      "problems": [
+        { "id": "sde-d22-p1", "leetcodeId": 703, "slug": "kth-largest-element-in-a-stream", "title": "Kth Largest Element in a Stream", "difficulty": "Easy", "topics": ["Heap", "Design"], "whyThisProblem": "Fixed-size min-heap maintenance on incoming stream.", "patterns": ["stream-heap"] },
+        { "id": "sde-d22-p2", "leetcodeId": 733, "slug": "flood-fill", "title": "Flood Fill", "difficulty": "Easy", "topics": ["DFS", "BFS"], "whyThisProblem": "Connected component 4-directional color flood.", "patterns": ["grid-fill"] }
+      ]
+    },
+    {
+      "levelNumber": 23,
+      "label": "Day 23 — Graph",
+      "problems": [
+        { "id": "sde-d23-p1", "leetcodeId": 133, "slug": "clone-graph", "title": "Clone Graph", "difficulty": "Medium", "topics": ["Graph", "DFS"], "whyThisProblem": "Visited hashmap clone mapping to prevent cycles.", "patterns": ["graph-clone"] },
+        { "id": "sde-d23-p2", "leetcodeId": 207, "slug": "course-schedule", "title": "Course Schedule (Cycle Detection)", "difficulty": "Medium", "topics": ["Graph", "Topological Sort"], "whyThisProblem": "Kahn's in-degree queue topological sorting.", "patterns": ["kahn-topo"] },
+        { "id": "sde-d23-p3", "leetcodeId": 210, "slug": "course-schedule-ii", "title": "Course Schedule II", "difficulty": "Medium", "topics": ["Graph", "Topological Sort"], "whyThisProblem": "Full topological ordering array reconstruction.", "patterns": ["topo-sort"] },
+        { "id": "sde-d23-p4", "leetcodeId": 200, "slug": "number-of-islands", "title": "Number of Islands", "difficulty": "Medium", "topics": ["Graph", "DFS"], "whyThisProblem": "Connected component sink DFS in grid.", "patterns": ["connected-components"] },
+        { "id": "sde-d23-p5", "leetcodeId": 785, "slug": "is-graph-bipartite", "title": "Is Graph Bipartite?", "difficulty": "Medium", "topics": ["Graph", "BFS"], "whyThisProblem": "Alternating color BFS traversal and conflict detection.", "patterns": ["bipartite-color"] }
+      ]
+    },
+    {
+      "levelNumber": 24,
+      "label": "Day 24 — Graph Part-II",
+      "problems": [
+        { "id": "sde-d24-p1", "leetcodeId": 1192, "slug": "critical-connections-in-a-network", "title": "Bridges in Graph (Tarjan's)", "difficulty": "Hard", "topics": ["Graph", "DFS"], "whyThisProblem": "Discovery time and lowest reachable time tracking.", "patterns": ["tarjan-bridges"] },
+        { "id": "sde-d24-p2", "leetcodeId": 743, "slug": "network-delay-time", "title": "Dijkstra's Algorithm", "difficulty": "Medium", "topics": ["Graph", "Shortest Path"], "whyThisProblem": "Priority queue edge relaxation for shortest path.", "patterns": ["dijkstra"] },
+        { "id": "sde-d24-p3", "leetcodeId": 787, "slug": "cheapest-flights-within-k-stops", "title": "Bellman-Ford / Cheapest Flights", "difficulty": "Medium", "topics": ["Graph", "DP"], "whyThisProblem": "K-step edge relaxation distance array.", "patterns": ["bellman-ford"] },
+        { "id": "sde-d24-p4", "leetcodeId": 1584, "slug": "min-cost-to-connect-all-points", "title": "Prim's / Kruskal's MST Algorithm", "difficulty": "Medium", "topics": ["Graph", "MST"], "whyThisProblem": "Minimum Spanning Tree priority queue connection.", "patterns": ["mst-prims"] }
+      ]
+    },
+    {
+      "levelNumber": 25,
+      "label": "Day 25 — Dynamic Programming",
+      "problems": [
+        { "id": "sde-d25-p1", "leetcodeId": 152, "slug": "maximum-product-subarray", "title": "Maximum Product Subarray", "difficulty": "Medium", "topics": ["DP"], "whyThisProblem": "Track both min and max product due to negative flip.", "patterns": ["dp-min-max"] },
+        { "id": "sde-d25-p2", "leetcodeId": 300, "slug": "longest-increasing-subsequence", "title": "Longest Increasing Subsequence", "difficulty": "Medium", "topics": ["DP", "Binary Search"], "whyThisProblem": "Patience sorting / binary search tails in O(n log n).", "patterns": ["lis-binary-search"] },
+        { "id": "sde-d25-p3", "leetcodeId": 1143, "slug": "longest-common-subsequence", "title": "Longest Common Subsequence", "difficulty": "Medium", "topics": ["DP"], "whyThisProblem": "2D grid match state transition table.", "patterns": ["dp-lcs"] },
+        { "id": "sde-d25-p4", "leetcodeId": 474, "slug": "ones-and-zeroes", "title": "0-1 Knapsack / Ones and Zeroes", "difficulty": "Medium", "topics": ["DP"], "whyThisProblem": "Multi-constraint 2D knapsack DP tabulation.", "patterns": ["knapsack-dp"] },
+        { "id": "sde-d25-p5", "leetcodeId": 72,  "slug": "edit-distance", "title": "Edit Distance", "difficulty": "Medium", "topics": ["DP"], "whyThisProblem": "Insert, delete, replace operations cost matrix.", "patterns": ["dp-edit"] }
+      ]
+    },
+    {
+      "levelNumber": 26,
+      "label": "Day 26 — DP Part-II",
+      "problems": [
+        { "id": "sde-d26-p1", "leetcodeId": 64,  "slug": "minimum-path-sum", "title": "Minimum Path Sum", "difficulty": "Medium", "topics": ["DP", "Matrix"], "whyThisProblem": "In-place grid accumulator for min cost traversal.", "patterns": ["grid-dp"] },
+        { "id": "sde-d26-p2", "leetcodeId": 416, "slug": "partition-equal-subset-sum", "title": "Subset Sum / Partition Equal Subset", "difficulty": "Medium", "topics": ["DP"], "whyThisProblem": "Target sum boolean array knapsack reduction.", "patterns": ["subset-sum-dp"] },
+        { "id": "sde-d26-p3", "leetcodeId": 343, "slug": "integer-break", "title": "Rod Cutting / Integer Break", "difficulty": "Medium", "topics": ["DP", "Math"], "whyThisProblem": "Factor optimization state transitions.", "patterns": ["cutting-dp"] },
+        { "id": "sde-d26-p4", "leetcodeId": 139, "slug": "word-break", "title": "Word Break", "difficulty": "Medium", "topics": ["DP", "Hash Table"], "whyThisProblem": "Prefix validity boolean array matching.", "patterns": ["word-break-dp"] },
+        { "id": "sde-d26-p5", "leetcodeId": 132, "slug": "palindrome-partitioning-ii", "title": "Palindrome Partitioning II", "difficulty": "Hard", "topics": ["DP"], "whyThisProblem": "Min cuts array with palindrome matrix lookup.", "patterns": ["palindrome-cuts"] }
+      ]
+    },
+    {
+      "levelNumber": 27,
+      "label": "Day 27 — Trie",
+      "problems": [
+        { "id": "sde-d27-p1", "leetcodeId": 208, "slug": "implement-trie-prefix-tree", "title": "Implement Trie (Prefix Tree)", "difficulty": "Medium", "topics": ["Trie", "Design"], "whyThisProblem": "Node array of 26 children for prefix matching.", "patterns": ["trie-node"] },
+        { "id": "sde-d27-p2", "leetcodeId": 421, "slug": "maximum-xor-of-two-numbers-in-an-array", "title": "Maximum XOR of Two Numbers", "difficulty": "Medium", "topics": ["Trie", "Bit Manipulation"], "whyThisProblem": "Bitwise trie opposite-branch greed.", "patterns": ["trie-bit"] },
+        { "id": "sde-d27-p3", "leetcodeId": 211, "slug": "design-add-and-search-words-data-structure", "title": "Design Add and Search Words", "difficulty": "Medium", "topics": ["Trie", "DFS"], "whyThisProblem": "Trie search with wildcard '.' backtracking.", "patterns": ["trie-dfs"] }
+      ]
+    },
+    {
+      "levelNumber": 28,
+      "label": "Day 28 — Advanced String & Two Pointers",
+      "problems": [
+        { "id": "sde-d28-p1", "leetcodeId": 76,  "slug": "minimum-window-substring", "title": "Minimum Window Substring", "difficulty": "Hard", "topics": ["Sliding Window", "Hash Table"], "whyThisProblem": "Expanding and contracting window with frequency matching.", "patterns": ["sliding-window"] },
+        { "id": "sde-d28-p2", "leetcodeId": 49,  "slug": "group-anagrams", "title": "Group Anagrams", "difficulty": "Medium", "topics": ["Hash Table", "String"], "whyThisProblem": "Sorted character key hashing pattern.", "patterns": ["anagram-hash"] },
+        { "id": "sde-d28-p3", "leetcodeId": 443, "slug": "string-compression", "title": "String Compression", "difficulty": "Medium", "topics": ["Two Pointers", "String"], "whyThisProblem": "In-place two-pointer run-length write.", "patterns": ["two-pointer"] }
+      ]
+    }
+  ]
+}

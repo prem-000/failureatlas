@@ -162,11 +162,11 @@ export default function DashboardPage() {
       iconClass: 'bg-purple-500/10 text-purple-400',
     },
     {
-      label: 'Growth Areas',
+      label: 'Critical Weaknesses',
       value: stats?.weaknesses ?? 0,
       icon: <BrainCircuit className="h-8 w-8" />,
-      color: '#fbbf24',
-      iconClass: 'bg-amber-500/10 text-amber-400',
+      color: (stats?.weaknesses ?? 0) === 0 ? '#4ade80' : '#fbbf24',
+      iconClass: (stats?.weaknesses ?? 0) === 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400',
     },
   ];
 
@@ -295,6 +295,53 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            {/* ── CRITICAL WEAKNESS STATUS BANNER ── */}
+            {(stats?.weaknesses ?? 0) === 0 ? (
+              <div style={{
+                background: 'rgba(34, 197, 94, 0.05)',
+                border: '1px solid rgba(34, 197, 94, 0.2)',
+                borderRadius: 12, padding: '14px 20px', marginBottom: 24,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>🎉</span>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#4ade80' }}>
+                      Zero Active Critical Weaknesses
+                    </p>
+                    <p style={{ fontSize: 11, color: '#71717a', marginTop: 2 }}>
+                      All contributing problems are currently accepted. No open failures remain in your replay queue.
+                    </p>
+                  </div>
+                </div>
+                <Link href="/graph" style={{ fontSize: 12, color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}>
+                  Explore Curriculum →
+                </Link>
+              </div>
+            ) : (
+              <div style={{
+                background: 'rgba(245, 158, 11, 0.06)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                borderRadius: 12, padding: '14px 20px', marginBottom: 24,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>⚠️</span>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#fbbf24' }}>
+                      {stats?.weaknesses} Systemic Weakness{(stats?.weaknesses ?? 0) > 1 ? 'es' : ''} with Open Failures
+                    </p>
+                    <p style={{ fontSize: 11, color: '#a1a1aa', marginTop: 2 }}>
+                      Unsolved problems in your queue are actively triggering these weaknesses.
+                    </p>
+                  </div>
+                </div>
+                <Link href="/graph?tab=replay" style={{ fontSize: 12, color: '#fbbf24', textDecoration: 'none', fontWeight: 600 }}>
+                  Review in Failure Replay →
+                </Link>
+              </div>
+            )}
 
             {/* ── RECENT SUBMISSIONS ── */}
             <div style={{
