@@ -23,6 +23,7 @@ dist
 *.pem
 *.crx
 *.zip
+!public/extension/*.zip
 .vscode
 .idea
 *.swp

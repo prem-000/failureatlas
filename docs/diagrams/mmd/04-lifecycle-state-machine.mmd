@@ -1,0 +1,31 @@
+stateDiagram-v2
+    [*] --> UNKNOWN: Page loaded
+
+    UNKNOWN --> SUBMITTED: Submit detected
+    UNKNOWN --> CALCULATED: Editor change GFG
+
+    CALCULATED --> SUBMITTED: Submit action
+
+    SUBMITTED --> RUNNING: Execution started
+
+    RUNNING --> ACCEPTED: All tests pass
+    RUNNING --> WRONG_ANSWER: Test failure
+    RUNNING --> TLE: Time Limit Exceeded
+    RUNNING --> MLE: Memory Limit Exceeded
+    RUNNING --> RUNTIME_ERROR: Runtime crash
+    RUNNING --> COMPILATION_ERROR: Compile failure
+
+    SUBMITTED --> ACCEPTED: Direct result
+    SUBMITTED --> WRONG_ANSWER: Direct result
+    SUBMITTED --> TLE: Direct result
+    SUBMITTED --> RUNTIME_ERROR: Direct result
+    SUBMITTED --> COMPILATION_ERROR: Direct result
+
+    note right of ACCEPTED
+        TERMINAL STATE
+        Cannot downgrade
+    end note
+
+    note right of WRONG_ANSWER
+        TERMINAL STATE
+    end note

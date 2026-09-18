@@ -6,6 +6,8 @@ export type SubmissionStatus =
   | 'Runtime Error'
   | 'Compilation Error';
 
+export type Platform = 'leetcode' | 'hackerrank' | 'geeksforgeeks';
+
 export type ProblemDifficulty = 'Easy' | 'Medium' | 'Hard';
 
 export interface CodeDiff {
@@ -18,6 +20,8 @@ export interface CodeDiff {
 
 export interface SubmissionEvent {
   eventId: string;
+  platform?: Platform;
+  platformSubmissionId?: string;
   submissionTraceId?: string;
   sessionId: string;
   userId: string;
@@ -53,6 +57,7 @@ export interface ProblemMetadata {
 
 export type ExtensionMessageType =
   | 'SUBMISSION_EVENT'
+  | 'CANONICAL_SUBMISSION_EVENT'
   | 'AUTHENTICATE'
   | 'AUTHENTICATE_API_KEY'   // ← new: API key login from popup
   | 'GET_STATUS'

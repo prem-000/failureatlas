@@ -276,9 +276,10 @@ class ExtensionPopup {
 
     let url = apiUrlInput.value.trim();
     if (!url) { this.showError(errorEl, 'API Server URL cannot be empty'); return; }
-    if (!/^https?:\/\//i.test(url)) {
-      this.showError(errorEl, 'URL must start with http:// or https://');
-      return;
+    if (/^:?300[0-9](\/.*)?$/i.test(url)) {
+      url = 'http://localhost:' + url.replace(/^:/, '');
+    } else if (!/^https?:\/\//i.test(url)) {
+      url = 'http://' + url;
     }
     url = url.replace(/\/$/, '');
 

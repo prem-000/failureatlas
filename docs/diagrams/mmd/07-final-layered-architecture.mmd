@@ -1,0 +1,57 @@
+flowchart TB
+    subgraph Platform["PLATFORM LAYER"]
+        LCA["LeetCodeAdapter"]
+        HRA["HackerRankAdapter"]
+        GFGA["GFGAdapter"]
+    end
+
+    subgraph Evidence["EVIDENCE LAYER"]
+        ED["Editor"]
+        NET["Network"]
+        DOM["DOM"]
+        RES["Result"]
+        SUB["Submit"]
+        PROB["Problem"]
+    end
+
+    subgraph Correlation["CORRELATION LAYER"]
+        SNAP["Snapshot"]
+        MERGE["Merger"]
+        CTX["Context"]
+        LIFE["Lifecycle"]
+        DEDUP["Dedup"]
+    end
+
+    subgraph Delivery["DELIVERY LAYER"]
+        PQ["Persistent Queue"]
+        BW["Bounded Workers"]
+        AC["API Client"]
+    end
+
+    API["PRAXIS API\n/api/submissions"]
+    PG["POSTGRESQL\nunified submissions table"]
+    INTEL["EXISTING INTELLIGENCE\nMyers Diff + Bayesian + Neo4j + RAG + Diagnosis"]
+
+    LCA --> ED & NET & DOM & RES & SUB & PROB
+    HRA --> ED & NET & DOM & RES & SUB & PROB
+    GFGA --> ED & NET & DOM & RES & SUB & PROB
+
+    ED --> SNAP
+    NET --> MERGE
+    DOM --> MERGE
+    RES --> MERGE
+    SUB --> MERGE
+    PROB --> MERGE
+    SNAP --> MERGE
+
+    MERGE --> CTX
+    CTX --> LIFE
+    LIFE --> DEDUP
+
+    DEDUP --> PQ
+    PQ --> BW
+    BW --> AC
+
+    AC --> API
+    API --> PG
+    PG --> INTEL

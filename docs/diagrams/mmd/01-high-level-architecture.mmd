@@ -1,0 +1,29 @@
+graph TB
+    LC["LeetCode"] --> PR["Platform Router"]
+    HR["HackerRank"] --> PR
+    GFG["GeeksForGeeks"] --> PR
+
+    PR --> LCA["LeetCode Adapter"]
+    PR --> HRA["HackerRank Adapter"]
+    PR --> GFGA["GFG Adapter"]
+
+    LCA --> EC["Evidence Collector"]
+    HRA --> EC
+    GFGA --> EC
+
+    EC --> ED["Editor"]
+    EC --> NE["Network"]
+    EC --> DOM["DOM"]
+
+    ED --> SB["Snapshot Buffer"]
+    NE --> EM["Evidence Merger"]
+    DOM --> EM
+    SB --> EM
+
+    EM --> SC["Submission Correlator\ntab + platform + ID"]
+    SC --> LM["Lifecycle State Machine"]
+    LM --> DD["Deduplication Engine"]
+    DD --> PQ["Persistent Local Queue\nbounded concurrency"]
+    PQ --> API["/api/submissions"]
+    API --> PG["PostgreSQL"]
+    PG --> ANALYSIS["Existing Praxis Analysis\nMyers / Bayesian / Graph / RAG"]

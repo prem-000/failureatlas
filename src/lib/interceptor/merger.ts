@@ -138,9 +138,10 @@ async function createInterceptorStub(
   const problemSlug = slugFromUrl ?? 'unknown-problem';
 
   const problem = await prisma.problem.upsert({
-    where:  { slug: problemSlug },
+    where:  { platform_slug: { platform: 'leetcode', slug: problemSlug } },
     update: {},
     create: {
+      platform:   'leetcode',
       slug:       problemSlug,
       title:      problemSlug,
       difficulty: 'Medium',

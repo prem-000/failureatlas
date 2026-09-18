@@ -1,0 +1,28 @@
+flowchart TB
+    subgraph Extension["Extension Lifecycle per Tab"]
+        DETECT["Page Detected"]
+        ROUTE["Platform Router"]
+        INIT["Adapter Initialized"]
+        PROBLEM["Problem Identity Captured"]
+        EDITOR["Editor Observation Starts"]
+        NETWORK["Network Observation Starts"]
+        RESULT["Result Observation Starts"]
+        SNAPBUF["Snapshot Buffer Active"]
+        SUBMITD["Submit Detected"]
+        CORRELATE["Evidence Correlated"]
+        CANON["Canonical Event Created"]
+        ENQUEUE["Queued for Delivery"]
+    end
+
+    subgraph Navigation["On URL Navigation"]
+        OLD["Old Adapter"]
+        DESTROY["destroy / cleanup"]
+        NEWURL["New URL"]
+        NEWADAPT["New Adapter"]
+    end
+
+    DETECT --> ROUTE --> INIT --> PROBLEM --> EDITOR --> NETWORK --> RESULT --> SNAPBUF
+    SNAPBUF -.->|"user submits"| SUBMITD --> CORRELATE --> CANON --> ENQUEUE
+
+    OLD --> DESTROY --> NEWURL --> NEWADAPT
+    NEWADAPT --> DETECT

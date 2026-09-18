@@ -217,10 +217,10 @@ export function ProblemDrawer({ problem, relatedFailures, onClose, isSolved, onT
             ))}
           </div>
  
-          {/* Open on LeetCode & Solve Action */}
+          {/* Open Problem & Solve Action */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 10 }}>
             <a
-              href={`https://leetcode.com/problems/${problem.slug}/`}
+              href={(problem as any).url || ((problem as any).platform === 'hackerrank' ? `https://www.hackerrank.com/challenges/${problem.slug}` : (problem as any).platform === 'geeksforgeeks' ? `https://www.geeksforgeeks.org/problems/${problem.slug}` : `https://leetcode.com/problems/${problem.slug}/`)}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -229,7 +229,7 @@ export function ProblemDrawer({ problem, relatedFailures, onClose, isSolved, onT
               }}
             >
               <ExternalLink size={11} />
-              Open on LeetCode
+              Open Problem
               <ChevronRight size={11} />
             </a>
 

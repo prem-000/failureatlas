@@ -239,17 +239,26 @@ export function PracticeQueue() {
 
   const handleOpenProblem = () => {
     if (!currentItem?.review) return;
+    if ((currentItem as any).problem?.url) {
+      window.open((currentItem as any).problem.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
     const { platform, problemId } = currentItem.review;
     let url = '';
-    if (platform === 'LeetCode') {
+    const platLower = (platform || '').toLowerCase();
+    if (platLower === 'leetcode') {
       url = `https://leetcode.com/problems/${problemId}/`;
-    } else if (platform === 'Codeforces') {
+    } else if (platLower === 'hackerrank') {
+      url = `https://www.hackerrank.com/challenges/${problemId}`;
+    } else if (platLower === 'geeksforgeeks' || platLower === 'gfg') {
+      url = `https://www.geeksforgeeks.org/problems/${problemId}`;
+    } else if (platLower === 'codeforces') {
       const contestId = problemId.replace(/[^0-9]/g, '');
       const index = problemId.replace(/[0-9]/g, '');
       url = contestId && index ? `https://codeforces.com/problemset/problem/${contestId}/${index}` : 'https://codeforces.com/';
-    } else if (platform === 'CodeChef') {
+    } else if (platLower === 'codechef') {
       url = `https://www.codechef.com/problems/${problemId}`;
-    } else if (platform === 'AtCoder') {
+    } else if (platLower === 'atcoder') {
       url = `https://atcoder.jp/contests/archive/tasks/${problemId}`;
     }
     if (url) {

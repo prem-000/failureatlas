@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant HR as HackerRank Page
+    participant Adapter as HackerRankAdapter
+    participant Editor as Editor Capture
+    participant Net as Network Intercept
+    participant Result as Result Monitor
+    participant Merger as Evidence Merger
+    participant Life as Lifecycle Manager
+    participant Dedup as Dedup Engine
+    participant Queue as Persistent Queue
+    participant API as Praxis API
+    participant DB as PostgreSQL
+
+    HR->>Adapter: Page detected
+    Adapter->>Adapter: Problem URL = /challenges/arrays-ds/
+    Adapter->>Editor: Start snapshot polling
+    Adapter->>Net: Start network capture
+    Adapter->>Result: Start result monitor
+
+    HR->>HR: User clicks Submit
+    Adapter->>Editor: Capture snapshot now
+    Editor->>Merger: EditorEvidence (code)
+
+    HR->>Net: POST /rest/contests/.../submit
+    Net->>Merger: NetworkEvidence (submission request)
+
+    HR->>Net: GET /rest/contests/.../submissions/483087426
+    Net->>Merger: NetworkEvidence (submission response)
+
+    HR->>Result: DOM shows Accepted
+    Result->>Merger: ResultEvidence (ACCEPTED)
+
+    Merger->>Merger: Merge all evidence
+    Note over Merger: platformSubmissionId = 483087426
+
+    Merger->>Life: CanonicalEvent
+    Life->>Life: SUBMITTED → ACCEPTED (terminal)
+    Life->>Dedup: Check dedup
+    Dedup->>Queue: Enqueue event
+    Queue->>API: POST /api/submissions
+    API->>DB: Insert submission row
+    DB-->>API: OK
+    API-->>Queue: 200 Success

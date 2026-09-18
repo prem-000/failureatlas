@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     const compiledPayload = [];
 
     for (const state of reviewStates) {
-      const problem = await prisma.problem.findUnique({
+      const problem = await prisma.problem.findFirst({
         where: { slug: state.problemId },
       });
 
@@ -133,15 +133,20 @@ export async function POST(request: NextRequest) {
       // URL platform link
       let platformUrl = problem.url || '';
       if (!platformUrl) {
-        if (state.platform === 'LeetCode') {
+        const platLower = (state.platform || (problem as any).platform || '').toLowerCase();
+        if (platLower === 'leetcode') {
           platformUrl = `https://leetcode.com/problems/${state.problemId}/`;
-        } else if (state.platform === 'Codeforces') {
+        } else if (platLower === 'hackerrank') {
+          platformUrl = `https://www.hackerrank.com/challenges/${state.problemId}`;
+        } else if (platLower === 'geeksforgeeks' || platLower === 'gfg') {
+          platformUrl = `https://www.geeksforgeeks.org/problems/${state.problemId}`;
+        } else if (platLower === 'codeforces') {
           const contestId = state.problemId.replace(/[^0-9]/g, '');
           const index = state.problemId.replace(/[0-9]/g, '');
           platformUrl = contestId && index ? `https://codeforces.com/problemset/problem/${contestId}/${index}` : 'https://codeforces.com/';
-        } else if (state.platform === 'CodeChef') {
+        } else if (platLower === 'codechef') {
           platformUrl = `https://www.codechef.com/problems/${state.problemId}`;
-        } else if (state.platform === 'AtCoder') {
+        } else if (platLower === 'atcoder') {
           platformUrl = `https://atcoder.jp/contests/archive/tasks/${state.problemId}`;
         }
       }

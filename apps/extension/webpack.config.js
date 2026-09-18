@@ -7,7 +7,8 @@ module.exports = {
   entry: {
     content: './src/content.ts',
     background: './src/background.ts',
-    popup: './src/popup.ts'
+    popup: './src/popup.ts',
+    'hackerrank-network-interceptor': './src/adapters/hackerrank/network-interceptor.ts'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),

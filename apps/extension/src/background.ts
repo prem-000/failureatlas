@@ -9,6 +9,12 @@ import {
 export function normalizeApiBaseUrl(url: string): string {
   if (!url) return 'http://127.0.0.1:3000/api';
   let clean = url.trim();
+  // If user entered e.g. "3001", "3001/api", or ":3001"
+  if (/^:?300[0-9](\/.*)?$/i.test(clean)) {
+    clean = `http://localhost:${clean.replace(/^:/, '')}`;
+  } else if (!/^https?:\/\//i.test(clean)) {
+    clean = `http://${clean}`;
+  }
   // Strip trailing slashes
   clean = clean.replace(/\/+$/, '');
   // Strip any accidental endpoint suffixes
@@ -245,22 +251,49 @@ export class FailureAtlasAPI {
     }
   }
 
-  async sendSubmission(event: SubmissionEvent): Promise<{ success: boolean; submissionId?: string; error?: string }> {
-    const traceId = event.submissionTraceId || event.eventId?.substring(0, 8) || '?';
+  async sendSubmission(event: any): Promise<{ success: boolean; submissionId?: string; error?: string }> {
+    const payload = {
+      eventId: event.eventId,
+      platform: event.platform || 'leetcode',
+      platformSubmissionId: event.platformSubmissionId || null,
+      submissionTraceId: event.submissionTraceId || event.eventId?.substring(0, 8),
+      sessionId: event.sessionId || 'session-unknown',
+      userId: event.userId,
+      timestamp: event.timestamp,
+      problemSlug: event.problem?.slug || event.problemSlug,
+      problemTitle: event.problem?.title || event.problemTitle,
+      problemDifficulty: event.problem?.difficulty || event.problemDifficulty || 'Medium',
+      problemTopics: event.problem?.topics || event.problemTopics || [],
+      problemUrl: event.problem?.url || event.problemUrl,
+      submissionStatus: event.submissionStatus,
+      submissionLanguage: event.language || event.submissionLanguage || 'unknown',
+      submissionCode: event.code || event.submissionCode,
+      runtime: event.runtime,
+      memory: event.memory,
+      testCasesPassed: event.testCasesPassed,
+      totalTestCases: event.totalTestCases,
+      failedTestCase: event.failedTestCase,
+      timeSpent: event.timeSpent || 0,
+      attemptNumber: event.attemptNumber || 1,
+      rapidSubmission: event.rapidSubmission || false,
+    };
+
+    const traceId = payload.submissionTraceId || '?';
     try {
       const apiUrl  = await this.storage.getApiUrl();
       const headers = await this.buildHeaders();
 
-      console.log(`[TRACE ${traceId}] Sending To API`);
+      console.log(`[TRACE ${traceId}] Sending To API (${payload.platform})`);
 
       const response = await fetch(`${apiUrl}/submissions`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(event),
+        body: JSON.stringify(payload),
       });
 
-      console.log(`[TRACE ${traceId}] API Status ${response.status}`);
       const responseText = await response.text();
+      console.log(`[TRACE ${traceId}] API Status:`, response.status);
+      console.log(`[TRACE ${traceId}] API Response:`, responseText);
 
       if (response.status === 401) {
         const errDetail = (() => { try { return JSON.parse(responseText)?.error?.message; } catch { return responseText; } })();
@@ -404,8 +437,34 @@ export class MessageHandler {
 
   private async handleMessage(message: ExtensionMessage): Promise<any> {
     switch (message.type) {
+      case 'CANONICAL_SUBMISSION_EVENT':
       case 'SUBMISSION_EVENT': {
-        const event: SubmissionEvent = message.data;
+        const rawEvent = message.data;
+        const event: any = {
+          eventId: rawEvent.eventId,
+          platform: rawEvent.platform || 'leetcode',
+          platformSubmissionId: rawEvent.platformSubmissionId || null,
+          submissionTraceId: rawEvent.submissionTraceId || rawEvent.eventId?.substring(0, 8),
+          sessionId: rawEvent.sessionId || 'session-unknown',
+          userId: rawEvent.userId || '',
+          timestamp: rawEvent.timestamp,
+          problemSlug: rawEvent.problem?.slug || rawEvent.problemSlug,
+          problemTitle: rawEvent.problem?.title || rawEvent.problemTitle,
+          problemDifficulty: rawEvent.problem?.difficulty || rawEvent.problemDifficulty || 'Medium',
+          problemTopics: rawEvent.problem?.topics || rawEvent.problemTopics || [],
+          problemUrl: rawEvent.problem?.url || rawEvent.problemUrl,
+          submissionStatus: rawEvent.submissionStatus,
+          submissionLanguage: rawEvent.language || rawEvent.submissionLanguage || 'unknown',
+          submissionCode: rawEvent.code || rawEvent.submissionCode,
+          runtime: rawEvent.runtime,
+          memory: rawEvent.memory,
+          testCasesPassed: rawEvent.testCasesPassed,
+          totalTestCases: rawEvent.totalTestCases,
+          failedTestCase: rawEvent.failedTestCase,
+          timeSpent: rawEvent.timeSpent || 0,
+          attemptNumber: rawEvent.attemptNumber || 1,
+          rapidSubmission: rawEvent.rapidSubmission || false,
+        };
         const validation = PrivacyManager.validateEvent(event);
         if (!validation.valid) {
           return { success: false, error: `Missing required parameters: ${validation.missing}` };
@@ -593,4 +652,24 @@ try {
   }
 } catch (e) {
   console.error('[FailureAtlas BG] Failed to initialize onInstalled listener:', e);
+}
+
+// ─── SPA Navigation Broadcast ────────────────────────────────────────────────
+try {
+  if (typeof chrome !== 'undefined' && chrome?.webNavigation?.onHistoryStateUpdated) {
+    chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+      if (details.tabId && details.url) {
+        chrome.tabs.sendMessage(details.tabId, { type: 'TAB_URL_CHANGED', url: details.url }).catch(() => {});
+      }
+    });
+  }
+  if (typeof chrome !== 'undefined' && chrome?.tabs?.onUpdated) {
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+      if (changeInfo.url) {
+        chrome.tabs.sendMessage(tabId, { type: 'TAB_URL_CHANGED', url: changeInfo.url }).catch(() => {});
+      }
+    });
+  }
+} catch (e) {
+  console.error('[FailureAtlas BG] Failed to register navigation listeners:', e);
 }

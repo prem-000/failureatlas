@@ -113,12 +113,12 @@ export function RoadmapNode({ data, selected }: NodeProps) {
         )}
         {!isLocked && (
           <a
-            href={`https://leetcode.com/problems/${data.slug}/`}
+            href={(data as any).url || ((data as any).platform === 'hackerrank' ? `https://www.hackerrank.com/challenges/${data.slug}` : (data as any).platform === 'geeksforgeeks' ? `https://www.geeksforgeeks.org/problems/${data.slug}` : `https://leetcode.com/problems/${data.slug}/`)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
             style={{ color: '#52525b', display: 'flex', alignItems: 'center' }}
-            title="Open on LeetCode"
+            title="Open Problem"
           >
             <ExternalLink size={10} />
           </a>

@@ -1,0 +1,25 @@
+flowchart TD
+    START(("Page Load\nURL Change"))
+    URL["Extract current URL"]
+    CHECK_LC{"leetcode.com\n/problems/*"}
+    CHECK_HR{"hackerrank.com\n/challenges/*"}
+    CHECK_GFG{"geeksforgeeks.org\n/problems/*"}
+    INIT_LC["LeetCodeAdapter"]
+    INIT_HR["HackerRankAdapter"]
+    INIT_GFG["GFGAdapter"]
+    NONE["No adapter\nskip capture"]
+    CONTEXT["Create SubmissionContext\nkey = tabId + platform"]
+    SETUP["Start Editor Observation\nStart Network Capture\nStart Result Monitor\nCapture Problem Identity"]
+
+    START --> URL
+    URL --> CHECK_LC
+    CHECK_LC -->|Yes| INIT_LC
+    CHECK_LC -->|No| CHECK_HR
+    CHECK_HR -->|Yes| INIT_HR
+    CHECK_HR -->|No| CHECK_GFG
+    CHECK_GFG -->|Yes| INIT_GFG
+    CHECK_GFG -->|No| NONE
+    INIT_LC --> CONTEXT
+    INIT_HR --> CONTEXT
+    INIT_GFG --> CONTEXT
+    CONTEXT --> SETUP

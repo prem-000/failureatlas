@@ -1,0 +1,41 @@
+flowchart TB
+    subgraph Tab101["Tab 101 LeetCode"]
+        LC_CS["Content Script"] --> LC_CTX["Context A\nkey 101:leetcode"]
+    end
+
+    subgraph Tab102["Tab 102 HackerRank"]
+        HR_CS["Content Script"] --> HR_CTX["Context B\nkey 102:hackerrank"]
+    end
+
+    subgraph Tab103["Tab 103 GFG"]
+        GFG_CS["Content Script"] --> GFG_CTX["Context C\nkey 103:geeksforgeeks"]
+    end
+
+    subgraph Tab104["Tab 104 LeetCode 2"]
+        LC2_CS["Content Script"] --> LC2_CTX["Context D\nkey 104:leetcode"]
+    end
+
+    subgraph BG["Background Service Worker"]
+        CTX_MAP["Context Map\nMap tabId:platform Context"]
+        QUEUE["Persistent Queue\nchrome.storage.local"]
+        W1["Worker 1"]
+        W2["Worker 2"]
+        W3["Worker 3"]
+    end
+
+    API["/api/submissions"]
+    PG["PostgreSQL"]
+
+    LC_CTX --> CTX_MAP
+    HR_CTX --> CTX_MAP
+    GFG_CTX --> CTX_MAP
+    LC2_CTX --> CTX_MAP
+
+    CTX_MAP --> QUEUE
+    QUEUE --> W1
+    QUEUE --> W2
+    QUEUE --> W3
+    W1 --> API
+    W2 --> API
+    W3 --> API
+    API --> PG

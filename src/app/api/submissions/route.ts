@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 500);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
     const problemSlug = searchParams.get('problemSlug');
     const status = searchParams.get('status');
@@ -86,10 +86,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      submissions: submissions.map(sub => ({
+      submissions: submissions.map((sub: any) => ({
         eventId: sub.eventId,
+        platform: sub.platform,
+        platformSubmissionId: sub.platformSubmissionId,
         problemSlug: sub.problem.slug,
         problemTitle: sub.problem.title,
+        problemUrl: sub.problem.url,
         submissionStatus: sub.status,
         timestamp: sub.timestamp.getTime(),
         attemptNumber: sub.attemptNumber,
@@ -134,12 +137,15 @@ export async function POST(request: NextRequest) {
 
   const {
     eventId, sessionId,
+    platform: rawPlatform, platformSubmissionId,
     problemSlug, problemTitle, problemDifficulty, problemTopics, problemUrl,
     submissionStatus, submissionLanguage, submissionCode,
     runtime, memory, testCasesPassed, totalTestCases, failedTestCase,
     timeSpent, attemptNumber, rapidSubmission,
     submissionTraceId,
   } = body;
+
+  const platform = (rawPlatform || 'leetcode').toLowerCase();
 
   // ── Validate required fields ─────────────────────────────────────────────────
   const missing = ['eventId', 'problemSlug', 'submissionStatus', 'submissionCode']
@@ -161,9 +167,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Upsert problem (needed for both dedup check and creation) ─────────────
+    // ── Deduplicate by platformSubmissionId if available ───────────────────────
+    if (platformSubmissionId) {
+      const existingPlatformSub = await prisma.submissionEvent.findFirst({
+        where: {
+          platform,
+          platformSubmissionId,
+          userId,
+        } as any,
+      });
+      if (existingPlatformSub) {
+        return NextResponse.json(
+          { success: true, submissionId: existingPlatformSub.id, analysisQueued: false, message: 'Platform submission already recorded.' },
+          { status: 200, headers: corsHeaders }
+        );
+      }
+    }
+
+    // ── Upsert problem (keyed by platform + slug) ─────────────────────────────
     const problem = await prisma.problem.upsert({
-      where: { slug: problemSlug },
+      where: {
+        platform_slug: { platform, slug: problemSlug },
+      } as any,
       update: {
         title: problemTitle || problemSlug,
         difficulty: problemDifficulty || 'Medium',
@@ -171,42 +196,48 @@ export async function POST(request: NextRequest) {
         url: problemUrl ?? null,
       },
       create: {
+        platform,
         slug: problemSlug,
         title: problemTitle || problemSlug,
         difficulty: problemDifficulty || 'Medium',
         topics: problemTopics ?? [],
         url: problemUrl ?? null,
-      },
+      } as any,
     });
 
     // Cache problem metadata
     await setProblemCache(problem.slug, problem);
 
-    // ── Deduplicate by content: same user+problem+code+status within 60s ─────
+    // ── Deduplicate by content only if NO platformSubmissionId: same user+problem+code+status within 60s
     // Catches cases where the extension fires two separate eventIds for one
-    // physical LeetCode submission (e.g. two DOM mutation detections).
-    const sixtySecondsAgo = new Date(Date.now() - 60_000);
-    const recentDupe = await prisma.submissionEvent.findFirst({
-      where: {
-        userId,
-        problemId: problem.id,
-        status: submissionStatus,
-        code: submissionCode,
-        timestamp: { gte: sixtySecondsAgo },
-      },
-    });
-    if (recentDupe) {
-      return NextResponse.json(
-        { success: true, submissionId: recentDupe.id, analysisQueued: false, message: 'Duplicate submission detected within 60s.' },
-        { status: 200, headers: corsHeaders }
-      );
+    // physical submission (e.g. two DOM mutation detections).
+    if (!platformSubmissionId) {
+      const sixtySecondsAgo = new Date(Date.now() - 60_000);
+      const recentDupe = await prisma.submissionEvent.findFirst({
+        where: {
+          userId,
+          problemId: problem.id,
+          status: submissionStatus,
+          code: submissionCode,
+          timestamp: { gte: sixtySecondsAgo },
+        },
+      });
+      if (recentDupe) {
+        return NextResponse.json(
+          { success: true, submissionId: recentDupe.id, analysisQueued: false, message: 'Duplicate submission detected within 60s.' },
+          { status: 200, headers: corsHeaders }
+        );
+      }
     }
 
     // ── Save submission — this is the critical write ──────────────────────────
+    console.log('[Submission API] Creating database record');
     const subRecord = await prisma.submissionEvent.create({
       data: {
         userId,
         problemId: problem.id,
+        platform,
+        platformSubmissionId: platformSubmissionId || null,
         eventId,
         submissionTraceId: submissionTraceId || eventId,
         sessionId: sessionId || 'session-unknown',
@@ -222,8 +253,10 @@ export async function POST(request: NextRequest) {
         timeSpent: timeSpent || 0,
         attemptNumber: attemptNumber || 1,
         rapidSubmission: rapidSubmission || false,
-      },
+      } as any,
     });
+    console.log('[Submission API] Prisma create completed');
+    console.log(`[Submission API] Created database ID: ${subRecord.id}`);
 
     // Invalidate Caches
     await delDashboardCache(userId);

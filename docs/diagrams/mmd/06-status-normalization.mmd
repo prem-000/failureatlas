@@ -1,0 +1,56 @@
+flowchart LR
+    subgraph LC["LeetCode Statuses"]
+        LC_AC["Accepted"]
+        LC_WA["Wrong Answer"]
+        LC_TLE["Time Limit Exceeded"]
+        LC_MLE["Memory Limit Exceeded"]
+        LC_RE["Runtime Error"]
+        LC_CE["Compile Error"]
+    end
+
+    subgraph HR["HackerRank Statuses"]
+        HR_AC["Accepted"]
+        HR_WA["Wrong Answer"]
+        HR_TLE["Terminated due to timeout"]
+        HR_RE["Runtime Error"]
+        HR_CE["Compilation error"]
+    end
+
+    subgraph GFG["GFG Statuses"]
+        GFG_S["SUCCESS"]
+        GFG_W["WRONG"]
+        GFG_TLE["TLE"]
+        GFG_RE["RUNTIME ERROR"]
+        GFG_CE["COMPILATION ERROR"]
+        GFG_CALC["CALCULATED"]
+    end
+
+    subgraph Praxis["Praxis Normalized"]
+        P_AC["ACCEPTED"]
+        P_WA["WRONG_ANSWER"]
+        P_TLE["TIME_LIMIT_EXCEEDED"]
+        P_MLE["MEMORY_LIMIT_EXCEEDED"]
+        P_RE["RUNTIME_ERROR"]
+        P_CE["COMPILATION_ERROR"]
+        P_SKIP["NOT a terminal state"]
+    end
+
+    LC_AC --> P_AC
+    LC_WA --> P_WA
+    LC_TLE --> P_TLE
+    LC_MLE --> P_MLE
+    LC_RE --> P_RE
+    LC_CE --> P_CE
+
+    HR_AC --> P_AC
+    HR_WA --> P_WA
+    HR_TLE --> P_TLE
+    HR_RE --> P_RE
+    HR_CE --> P_CE
+
+    GFG_S --> P_AC
+    GFG_W --> P_WA
+    GFG_TLE --> P_TLE
+    GFG_RE --> P_RE
+    GFG_CE --> P_CE
+    GFG_CALC --> P_SKIP

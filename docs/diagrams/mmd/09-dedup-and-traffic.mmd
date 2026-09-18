@@ -1,0 +1,37 @@
+flowchart TD
+    subgraph Dedup["Deduplication Levels"]
+        L1["Level 1: Platform Submission ID\ne.g. hackerrank:483087426"]
+        L2["Level 2: Submission Fingerprint\nplatform + problem + code + context"]
+        L3["Level 3: Temporal Correlation\nsame tab + platform + problem + code\nwithin short time window"]
+    end
+
+    subgraph Traffic["Network Traffic Classifier"]
+        FETCH["fetch / XHR intercepted"]
+        CLASSIFY{"Relevant\nsubmission traffic?"}
+        YES["Parse as NetworkEvidence"]
+        NO["Ignore"]
+        
+        TYPES["SUBMISSION_REQUEST\nSUBMISSION_RESPONSE\nRESULT_REQUEST\nRESULT_RESPONSE\nPROBLEM_REQUEST\nIRRELEVANT"]
+    end
+
+    subgraph Queue["Persistent Queue + Bounded Workers"]
+        STORE["chrome.storage.local\nsurvives SW restarts"]
+        W["Bounded Workers\nmax 3 concurrent"]
+        RETRY{"API available?"}
+        SUCCESS["Remove from queue"]
+        FAIL["Retry with backoff"]
+    end
+
+    FETCH --> CLASSIFY
+    CLASSIFY -->|Yes| YES
+    CLASSIFY -->|No| NO
+    YES --> TYPES
+
+    L1 --> L2
+    L2 --> L3
+
+    STORE --> W
+    W --> RETRY
+    RETRY -->|Yes| SUCCESS
+    RETRY -->|No| FAIL
+    FAIL --> STORE

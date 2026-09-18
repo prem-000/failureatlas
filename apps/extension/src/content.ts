@@ -1,708 +1,199 @@
-import {
-  SubmissionEvent,
-  CodeDiff,
-  ProblemMetadata,
-  SubmissionStatus,
-  ProblemDifficulty
-} from './types';
+import { PlatformRouter } from './adapters/base/router';
+import { LeetCodeAdapter } from './adapters/leetcode/adapter';
+import { HackerRankAdapter } from './adapters/hackerrank/adapter';
+import { GFGAdapter } from './adapters/geeksforgeeks/adapter';
+import { SubmissionContextManager } from './state/submission-context';
+import { SnapshotBuffer } from './capture/snapshot-buffer';
+import { EvidenceMerger } from './capture/evidence-merger';
+import { SubmissionCorrelator } from './capture/submission-correlator';
+import { DeduplicationEngine } from './state/dedup';
+import { LifecycleManager } from './state/lifecycle-manager';
+import type { CanonicalSubmissionEvent, ProblemEvidence } from './adapters/base/types';
+import type { SubmissionStatus } from './types';
 
-// Track last-sent event & cached code on window to persist across DOM changes
-interface CustomWindow extends Window {
-  __fa_lastSentKey?: string;
-  __fa_lastSentTime?: number;
-  __fa_cachedCode?: string;
-  __fa_attemptCount?: number; // persist attempts across re-activations
-}
-const customWindow = window as unknown as CustomWindow;
+// Multi-adapter orchestrator
+class PraxisCollector {
+  private router = new PlatformRouter();
+  private contextManager = new SubmissionContextManager();
+  private snapshotBuffer = new SnapshotBuffer();
+  private correlator = new SubmissionCorrelator();
+  private dedupEngine = new DeduplicationEngine();
 
-// Simple string hash (djb2) for dedup key
-function hashCode(str: string): string {
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
-  return (h >>> 0).toString(36);
-}
-
-// ─── Problem Metadata Extractor ──────────────────────────────────────────────
-class ProblemMetadataExtractor {
-  extractSlugFromUrl(): string {
-    const problemMatch = window.location.pathname.match(/\/problems\/([^/]+)/);
-    const contestMatch = window.location.pathname.match(/\/contest\/[^/]+\/problems\/([^/]+)/);
-    const match = problemMatch || contestMatch;
-    return match ? match[1] : '';
-  }
-
-  extractTitle(): string {
-    const selectors = [
-      '[data-cy="question-title"]',
-      '.question-title h3',
-      '.mr-2.text-label-1',
-      'h1',
-      '.text-title-large'
-    ];
-    for (const selector of selectors) {
-      const el = document.querySelector(selector);
-      if (el?.textContent?.trim()) return el.textContent.trim();
-    }
-    const slug = this.extractSlugFromUrl();
-    return slug
-      ? slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-      : 'Unknown Problem';
-  }
-
-  extractDifficulty(): ProblemDifficulty {
-    const selectors = [
-      '.text-difficulty-easy',
-      '.text-difficulty-medium',
-      '.text-difficulty-hard',
-      '[diff]',
-      '.text-olive',
-      '.text-pink'
-    ];
-    for (const selector of selectors) {
-      const el = document.querySelector(selector);
-      if (el) {
-        const text = el.textContent?.trim().toLowerCase() || '';
-        if (text.includes('easy')) return 'Easy';
-        if (text.includes('medium')) return 'Medium';
-        if (text.includes('hard')) return 'Hard';
-        const diffAttr = el.getAttribute('diff');
-        if (diffAttr === '1') return 'Easy';
-        if (diffAttr === '2') return 'Medium';
-        if (diffAttr === '3') return 'Hard';
-      }
-    }
-    if (document.querySelector('.text-difficulty-easy, .text-olive')) return 'Easy';
-    if (document.querySelector('.text-difficulty-hard, .text-pink')) return 'Hard';
-    return 'Medium';
-  }
-
-  extractTopics(): string[] {
-    const selectors = [
-      '[data-cy="topic-tag"]',
-      '.topic-tag',
-      '.css-1ynq64s a',
-      'a[href*="/tag/"]'
-    ];
-    const topicsSet = new Set<string>();
-    for (const selector of selectors) {
-      document.querySelectorAll(selector).forEach(el => {
-        const text = el.textContent?.trim();
-        if (text) topicsSet.add(text);
-      });
-    }
-    return Array.from(topicsSet).filter(Boolean).slice(0, 20);
-  }
-
-  extractAll(): ProblemMetadata {
-    return {
-      slug: this.extractSlugFromUrl(),
-      title: this.extractTitle(),
-      difficulty: this.extractDifficulty(),
-      topics: this.extractTopics(),
-      url: window.location.href
-    };
-  }
-}
-
-// ─── Code Editor Handler ──────────────────────────────────────────────────────
-class CodeEditorHandler {
-  private cachedCode = '';
-  private monitorInterval: number | null = null;
-
-  /**
-   * ✅ KEY FIX: Continuously monitor and cache the code
-   * This ensures we always have the latest code available
-   */
-  startCaching(): void {
-    if (this.monitorInterval !== null) return;
-
-    // Capture code immediately
-    this.updateCache();
-
-    // Update cache every 2 seconds (before user submits)
-    this.monitorInterval = window.setInterval(() => {
-      this.updateCache();
-    }, 2000);
-
-    console.log('[FailureAtlas] Code caching started');
-  }
-
-  stopCaching(): void {
-    if (this.monitorInterval !== null) {
-      clearInterval(this.monitorInterval);
-      this.monitorInterval = null;
-    }
-  }
-
-  private updateCache(): void {
-    const code = this.extractCode();
-    if (code && code.length > 10) {
-      this.cachedCode = code;
-      // Also cache on window for persistence across navigation
-      customWindow.__fa_cachedCode = code;
-    }
-  }
-
-  /**
-   * Extract code from Monaco or textarea
-   * This is called frequently to keep cache fresh
-   */
-  private extractCode(): string {
-    // Try Monaco API (highest priority - most reliable)
-    try {
-      const monacoModel = (window as any)?.monaco?.editor?.getModels?.()[0];
-      if (monacoModel) {
-        const value = monacoModel.getValue();
-        if (value && value.length > 10) {
-          return value;
-        }
-      }
-    } catch (e) {
-      // Monaco not ready, fall through
-    }
-
-    // Try Monaco DOM lines
-    try {
-      const lines = document.querySelectorAll('.monaco-editor .view-line');
-      if (lines.length > 0) {
-        const code = Array.from(lines)
-          .map(line => line.textContent || '')
-          .join('\n');
-        if (code && code.length > 10) {
-          return code;
-        }
-      }
-    } catch (e) {
-      // Fall through
-    }
-
-    // Try textarea elements (various selectors)
-    const textareaSelectors = [
-      'textarea.inputarea',
-      '.monaco-editor textarea',
-      '[data-cy="code-editor"] textarea',
-      '#editor textarea',
-      '.CodeMirror textarea'
-    ];
-
-    for (const selector of textareaSelectors) {
-      try {
-        const textarea = document.querySelector(selector) as HTMLTextAreaElement | null;
-        if (textarea?.value && textarea.value.length > 10) {
-          return textarea.value;
-        }
-      } catch (e) {
-        // Continue to next selector
-      }
-    }
-
-    // Last resort: try finding any contenteditable div with code
-    try {
-      const contentEditable = document.querySelector('[contenteditable="true"]');
-      if (contentEditable) {
-        const code = contentEditable.textContent || '';
-        if (code && code.length > 10) {
-          return code;
-        }
-      }
-    } catch (e) {
-      // Fall through
-    }
-
-    return '';
-  }
-
-  /**
-   * Get cached code - use this when building submission event
-   */
-  getCachedCode(): string {
-    // First try the instance cache
-    if (this.cachedCode && this.cachedCode.length > 10) {
-      return this.cachedCode;
-    }
-    // Fall back to window cache
-    if (customWindow.__fa_cachedCode && customWindow.__fa_cachedCode.length > 10) {
-      return customWindow.__fa_cachedCode;
-    }
-    return '';
-  }
-
-  /**
-   * Public method to update cache immediately (called on submit button click)
-   */
-  updateCacheNow(): void {
-    this.updateCache();
-  }
-
-  reset(): void {
-    this.stopCaching();
-    this.cachedCode = '';
-    customWindow.__fa_cachedCode = '';
-  }
-}
-
-// ─── Code Evolution Tracker ──────────────────────────────────────────────────
-interface CodeSnapshot {
-  timestamp: number;
-  code: string;
-  lineCount: number;
-  charCount: number;
-}
-
-class CodeEvolutionTracker {
-  private codeHistory: CodeSnapshot[] = [];
-  private lastCode = '';
-
-  captureSnapshot(code: string): void {
-    if (!code || code === this.lastCode || code.length < 10) return;
-
-    this.codeHistory.push({
-      timestamp: Date.now(),
-      code: code,
-      lineCount: code.split('\n').length,
-      charCount: code.length
-    });
-
-    // Keep only last 20 snapshots
-    if (this.codeHistory.length > 20) this.codeHistory.shift();
-    this.lastCode = code;
-  }
-
-  computeDiff(oldCode: string, newCode: string): CodeDiff {
-    const oldLines = oldCode.split('\n');
-    const newLines = newCode.split('\n');
-    return {
-      timestamp: Date.now(),
-      additions: newLines.filter(line => !oldLines.includes(line)),
-      deletions: oldLines.filter(line => !newLines.includes(line)),
-      lineCount: newLines.length,
-      charCount: newCode.length
-    };
-  }
-
-  getEvolution(): CodeDiff[] {
-    const diffs: CodeDiff[] = [];
-    for (let i = 1; i < this.codeHistory.length; i++) {
-      diffs.push(this.computeDiff(this.codeHistory[i - 1].code, this.codeHistory[i].code));
-    }
-    return diffs.slice(-5);
-  }
-
-  reset(): void {
-    this.codeHistory = [];
-    this.lastCode = '';
-  }
-}
-
-// ─── Submission Monitor ──────────────────────────────────────────────────────
-interface DetectedResult {
-  status: SubmissionStatus;
-  runtime?: number;
-  memory?: number;
-  testCasesPassed?: number;
-  totalTestCases?: number;
-  failedTestCase?: string;
-}
-
-class SubmissionMonitor {
-  private observer: MutationObserver | null = null;
-  private onDetectedCallback: (result: DetectedResult) => void;
-  private lastDetectionTime = 0;
-
-  constructor(onDetected: (result: DetectedResult) => void) {
-    this.onDetectedCallback = onDetected;
-  }
-
-  extractMetrics(): { runtime?: number; memory?: number } {
-    let runtime: number | undefined;
-    let memory: number | undefined;
-
-    // Find any element whose text starts with "Runtime" / "Memory" and
-    // extract the adjoining number. Values are concatenated with no
-    // separating whitespace (e.g. "Runtime1840msBeats39.61%"), so match
-    // digits directly followed by "ms"/"MB" without requiring \s*.
-    const candidates = document.querySelectorAll('div, span, p');
-    for (const el of Array.from(candidates)) {
-      if (el.children.length > 5) continue; // skip large wrapper containers
-      const text = el.textContent?.trim() || '';
-      if (text.length > 100) continue; // skip huge blocks
-
-      if (runtime === undefined) {
-        const rMatch = text.match(/Runtime\D*(\d+)\s*ms/i);
-        if (rMatch) runtime = parseInt(rMatch[1], 10);
-      }
-      if (memory === undefined) {
-        const mMatch = text.match(/Memory\D*([\d.]+)\s*MB/i);
-        if (mMatch) memory = parseFloat(mMatch[1]);
-      }
-      if (runtime !== undefined && memory !== undefined) break;
-    }
-
-    // Fallback: scan full body text with the same anchored pattern,
-    // in case the stat is split across text nodes in a way
-    // querySelectorAll('div,span,p') text concatenation misses.
-    if (runtime === undefined || memory === undefined) {
-      const bodyText = document.body.innerText || '';
-      if (runtime === undefined) {
-        const rMatch = bodyText.match(/Runtime\D*(\d+)\s*ms/i);
-        if (rMatch) runtime = parseInt(rMatch[1], 10);
-      }
-      if (memory === undefined) {
-        const mMatch = bodyText.match(/Memory\D*([\d.]+)\s*MB/i);
-        if (mMatch) memory = parseFloat(mMatch[1]);
-      }
-    }
-
-    return {
-      runtime: runtime !== undefined && !isNaN(runtime) ? runtime : undefined,
-      memory: memory !== undefined && !isNaN(memory) ? memory : undefined
-    };
-  }
-
-  private parseSubmissionResult(node: Node): DetectedResult | null {
-    const container = node instanceof Element ? node : document.body;
-
-    const statusSelectors = [
-      '[data-cy="submission-result"]',
-      'h3',
-      '.submission-result',
-      '.result-state',
-      '.css-1jnblbv',
-      '[class*="text-green"]',
-      '[class*="text-red"]',
-      '[class*="text-yellow"]'
-    ];
-
-    let statusText: string | null = null;
-    for (const sel of statusSelectors) {
-      try {
-        const elements = container instanceof Element
-          ? [container.querySelector(sel)].filter(Boolean)
-          : Array.from(document.querySelectorAll(sel));
-
-        for (const el of elements) {
-          const text = el?.textContent?.trim();
-          if (text && this.normalizeStatus(text)) {
-            statusText = text;
-            break;
-          }
-        }
-        if (statusText) break;
-      } catch (e) {
-        // Continue
-      }
-    }
-
-    if (!statusText) return null;
-
-    const status = this.normalizeStatus(statusText);
-    if (!status) return null;
-
-    const now = Date.now();
-    if (now - this.lastDetectionTime < 3000) {
-      return null;
-    }
-    this.lastDetectionTime = now;
-
-    const { runtime, memory } = this.extractMetrics();
-
-    const bodyText = document.body.innerText || '';
-    let testCasesPassed: number | undefined;
-    let totalTestCases: number | undefined;
-    const testMatch = bodyText.match(/(\d+)\s*\/\s*(\d+)\s+test\s*cases?\s+passed/i);
-    if (testMatch) {
-      testCasesPassed = parseInt(testMatch[1], 10);
-      totalTestCases = parseInt(testMatch[2], 10);
-    }
-
-    return {
-      status,
-      runtime,
-      memory,
-      testCasesPassed,
-      totalTestCases,
-      failedTestCase: undefined
-    };
-  }
-
-  private normalizeStatus(text: string): SubmissionStatus | null {
-    const lower = text.toLowerCase().trim();
-    const STATUS_MAP: Record<string, SubmissionStatus> = {
-      'accepted': 'Accepted',
-      'wrong answer': 'Wrong Answer',
-      'time limit exceeded': 'Time Limit Exceeded',
-      'memory limit exceeded': 'Memory Limit Exceeded',
-      'runtime error': 'Runtime Error',
-      'compile error': 'Compilation Error',
-      'compilation error': 'Compilation Error'
-    };
-
-    for (const [key, val] of Object.entries(STATUS_MAP)) {
-      if (lower.includes(key)) return val;
-    }
-    return null;
-  }
-
-  attach(): void {
-    this.disconnect();
-
-    const containerSelectors = [
-      '[data-cy="submission-area"]',
-      '.result-container',
-      '#result_container'
-    ];
-
-    let target: Node = document.body;
-    for (const sel of containerSelectors) {
-      const el = document.querySelector(sel);
-      if (el) {
-        target = el;
-        break;
-      }
-    }
-
-    this.observer = new MutationObserver(mutations => {
-      for (const mutation of mutations) {
-        for (const node of Array.from(mutation.addedNodes)) {
-          const result = this.parseSubmissionResult(node);
-          if (result) {
-            this.onDetectedCallback(result);
-            return;
-          }
-        }
-        if (mutation.type === 'attributes') {
-          const result = this.parseSubmissionResult(mutation.target);
-          if (result) {
-            this.onDetectedCallback(result);
-            return;
-          }
-        }
-      }
-    });
-
-    this.observer.observe(target, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'data-status']
-    });
-
-    console.log('[FailureAtlas] Result observer attached');
-  }
-
-  disconnect(): void {
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-    }
-  }
-}
-
-// ─── FailureAtlasCollector (Orchestrator) ────────────────────────────────────
-class FailureAtlasCollector {
-  private metadataExtractor = new ProblemMetadataExtractor();
-  private codeEditor = new CodeEditorHandler();
-  private evolutionTracker = new CodeEvolutionTracker();
-  private submissionMonitor = new SubmissionMonitor(res => this.onResultDetected(res));
-
-  private sessionId = crypto.randomUUID();
+  private sessionId: string;
+  private currentProblem: ProblemEvidence | null = null;
+  private pollInterval: number | null = null;
   private attemptCount = 0;
-  private startTime = Date.now();
-  private lastSubmissionTime = 0;
-  private isActive = false;
-  private currentProblem: ProblemMetadata | null = null;
-  private submitListenerAttached = false;
 
-  activate(): void {
-    const slug = this.metadataExtractor.extractSlugFromUrl();
-    if (!slug) {
-      this.isActive = false;
-      this.submissionMonitor.disconnect();
-      this.codeEditor.stopCaching();
+  constructor() {
+    this.sessionId = this.getOrCreateSessionId();
+
+    // Register all platform adapters
+    this.router.register(new LeetCodeAdapter());
+    this.router.register(new HackerRankAdapter());
+    this.router.register(new GFGAdapter());
+  }
+
+  private getOrCreateSessionId(): string {
+    const key = '__praxis_session_id';
+    let sid = sessionStorage.getItem(key);
+    if (!sid) {
+      sid = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      try {
+        sessionStorage.setItem(key, sid);
+      } catch {}
+    }
+    return sid;
+  }
+
+  async activate(): Promise<void> {
+    const url = window.location.href;
+    const adapter = await this.router.route(url);
+
+    if (!adapter) {
+      this.stopEditorPolling();
       return;
     }
 
-    // Reset per-problem state
-    const isNewProblem = this.currentProblem?.slug !== slug;
-    if (isNewProblem) {
+    // Capture problem evidence
+    const problem = adapter.captureProblem();
+
+    // Check if problem changed (SPA navigation)
+    if (!this.currentProblem || this.currentProblem.slug !== problem.slug) {
+      console.log(`[Praxis] Problem context changed: ${this.currentProblem?.slug} -> ${problem.slug}`);
+      this.currentProblem = problem;
+      this.snapshotBuffer.clear(); // Clear snapshot buffer so old code does not contaminate
+      this.dedupEngine.reset();
       this.attemptCount = 0;
-      this.startTime = Date.now();
-      this.lastSubmissionTime = 0;
-      this.evolutionTracker.reset();
-      this.codeEditor.reset();
     }
 
-    this.isActive = true;
-    this.currentProblem = this.metadataExtractor.extractAll();
+    // Get or create isolated context for this tab and platform
+    this.contextManager.getOrCreateContext(0, adapter.platform, problem);
 
-    this.codeEditor.startCaching();
-    this.submissionMonitor.attach();
-    this.attachSubmitButtonListener();
+    // Start editor snapshot polling (2s interval, snapshot alone never triggers submit)
+    this.startEditorPolling(adapter);
 
-    console.log(`[FailureAtlas] Activated for problem: ${slug}`);
+    // Wire submit action detection
+    try {
+      adapter.detectSubmitAction((submitEvidence) => {
+        console.log(`[Praxis] Submit action detected on ${adapter.platform}`);
+        const snap = adapter.captureEditor();
+        if (snap) {
+          this.snapshotBuffer.pushSnapshot(snap.code, snap.language, snap.source);
+        }
+        this.contextManager.updateContext(0, adapter.platform, {
+          lifecycleState: 'SUBMITTED',
+          lastSubmitEvidence: submitEvidence,
+        });
+      });
+    } catch (e) {
+      console.warn(`[Praxis] Non-fatal error in detectSubmitAction on ${adapter.platform}:`, e);
+    }
+
+    // Wire result monitoring
+    try {
+      adapter.startResultMonitor((resultEvidence) => {
+        console.log(`[Praxis] Result evidence detected on ${adapter.platform}:`, resultEvidence.status);
+        this.onResultDetected(adapter.platform, resultEvidence);
+      });
+    } catch (e) {
+      console.warn(`[Praxis] Non-fatal error in startResultMonitor on ${adapter.platform}:`, e);
+    }
   }
 
-  private extractLanguage(): string {
-    const selectors = [
-      '[data-cy="lang-select"] .ant-select-selection-item',
-      '.lang-select .ant-select-selection-item',
-      'button[id*="headlessui-listbox-button"]',
-      '[class*="lang"] button'
-    ];
-    for (const selector of selectors) {
-      const el = document.querySelector(selector);
-      if (el?.textContent?.trim()) {
-        return el.textContent.trim().toLowerCase().replace(/\s+/g, '');
-      }
+  private startEditorPolling(adapter: any): void {
+    if (this.pollInterval !== null) return;
+
+    // Immediately capture
+    const initial = adapter.captureEditor();
+    if (initial) {
+      this.snapshotBuffer.pushSnapshot(initial.code, initial.language, initial.source);
     }
-    return 'python3';
+
+    // Poll every 2 seconds
+    this.pollInterval = window.setInterval(() => {
+      const snap = adapter.captureEditor();
+      if (snap) {
+        this.snapshotBuffer.pushSnapshot(snap.code, snap.language, snap.source);
+      }
+    }, 2000);
   }
 
-  private attachSubmitButtonListener(): void {
-    if (this.submitListenerAttached) return;
-    this.submitListenerAttached = true;
-
-    document.addEventListener('click', (e) => {
-      const target = e.target as Element | null;
-      if (!target) return;
-
-      const isSubmit =
-        target.closest('[data-cy="submit-code-btn"]') ||
-        target.closest('[data-e2e-locator="console-submit-button"]') ||
-        target.closest('button[class*="submit"]') ||
-        (target.tagName === 'BUTTON' && target.textContent?.trim() === 'Submit');
-
-      if (isSubmit) {
-        console.log('[FailureAtlas] Submit button clicked — monitoring for result…');
-        this.codeEditor.updateCacheNow();
-        setTimeout(() => this.submissionMonitor.attach(), 500);
-      }
-    }, true);
+  private stopEditorPolling(): void {
+    if (this.pollInterval !== null) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
   }
 
-  private async onResultDetected(result: DetectedResult): Promise<void> {
-    const traceId = Math.random().toString(36).substring(2, 10).toUpperCase();
+  private async onResultDetected(platform: any, result: any): Promise<void> {
+    const adapter = this.router.getActiveAdapter();
+    if (!adapter) return;
 
-    console.log(`[TRACE ${traceId}]\nDetected`);
+    const ctx = this.contextManager.getContext(0, platform);
+    const currentState = ctx?.lifecycleState || 'UNKNOWN';
+    const currentStatus = ctx?.currentStatus;
 
-    // ── Retry code extraction up to 5s (10 × 500ms) ──────────────────────────
-    let code = this.codeEditor.getCachedCode();
-    if (!code || code.length <= 20) {
-      console.log(`[TRACE ${traceId}]\nCode too short (${code?.length ?? 0} chars) or not ready. Retrying...`);
-      for (let attempt = 1; attempt <= 10; attempt++) {
-        await new Promise(r => setTimeout(r, 500));
-        this.codeEditor.updateCacheNow();
-        code = this.codeEditor.getCachedCode();
-        console.log(`[TRACE ${traceId}]\nAttempt: ${attempt}\nLength retrieved: ${code?.length ?? 0}`);
-        if (code && code.length > 20) {
-          break;
-        }
-      }
-    }
-
-    const metricsExpected = result.status === 'Accepted';
-    if (metricsExpected && (result.runtime === undefined || result.memory === undefined)) {
-      console.log(`[TRACE ${traceId}]\nRuntime/memory missing on first read. Retrying...`);
-      for (let attempt = 1; attempt <= 15; attempt++) {
-        if (result.runtime !== undefined && result.memory !== undefined)
-          break;
-        await new Promise(r => setTimeout(r, 500));
-        const retried = this.submissionMonitor.extractMetrics();
-        if (result.runtime === undefined && retried.runtime !== undefined) {
-          result.runtime = retried.runtime;
-        }
-        if (result.memory === undefined && retried.memory !== undefined) {
-          result.memory = retried.memory;
-        }
-        console.log(`[TRACE ${traceId}]\nMetrics attempt ${attempt}: runtime=${result.runtime ?? 'still missing'}, memory=${result.memory ?? 'still missing'}`);
-      }
-      if (result.runtime === undefined || result.memory === undefined) {
-        console.warn(`[TRACE ${traceId}]\nGiving up on runtime/memory after retries — will omit from payload.`);
-      }
-    }
-
-    // ── Deduplication ─────────────────────────────────────────────────────────
-    const codeHash = hashCode(code.slice(0, 500));
-    const dedupKey = `${this.currentProblem?.slug ?? 'unknown'}-${result.status}-${codeHash}`;
-    const now = Date.now();
-    if (
-      customWindow.__fa_lastSentKey === dedupKey &&
-      now - (customWindow.__fa_lastSentTime || 0) < 30000
-    ) {
-      console.log(`[TRACE ${traceId}]\nDuplicate submission blocked (same code+status within 30s)`);
+    // Evaluate transition with terminal status protection (prevents downgrades)
+    const transition = LifecycleManager.evaluateTransition(currentState, currentStatus, result.rawStatus || result.status);
+    if (!transition.allowed) {
+      console.warn(`[Praxis] Blocked downgrade: ${transition.reason}`);
       return;
     }
-    customWindow.__fa_lastSentKey = dedupKey;
-    customWindow.__fa_lastSentTime = now;
+
+    // Update context state
+    this.contextManager.updateContext(0, platform, {
+      lifecycleState: transition.newState,
+      currentStatus: transition.newStatus || result.status,
+      lastResultEvidence: result,
+    });
+
+    // Merge evidence into canonical event
+    const problem = this.currentProblem || adapter.captureProblem();
+    const editorSnap = adapter.captureEditor();
+    const bufferSnap = this.snapshotBuffer.getLatestValid();
 
     this.attemptCount++;
 
-    const event = this.buildSubmissionEvent(result, code, traceId);
+    const canonicalEvent = EvidenceMerger.merge({
+      platform,
+      sessionId: this.sessionId,
+      problem,
+      editor: editorSnap,
+      bufferSnapshot: bufferSnap,
+      result,
+      attemptNumber: this.attemptCount,
+    });
 
-    console.log(`[TRACE ${traceId}]\nPayload Created`);
-
-    console.log(`[TRACE ${traceId}]\nSending To Background`);
-    this.sendToBackground(event, traceId);
-    this.lastSubmissionTime = now;
-  }
-
-  private buildSubmissionEvent(result: DetectedResult, preExtractedCode: string, traceId: string): SubmissionEvent {
-    const meta = this.currentProblem || this.metadataExtractor.extractAll();
-    const code = (preExtractedCode && preExtractedCode.length >= 20)
-      ? preExtractedCode
-      : this.codeEditor.getCachedCode();
-    const language = this.extractLanguage();
-    const now = Date.now();
-    const timeSinceLastSubmit = this.lastSubmissionTime > 0 ? now - this.lastSubmissionTime : 0;
-
-    if (code && code.length > 20) {
-      this.evolutionTracker.captureSnapshot(code);
+    if (!canonicalEvent) {
+      console.warn('[Praxis] Failed to assemble canonical event (no valid code).');
+      return;
     }
 
-    const event: SubmissionEvent = {
-      eventId: crypto.randomUUID(),
-      submissionTraceId: traceId,
-      sessionId: this.sessionId,
-      userId: '',
-      timestamp: now,
-      problemSlug: meta.slug,
-      problemTitle: meta.title,
-      problemDifficulty: meta.difficulty,
-      problemTopics: meta.topics,
-      problemUrl: meta.url,
-      submissionStatus: result.status,
-      submissionLanguage: language,
-      submissionCode: code,
-      runtime: result.runtime,
-      memory: result.memory,
-      testCasesPassed: result.testCasesPassed,
-      totalTestCases: result.totalTestCases,
-      failedTestCase: result.failedTestCase,
-      timeSpent: now - this.startTime,
-      attemptNumber: this.attemptCount,
-      rapidSubmission: timeSinceLastSubmit > 0 && timeSinceLastSubmit < 30000,
-      codeEvolution: this.evolutionTracker.getEvolution(),
-    };
+    // Deduplication check
+    const dedupKey = `${canonicalEvent.platform}:${canonicalEvent.problem.slug}:${canonicalEvent.submissionStatus}`;
+    if (this.dedupEngine.shouldBlockDuplicate(dedupKey, canonicalEvent.platformSubmissionId)) {
+      console.log('[Praxis] Duplicate submission blocked by dedup engine within 30s window.');
+      return;
+    }
 
-    if (event.runtime === undefined) delete (event as any).runtime;
-    if (event.memory === undefined) delete (event as any).memory;
-
-    return event;
+    console.log(`[Praxis] Sending canonical event to background (${canonicalEvent.platform}):`, canonicalEvent.eventId);
+    this.sendToBackground(canonicalEvent);
   }
 
-  private sendToBackground(event: SubmissionEvent, traceId: string): void {
+  private sendToBackground(event: CanonicalSubmissionEvent): void {
     chrome.runtime.sendMessage(
-      { type: 'SUBMISSION_EVENT', data: event },
+      { type: 'CANONICAL_SUBMISSION_EVENT', data: event },
       (response: any) => {
         if (chrome.runtime.lastError) {
-          console.error(`[TRACE ${traceId}]\nFailure Reason: ${chrome.runtime.lastError.message}`);
+          console.error('[Praxis] Runtime message error:', chrome.runtime.lastError.message);
+          this.showToast(event.submissionStatus, false);
           return;
         }
         if (response?.success) {
-          console.log(`[TRACE ${traceId}]\nStored Successfully`);
+          console.log('[Praxis] Submission stored successfully.');
           this.showToast(event.submissionStatus, true);
         } else {
-          console.error(`[TRACE ${traceId}]\nFailure Reason: ${response?.error}`);
+          console.error('[Praxis] Storage error:', response?.error);
           this.showToast(event.submissionStatus, false);
         }
       }
@@ -710,65 +201,104 @@ class FailureAtlasCollector {
   }
 
   private showToast(status: SubmissionStatus, success: boolean): void {
-    const existing = document.getElementById('fa-toast');
+    const id = '__praxis_toast';
+    const existing = document.getElementById(id);
     if (existing) existing.remove();
 
-    const isAccepted = status === 'Accepted';
     const toast = document.createElement('div');
-    toast.id = 'fa-toast';
+    toast.id = id;
+
+    const bg = success ? 'rgba(16,185,129,0.95)' : 'rgba(239,68,68,0.95)';
+    const icon = success ? '✓' : '✗';
+
     toast.style.cssText = `
-      position: fixed; bottom: 24px; right: 24px; z-index: 999999;
-      padding: 10px 16px; border-radius: 10px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 13px; font-weight: 600; color: #fff;
-      background: ${isAccepted ? 'rgba(34,197,94,0.92)' : 'rgba(255,95,82,0.92)'};
-      backdrop-filter: blur(8px); box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      display: flex; align-items: center; gap: 8px;
-      animation: fa-slide-in 0.3s ease;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      background: ${bg};
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      opacity: 0;
+      transform: translateY(8px);
     `;
-    toast.innerHTML = `
-      <style>@keyframes fa-slide-in { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }</style>
-      <span style="font-size:16px">${success ? '✅' : '📊'}</span>
-      <span>FailureAtlas ${success ? 'captured' : 'queued'}</span>
-    `;
+
+    toast.innerHTML = `<span>${icon}</span><span>Praxis: ${status} captured</span>`;
     document.body.appendChild(toast);
-    setTimeout(() => toast?.remove(), 3500);
+
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+    });
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(8px)';
+      setTimeout(() => toast.remove(), 350);
+    }, 3500);
   }
 }
 
-// ─── Bootstrap ────────────────────────────────────────────────────────────────
-const collector = new FailureAtlasCollector();
+// ─── SPA Navigation & Bootstrap ────────────────────────────────────────────────
+const collector = new PraxisCollector();
 
-function activate() {
-  collector.activate();
+let lastUrl = window.location.href;
+
+function bootstrap(): void {
+  collector.activate().catch(err => console.error('[Praxis] Activation failed:', err));
 }
+
+// 1. Poll URL changes for SPAs (React Router, Next.js, etc.)
+window.setInterval(() => {
+  if (window.location.href !== lastUrl) {
+    console.log(`[Praxis] URL changed detected via poll: ${lastUrl} -> ${window.location.href}`);
+    lastUrl = window.location.href;
+    bootstrap();
+  }
+}, 800);
+
+// 2. Listen to background script webNavigation events
+try {
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg?.type === 'TAB_URL_CHANGED' && msg.url) {
+      if (msg.url !== lastUrl) {
+        console.log(`[Praxis] URL changed detected via background: ${lastUrl} -> ${msg.url}`);
+        lastUrl = msg.url;
+        bootstrap();
+      }
+    }
+  });
+} catch (e) {}
+
+// 3. Patch pushState and replaceState in case of same-world calls
+const origPushState = history.pushState.bind(history);
+history.pushState = (...args: Parameters<typeof history.pushState>) => {
+  origPushState(...args);
+  window.dispatchEvent(new Event('locationchange'));
+};
+
+const origReplaceState = history.replaceState.bind(history);
+history.replaceState = (...args: Parameters<typeof history.replaceState>) => {
+  origReplaceState(...args);
+  window.dispatchEvent(new Event('locationchange'));
+};
+
+window.addEventListener('locationchange', () => setTimeout(bootstrap, 400));
+window.addEventListener('popstate', () => setTimeout(bootstrap, 400));
+window.addEventListener('load', () => bootstrap());
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', activate);
+  document.addEventListener('DOMContentLoaded', () => bootstrap());
 } else {
-  activate();
+  bootstrap();
 }
-
-// ─── SPA Navigation ───────────────────────────────────────────────────────────
-const originalPushState = history.pushState.bind(history);
-history.pushState = (...args: Parameters<typeof history.pushState>) => {
-  originalPushState(...args);
-  window.dispatchEvent(new Event('locationchange'));
-};
-
-const originalReplaceState = history.replaceState.bind(history);
-history.replaceState = (...args: Parameters<typeof history.replaceState>) => {
-  originalReplaceState(...args);
-  window.dispatchEvent(new Event('locationchange'));
-};
-
-window.addEventListener('locationchange', () => setTimeout(activate, 1000));
-window.addEventListener('popstate', () => setTimeout(activate, 1000));
-
-// ─── Message Handler ──────────────────────────────────────────────────────────
-chrome.runtime.onMessage.addListener((message: any, _sender, sendResponse) => {
-  if (message.type === 'PING') {
-    sendResponse({ pong: true });
-  }
-  return false;
-});

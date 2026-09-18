@@ -38,7 +38,8 @@ model User {
 
 model Problem {
   id               String                @id @default(cuid())
-  slug             String                @unique
+  platform         String                @default("leetcode")
+  slug             String
   title            String
   difficulty       String
   topics           String[]
@@ -48,20 +49,23 @@ model Problem {
   rootCauseHistory RootCauseOccurrence[]
   submissions      SubmissionEvent[]
 
+  @@unique([platform, slug])
   @@map("problems")
 }
 
 model SubmissionEvent {
-  id                String            @id @default(cuid())
-  userId            String
-  problemId         String
-  eventId           String            @unique
-  submissionTraceId String?
-  submissionHash    String?           @unique
-  sessionId         String
-  timestamp         DateTime
-  status            String
-  language          String
+  id                   String            @id @default(cuid())
+  platform             String            @default("leetcode")
+  platformSubmissionId String?
+  userId               String
+  problemId            String
+  eventId              String            @unique
+  submissionTraceId    String?
+  submissionHash       String?           @unique
+  sessionId            String
+  timestamp            DateTime
+  status               String
+  language             String
   code              String
   runtime           Int?
   memory            Int?

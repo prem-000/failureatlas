@@ -1,0 +1,40 @@
+flowchart LR
+    subgraph Adapter["Platform Adapter"]
+        EDIT["Editor\nCapture"]
+        NET["Network\nIntercept"]
+        DOMM["DOM\nObserver"]
+        SUBMIT["Submit\nDetection"]
+        RESULT["Result\nMonitor"]
+        PROB["Problem\nExtractor"]
+    end
+
+    subgraph Buffer["Snapshot Buffer"]
+        SNAP["Sliding Window\nlatest N snapshots"]
+    end
+
+    subgraph Merger["Evidence Merger"]
+        CODE_P["Code Priority\n1. Network payload\n2. Editor snapshot\n3. Buffer fallback\n4. DOM fallback"]
+        ID_P["Submission ID\n1. Network response\n2. Result evidence\n3. Platform fallback"]
+        PROB_P["Problem Identity\n1. Adapter metadata\n2. URL parse\n3. DOM extraction"]
+        VERD_P["Verdict\n1. Result evidence\n2. Network result\n3. DOM result"]
+    end
+
+    CANONICAL["Canonical\nSubmission Event"]
+
+    EDIT --> SNAP
+    SNAP --> CODE_P
+    NET --> CODE_P
+    NET --> ID_P
+    NET --> VERD_P
+    DOMM --> CODE_P
+    DOMM --> PROB_P
+    DOMM --> VERD_P
+    SUBMIT --> CANONICAL
+    RESULT --> VERD_P
+    RESULT --> ID_P
+    PROB --> PROB_P
+
+    CODE_P --> CANONICAL
+    ID_P --> CANONICAL
+    PROB_P --> CANONICAL
+    VERD_P --> CANONICAL
