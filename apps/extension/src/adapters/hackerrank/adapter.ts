@@ -20,6 +20,7 @@ export class HackerRankAdapter extends PlatformAdapter {
   private resultObserver: MutationObserver | null = null;
   private lastTerminalStatus: SubmissionStatus | null = null;
   private lastDetectionTime = 0;
+  private lastResponse: any = null;
 
   matches(url: string): boolean {
     return (
@@ -163,15 +164,40 @@ export class HackerRankAdapter extends PlatformAdapter {
     return '';
   }
 
-  captureProblem(): ProblemEvidence {
-    const slug = this.extractSlugFromUrl();
-    const title = this.extractTitle(slug);
+  captureProblem(response?: any): ProblemEvidence {
+    const res = response || this.lastResponse;
+
+    const problemSlug =
+      res?.model?.slug ||
+      res?.model?.challenge_slug ||
+      res?.slug ||
+      res?.challenge_slug ||
+      (typeof location !== 'undefined'
+        ? location.pathname.match(/\/challenges\/([^/]+)\/problem/)?.[1] ||
+          location.pathname.match(/\/challenges\/([^/?#]+)/)?.[1]
+        : undefined) ||
+      'hackerrank-challenge';
+
+    const problemTitle =
+      res?.model?.name ||
+      res?.name ||
+      (typeof document !== 'undefined'
+        ? document.title.replace(/\s*\|\s*HackerRank\s*$/, "").trim()
+        : '') ||
+      problemSlug;
+
+    const problemUrl =
+      problemSlug && problemSlug !== 'hackerrank-challenge'
+        ? `https://www.hackerrank.com/challenges/${problemSlug}/problem`
+        : typeof location !== 'undefined'
+          ? location.href
+          : `https://www.hackerrank.com/challenges/${problemSlug}/problem`;
 
     return {
       platform: 'hackerrank',
-      slug: slug || 'hackerrank-challenge',
-      title: title || slug || 'HackerRank Challenge',
-      url: window.location.href, // Actual current page URL
+      slug: problemSlug,
+      title: problemTitle,
+      url: problemUrl,
     };
   }
 
@@ -217,6 +243,7 @@ export class HackerRankAdapter extends PlatformAdapter {
 
       if (event.data.type === 'FA_HACKERRANK_RESULT') {
         const { submissionId, result, timestamp } = event.data;
+        this.lastResponse = result;
         const model = result?.model || result?.data || result?.submission || result || {};
 
         const rawStatus = String(model.status || model.result || 'Wrong Answer');

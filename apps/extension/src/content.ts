@@ -148,7 +148,8 @@ class PraxisCollector {
     });
 
     // Merge evidence into canonical event
-    const problem = this.currentProblem || adapter.captureProblem();
+    const problem = adapter.captureProblem();
+    this.currentProblem = problem;
     const editorSnap = adapter.captureEditor();
     const bufferSnap = this.snapshotBuffer.getLatestValid();
 

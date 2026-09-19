@@ -28,18 +28,27 @@ const TIMEOUT_MS = 1500;
  */
 export function executeJS(code: string, input: unknown): ExecutionResult {
   try {
-    // Extract function name from common patterns:
-    // "function twoSum(...)" / "var twoSum = function(...)" / "const twoSum = (...)"
+    // Extract function name and parameters from common patterns:
+    // "function twoSum(nums, target)" / "const twoSum = function(nums, target)"
     const fnMatch =
-      code.match(/function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/) ||
-      code.match(/(?:var|let|const)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?:function|\()/);
+      code.match(/function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(([^)]*)\)/) ||
+      code.match(/(?:var|let|const)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?:function|\()\s*\(([^)]*)\)/);
 
     const fnName = fnMatch?.[1] ?? 'solution';
+    const rawParams = fnMatch?.[2] ?? '';
+    const paramsList = rawParams.split(',').map(s => s.trim()).filter(Boolean);
+    const expectedParamCount = paramsList.length;
 
     // Build the invocation expression from input shape
     let callExpr: string;
     if (Array.isArray(input)) {
-      callExpr = `${fnName}(${input.map(x => JSON.stringify(x)).join(', ')})`;
+      // If the function takes more than 1 argument and the input array matches that count, spread it.
+      // Otherwise, pass the array as the single argument.
+      if (expectedParamCount > 1 && input.length === expectedParamCount) {
+        callExpr = `${fnName}(${input.map(x => JSON.stringify(x)).join(', ')})`;
+      } else {
+        callExpr = `${fnName}(${JSON.stringify(input)})`;
+      }
     } else if (input !== null && typeof input === 'object') {
       // e.g. { nums: [1,2], target: 3 } → fn(nums, target)
       const entries = Object.entries(input as Record<string, unknown>);

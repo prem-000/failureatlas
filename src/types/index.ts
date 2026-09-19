@@ -231,12 +231,24 @@ export interface LearningResource {
 
 // Diagnosis types
 export type DiagnosisStage =
+  | 'routing'
+  | 'reading'
+  | 'classify'
+  | 'searching'
+  | 'graph'
+  | 'writing'
   | 'retrieving_embeddings'
   | 'traversing_graph'
   | 'fusing_evidence'
   | 'reasoning';
 
 export const STAGE_LABELS: Record<DiagnosisStage, string> = {
+  routing: 'Understanding your question',
+  reading: 'Reading your code',
+  classify: 'Identifying preliminary root cause',
+  searching: 'Searching similar past failures',
+  graph: 'Tracing the knowledge graph',
+  writing: 'Writing the answer',
   retrieving_embeddings: 'Searching similar past failures',
   traversing_graph: 'Traversing your knowledge graph',
   fusing_evidence: 'Building evidence context',

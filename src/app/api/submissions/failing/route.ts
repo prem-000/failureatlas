@@ -134,11 +134,68 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 4. Also fetch historical failures for problems that have subsequently been accepted
+    const resolvedFailingSubmissions = await prisma.submissionEvent.findMany({
+      where: {
+        userId,
+        status: { not: 'Accepted' },
+        problemId: { in: Array.from(acceptedProblemIds) },
+      },
+      include: {
+        problem: true,
+        failureExplanation: true,
+        diagnosis: true,
+        evidence: {
+          include: {
+            rootCauseHypotheses: true,
+          },
+        },
+      },
+      orderBy: { timestamp: 'desc' },
+      take: 50,
+    });
+
+    const seenResolvedProblemIds = new Set<string>();
+    const resolvedFailures = [];
+
+    for (const sub of resolvedFailingSubmissions) {
+      if (!sub.problem || seenResolvedProblemIds.has(sub.problemId)) continue;
+      seenResolvedProblemIds.add(sub.problemId);
+
+      const hypothesis = sub.evidence?.flatMap((e) => e.rootCauseHypotheses || [])[0];
+      const rootCause =
+        sub.failureExplanation?.rootCause ||
+        hypothesis?.name ||
+        sub.diagnosis?.primaryWeaknessId ||
+        'boundary-condition-error';
+
+      resolvedFailures.push({
+        id: sub.id,
+        submissionId: sub.id,
+        problemTitle: sub.problem.title,
+        problemSlug: sub.problem.slug,
+        category: sub.problem.topics?.[0] || 'algorithm',
+        status: sub.status,
+        language: sub.language,
+        timestamp: sub.timestamp.toISOString(),
+        passedTests: sub.testCasesPassed ?? 0,
+        totalTests: sub.totalTestCases ?? 0,
+        code: sub.code,
+        rootCause,
+        confidence: hypothesis?.confidence ? Math.round(hypothesis.confidence * 100) : 92,
+        isResolved: true,
+        evidenceItems: sub.evidence?.map((e) => e.description) || [
+          `Historical failure resolved in subsequent attempt`,
+        ],
+      });
+    }
+
     return NextResponse.json({
       success: true,
       isResolved: isTargetResolved,
       acceptedSubmission: targetAcceptedSub,
       openFailures,
+      resolvedFailures,
       acceptedSlugs: Array.from(acceptedSlugs),
     });
   } catch (error) {

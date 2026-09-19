@@ -15,6 +15,7 @@ import { deduplicateRecommendations } from '@/lib/recommendations/dedup';
 import { acquireLock, releaseLock } from '@/lib/lock';
 import { rateLimit } from '@/lib/rate-limit';
 import { delRoadmapCache } from '@/lib/cache/roadmap';
+import { generateDiagnosisV2 } from '@/lib/diagnosis/generator-v2';
 
 
 export async function OPTIONS(request: NextRequest) {
@@ -76,46 +77,67 @@ export async function POST(request: NextRequest) {
       // empty body is fine
     }
 
+    const requestId = `diag_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+    let currentStage = 'routing';
+
     if (streamRequested) {
       const stream = new TransformStream();
       const writer = stream.writable.getWriter();
       const encoder = new TextEncoder();
 
-      const sendEvent = async (event: any) => {
+      const sendSse = async (eventName: string, data: any) => {
         try {
-          await writer.write(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+          const payload = typeof data === 'object' && data !== null ? { type: eventName, ...data } : { data };
+          await writer.write(
+            encoder.encode(`event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`)
+          );
         } catch {
           // stream closed
         }
       };
 
       const onStage = async (stage: DiagnosisStage) => {
-        await sendEvent({ type: 'stage', stage });
+        currentStage = stage;
+        await sendSse('stage', { stage });
       };
 
       (async () => {
         try {
-          const result: any = await executeDiagnosisPipeline({
+          const v2Result = await generateDiagnosisV2({
             userId,
             userQuery,
-            forceRegenerate,
-            onStage,
+            onStage: onStage as any,
           });
 
-          await sendEvent({
+          await sendSse('result', {
             type: 'answer',
-            content: result.data?.analysis || result.analysis || '',
-            evidence: result.data || result,
-            data: result.data || result,
-            diagnosis: result.diagnosis,
+            content: v2Result.kind === 'code_review' ? v2Result.verdict : 'Analysis complete',
+            diagnosisV2: v2Result,
+            evidence: {
+              analysis: 'Analysis complete',
+              confidence: 90,
+              diagnosisV2: v2Result,
+            },
+            data: {
+              analysis: 'Analysis complete',
+              confidence: 90,
+              diagnosisV2: v2Result,
+            },
           });
         } catch (pipelineErr) {
-          console.error('❌ Pipeline streaming error:', pipelineErr);
-          await sendEvent({
-            type: 'error',
-            error: pipelineErr instanceof Error ? pipelineErr.message : 'Failed to generate diagnosis',
+          console.error('[diagnosis]', requestId, 'failed at', currentStage, pipelineErr);
+          await sendSse('error', {
+            requestId,
+            stage: currentStage,
+            message: pipelineErr instanceof Error ? pipelineErr.message : 'Failed to generate diagnosis',
+            retryable: true,
           });
         } finally {
+          try {
+            await sendSse('done', { requestId });
+          } catch {
+            // ignore
+          }
           try {
             await writer.close();
           } catch {
@@ -133,12 +155,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const responsePayload = await executeDiagnosisPipeline({
+    const v2Result = await generateDiagnosisV2({
       userId,
       userQuery,
-      forceRegenerate,
     });
-    return NextResponse.json(responsePayload);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        analysis: 'Analysis complete',
+        confidence: 90,
+        diagnosisV2: v2Result,
+      },
+      diagnosisV2: v2Result,
+    });
 
   } catch (error) {
     console.error('❌ POST generate diagnosis error:', error);

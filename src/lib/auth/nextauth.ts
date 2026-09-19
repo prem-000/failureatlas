@@ -114,7 +114,7 @@ async function sendGoogleWelcomeEmail(userId: string, email: string, provider: s
 }
 
 export const authOptions: AuthOptions = {
-  debug: true,
+  debug: process.env.NODE_ENV === 'development',
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || '',

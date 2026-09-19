@@ -1,18 +1,23 @@
 'use client';
+
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { type DiagnosisData, useFailureExplanation, useGenerateFailureExplanation } from '@/hooks/usePhase3Queries';
 import { FailureExplanationCard } from '@/components/intelligence/FailureExplanationCard';
-import { deduplicateRecommendations } from '@/lib/recommendations/dedup';
-import { useState, useRef, useEffect, useCallback } from 'react';
 import { DiagnosisStatusLine } from '@/components/diagnosis/DiagnosisStatusLine';
-import { useDiagnosisData, type DiagnosisMessage } from '@/hooks/useDiagnosisData';
+import { useDiagnosisData } from '@/hooks/useDiagnosisData';
+import { ChatBubbleV2 } from '@/components/diagnosis/ChatBubbleV2';
+import { SessionHistoryDropdown } from '@/components/diagnosis/SessionHistoryDropdown';
+import { ErrorLocationPanel } from '@/components/diagnosis/panels/ErrorLocationPanel';
+import { FailingTestsPanel } from '@/components/diagnosis/panels/FailingTestsPanel';
+import { ConceptBulletsPanel } from '@/components/diagnosis/panels/ConceptBulletsPanel';
+import { PastFailureTimeline } from '@/components/diagnosis/panels/PastFailureTimeline';
+import { FirstOccurrenceEmptyState } from '@/components/diagnosis/panels/FirstOccurrenceEmptyState';
+import { PlanDiagramPanel } from '@/components/diagnosis/panels/PlanDiagramPanel';
+import { SubmissionReviewPanel } from '@/components/diagnosis/panels/SubmissionReviewPanel';
+import type { QueryAwareDiagnosis } from '@/types/diagnosis-v2';
 
 type DiagnosisResult = DiagnosisData;
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-function uuid() {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   Easy: '#22c55e',
@@ -21,7 +26,6 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   Unknown: '#71717a',
 };
 
-// ─── Similarity Badge ──────────────────────────────────────────────────────────
 function SimilarityBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
   return (
@@ -34,7 +38,7 @@ function SimilarityBar({ value }: { value: number }) {
   );
 }
 
-// ─── Evidence Panel ────────────────────────────────────────────────────────────
+// ─── Evidence Panel (Legacy Fallback) ──────────────────────────────────────────
 function EvidencePanel({ result }: { result: DiagnosisResult | null }) {
   if (!result) {
     return (
@@ -42,7 +46,7 @@ function EvidencePanel({ result }: { result: DiagnosisResult | null }) {
         <span style={{ fontSize: 40 }}>🔬</span>
         <span style={{ color: '#71717a', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>RAG Evidence</span>
         <span style={{ color: '#3f3f46', fontSize: 12, textAlign: 'center', lineHeight: 1.6 }}>
-          Ask a question about your failures to see retrieved similar cases and evidence used in the diagnosis.
+          Ask a question or paste code to see retrieved similar cases and evidence used in the diagnosis.
         </span>
       </div>
     );
@@ -68,29 +72,6 @@ function EvidencePanel({ result }: { result: DiagnosisResult | null }) {
           </span>
         </div>
       </div>
-
-      {/* Reasoning Chain */}
-      {result.reasoningChain?.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10, color: '#71717a', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>
-            Reasoning Chain
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {result.reasoningChain.map((step, i) => (
-              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{
-                  width: 20, height: 20, borderRadius: '50%', background: '#1f1f1f',
-                  border: '1px solid #3f3f46', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, color: '#71717a', flexShrink: 0, marginTop: 1,
-                }}>
-                  {i + 1}
-                </div>
-                <span style={{ fontSize: 12, color: '#a1a1aa', lineHeight: 1.5 }}>{step}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Similar Failures */}
       {result.similarFailures?.length > 0 && (
@@ -123,78 +104,18 @@ function EvidencePanel({ result }: { result: DiagnosisResult | null }) {
           </div>
         </div>
       )}
-
-      {/* Recommendations */}
-      {(() => {
-        const dedupedRecommendations = deduplicateRecommendations(result.recommendations || []);
-        if (dedupedRecommendations.length === 0) return null;
-        return (
-          <div>
-            <div style={{ fontSize: 10, color: '#71717a', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>
-              Recommendations
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {dedupedRecommendations.map((r, i) => (
-                <div key={r.strategyId || i} style={{
-                  background: '#052e16', borderRadius: 8, padding: '10px 12px',
-                  border: '1px solid #166534',
-                }}>
-                  <div style={{ fontSize: 12, color: '#86efac', fontWeight: 600, marginBottom: 4 }}>{r.name}</div>
-                  <div style={{ fontSize: 11, color: '#4ade80', lineHeight: 1.4 }}>{r.description}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-    </div>
-  );
-}
-
-// ─── Chat Bubble ───────────────────────────────────────────────────────────────
-function ChatBubble({ msg, mounted }: { msg: DiagnosisMessage; mounted: boolean }) {
-  const isUser = msg.role === 'user';
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      alignItems: isUser ? 'flex-end' : 'flex-start',
-      gap: 4,
-    }}>
-      <div style={{
-        maxWidth: '85%', padding: '12px 16px', borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-        background: isUser ? '#ff5f52' : '#1e1e1e',
-        border: isUser ? 'none' : '1px solid #2a2a2a',
-        fontSize: 13, color: isUser ? '#fff' : '#e4e4e7', lineHeight: 1.6,
-        whiteSpace: 'pre-wrap',
-      }}>
-        {msg.content}
-      </div>
-      {!isUser && msg.elapsedMs !== undefined && (
-        <DiagnosisStatusLine
-          currentStage={null}
-          elapsedMs={msg.elapsedMs}
-          isDone={true}
-        />
-      )}
-      <span
-        suppressHydrationWarning
-        style={{ fontSize: 10, color: '#3f3f46', marginLeft: isUser ? 0 : 4, marginRight: isUser ? 4 : 0 }}
-      >
-        {mounted ? msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-      </span>
     </div>
   );
 }
 
 // ─── Quick Prompts ─────────────────────────────────────────────────────────────
 const QUICK_PROMPTS = [
-  'What is my most recurring failure pattern?',
+  'Correct answer for the last wrong submission + teach me + hidden test cases',
+  'What should I study this week?',
   'Explain my boundary condition errors',
-  'What should I practice this week?',
-  'Analyze my time complexity mistakes',
+  'Show my past failure history',
 ];
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function DiagnosisPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -203,40 +124,50 @@ export default function DiagnosisPage() {
 
   const {
     messages,
-    askQuestion,
+    entries,
+    activeId,
+    activeEntry,
+    openEntry,
     sendMessage: askDiagnosis,
     currentStage,
     elapsedMs,
+    stageTimings,
     isLoading: loading,
     lastResult,
     latestSubmissionId,
+    retryLastQuery,
+    error,
   } = useDiagnosisData();
+
+  const activeDiagnosis: QueryAwareDiagnosis | null = activeEntry?.result ?? null;
 
   const generateExplanation = useGenerateFailureExplanation();
   const [input, setInput] = useState('');
-  const [activePanel, setActivePanel] = useState<'evidence' | 'explanation'>('evidence');
+  const [activePanel, setActivePanel] = useState<'evidence' | 'explanation'>('explanation');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Fetch the explanation for the most recent failure
-  const { data: failureExplanation, isLoading: explanationLoading } = useFailureExplanation(latestSubmissionId);
+  const { data: failureExplanation, isLoading: explanationLoading } = useFailureExplanation(latestSubmissionId || undefined);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Auto-route tabs based on mode
   useEffect(() => {
-    if (latestSubmissionId) {
-      generateExplanation.mutate({ submissionId: latestSubmissionId });
+    if (activeDiagnosis?.kind === 'history') {
+      setActivePanel('evidence');
+    } else if (activeDiagnosis) {
       setActivePanel('explanation');
     }
-  }, [latestSubmissionId, generateExplanation]);
+  }, [activeDiagnosis]);
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || loading) return;
+  const sendMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
     setInput('');
-    await askDiagnosis(text.trim());
-  }, [loading, askDiagnosis]);
+    await askDiagnosis(trimmed);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -254,150 +185,385 @@ export default function DiagnosisPage() {
           .diagnosis-evidence { flex: 1 1 50% !important; border-top: 1px solid #1f1f1f !important; }
         }
       `}</style>
-    <div style={{ width: '100%', height: '100vh', background: '#131313', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <div style={{
-        padding: '14px 24px', borderBottom: '1px solid #1f1f1f',
-        display: 'flex', alignItems: 'center', gap: 12,
-        background: '#161616',
-      }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f52', boxShadow: '0 0 8px #ff5f52' }} />
-        <span style={{ fontSize: '17px', fontWeight: 700, color: '#f4f4f5', letterSpacing: '-0.02em' }}>
-          AI Diagnosis
-        </span>
-        <span style={{ fontSize: 12, color: '#52525b', marginLeft: 4 }}>Powered by RAG + Claude / GPT-4o</span>
-      </div>
-
-      {/* Split pane */}
-      <div className="diagnosis-split" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-
-        {/* Left: Chat (60%) */}
-        <div className="diagnosis-chat" style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1f1f1f' }}>
-          {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {messages.map(m => <ChatBubble key={m.id} msg={m} mounted={mounted} />)}
-            {loading && (
-              <DiagnosisStatusLine
-                currentStage={currentStage}
-                elapsedMs={elapsedMs}
-                isDone={false}
-              />
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Quick Prompts */}
-          {messages.length === 1 && (
-            <div style={{ padding: '0 24px 12px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {QUICK_PROMPTS.map(p => (
-                <button
-                  key={p}
-                  onClick={() => sendMessage(p)}
-                  style={{
-                    background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20,
-                    padding: '6px 14px', fontSize: 12, color: '#a1a1aa', cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => { (e.target as HTMLElement).style.borderColor = '#ff5f52'; (e.target as HTMLElement).style.color = '#ff5f52'; }}
-                  onMouseLeave={e => { (e.target as HTMLElement).style.borderColor = '#2a2a2a'; (e.target as HTMLElement).style.color = '#a1a1aa'; }}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Input */}
-          <div style={{ padding: '16px 24px', borderTop: '1px solid #1f1f1f', background: '#161616' }}>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', background: '#1e1e1e', border: '1px solid #2a2a2a', borderRadius: 14, padding: '10px 14px' }}>
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask about your failure patterns… (Enter to send)"
-                rows={2}
-                style={{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  color: '#f4f4f5', fontSize: 13, resize: 'none', lineHeight: 1.5,
-                  fontFamily: 'inherit',
-                }}
-              />
-              <button
-                onClick={() => sendMessage(input)}
-                disabled={loading || !input.trim()}
-                style={{
-                  background: loading || !input.trim() ? '#2a2a2a' : '#ff5f52',
-                  border: 'none', borderRadius: 10, width: 36, height: 36,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-                  transition: 'background 0.15s', flexShrink: 0,
-                  color: '#fff', fontSize: 16,
-                }}
-              >
-                ↑
-              </button>
-            </div>
-          </div>
+      <div style={{ width: '100%', height: '100vh', background: '#131313', display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <div style={{
+          padding: '16px 24px',
+          borderBottom: '1px solid #1f1f1f',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          background: '#161616',
+        }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f52', boxShadow: '0 0 8px #ff5f52' }} />
+          <span style={{ fontSize: '17px', fontWeight: 700, color: '#f4f4f5', letterSpacing: '-0.02em' }}>
+            AI Diagnosis
+          </span>
+          <span style={{ fontSize: 12, color: '#52525b', marginLeft: 4 }}>
+            Query-Aware Analysis v2.1 · Session Intelligence
+          </span>
         </div>
 
-        {/* Right: Evidence + Explanation Panel (40%) */}
-        <div className="diagnosis-evidence" style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', background: '#141414' }}>
-          {/* Tab switcher */}
-          <div style={{ padding: '0 20px', borderBottom: '1px solid #1f1f1f', display: 'flex', gap: 0 }}>
-            {(['evidence', 'explanation'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActivePanel(tab)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: activePanel === tab ? '2px solid #ff5f52' : '2px solid transparent',
-                  padding: '12px 16px',
-                  fontSize: 12,
-                  fontWeight: activePanel === tab ? 700 : 500,
-                  color: activePanel === tab ? '#f4f4f5' : '#52525b',
-                  cursor: 'pointer',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {tab === 'evidence' ? '🔬 RAG Evidence' : '🧠 AI Explanation'}
-                {tab === 'explanation' && (failureExplanation || explanationLoading) && (
-                  <span style={{ marginLeft: 6, width: 6, height: 6, borderRadius: '50%', background: '#ff5f52', display: 'inline-block', verticalAlign: 'middle' }} />
-                )}
-              </button>
-            ))}
-          </div>
+        {/* Split pane */}
+        <div className="diagnosis-split" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            {activePanel === 'evidence' && <EvidencePanel result={lastResult} />}
-            {activePanel === 'explanation' && (
-              <div style={{ height: '100%', overflowY: 'auto', padding: 16 }}>
-                {explanationLoading ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
-                    <div style={{ width: 24, height: 24, border: '2px solid #1f1f1f', borderTop: '2px solid #ff5f52', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                    <span style={{ fontSize: 13, color: '#52525b' }}>Generating explanation…</span>
-                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                  </div>
-                ) : failureExplanation ? (
-                  <FailureExplanationCard explanation={failureExplanation as any} />
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, padding: 32 }}>
-                    <span style={{ fontSize: 40 }}>🧠</span>
-                    <span style={{ color: '#71717a', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>AI Test Case Explanation</span>
-                    <span style={{ color: '#3f3f46', fontSize: 12, textAlign: 'center', lineHeight: 1.6 }}>
-                      Submit a solution on LeetCode and ask the AI to analyze it. The explanation will appear here automatically for failed submissions.
-                    </span>
-                  </div>
-                )}
+          {/* Left: Chat (55%) */}
+          <div className="diagnosis-chat" style={{ flex: '0 0 55%', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1f1f1f' }}>
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {messages.map((m) => (
+                <ChatBubbleV2
+                  key={m.id}
+                  msg={m}
+                  mounted={mounted}
+                  isActive={activeId === m.id}
+                  onOpenEntry={openEntry}
+                  onRetry={retryLastQuery}
+                />
+              ))}
+              {(loading || error) && (
+                <DiagnosisStatusLine
+                  currentStage={currentStage}
+                  elapsedMs={elapsedMs}
+                  isDone={false}
+                  stageTimings={stageTimings}
+                  error={error}
+                  onRetry={retryLastQuery}
+                />
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Quick Prompts */}
+            {messages.length === 1 && (
+              <div style={{ padding: '0 24px 12px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {QUICK_PROMPTS.map((p, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => sendMessage(p)}
+                    style={{
+                      background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20,
+                      padding: '6px 14px', fontSize: 12, color: '#a1a1aa', cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={(e) => { (e.target as HTMLElement).style.borderColor = '#ff5f52'; (e.target as HTMLElement).style.color = '#ff5f52'; }}
+                    onMouseLeave={(e) => { (e.target as HTMLElement).style.borderColor = '#2a2a2a'; (e.target as HTMLElement).style.color = '#a1a1aa'; }}
+                  >
+                    {p}
+                  </button>
+                ))}
               </div>
             )}
+
+            {/* Input */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #1f1f1f', background: '#161616' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', background: '#1e1e1e', border: '1px solid #2a2a2a', borderRadius: 14, padding: '10px 14px' }}>
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask about your failures or type: 'last wrong submission', 'what should I study'…"
+                  rows={3}
+                  style={{
+                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                    color: '#f4f4f5', fontSize: 13, resize: 'none', lineHeight: 1.5,
+                    fontFamily: 'inherit',
+                  }}
+                />
+                <button
+                  onClick={() => sendMessage(input)}
+                  disabled={loading || !input.trim()}
+                  style={{
+                    background: loading || !input.trim() ? '#2a2a2a' : '#ff5f52',
+                    border: 'none', borderRadius: 10, width: 36, height: 36,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+                    transition: 'background 0.15s', flexShrink: 0,
+                    color: '#fff', fontSize: 16,
+                  }}
+                >
+                  ↑
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Specialized Diagnostic Panels (45%) */}
+          <div className="diagnosis-evidence" style={{ flex: '0 0 45%', display: 'flex', flexDirection: 'column', background: '#141414' }}>
+            {/* Tab switcher + Session History Dropdown */}
+            <div style={{
+              padding: '0 20px', borderBottom: '1px solid #1f1f1f',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', gap: 0 }}>
+                {(['explanation', 'evidence'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActivePanel(tab)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: activePanel === tab ? '2px solid #ff5f52' : '2px solid transparent',
+                      padding: '12px 16px',
+                      fontSize: 12,
+                      fontWeight: activePanel === tab ? 700 : 500,
+                      color: activePanel === tab ? '#f4f4f5' : '#52525b',
+                      cursor: 'pointer',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {tab === 'explanation' ? '🧠 AI Explanation' : '🔬 RAG Evidence'}
+                  </button>
+                ))}
+              </div>
+
+              {/* History Dropdown */}
+              <SessionHistoryDropdown
+                entries={entries}
+                activeId={activeId}
+                onSelectEntry={openEntry}
+              />
+            </div>
+
+            {/* Panel Content Container */}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {activePanel === 'explanation' && (
+                <div className="h-full">
+                  {/* Mode 1: Code Review */}
+                  {activeDiagnosis?.kind === 'code_review' && (
+                    <div className="p-5 flex flex-col gap-4">
+                      {/* Root Cause Banner */}
+                      <div className="flex items-center justify-between pb-3 border-b border-[#222226]">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717a]">
+                            ROOT CAUSE
+                          </span>
+                          <span className="text-sm font-bold text-[#f4f4f5]">
+                            {activeDiagnosis.rootCause.name}
+                          </span>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-[#ff5f52]">
+                          {activeDiagnosis.rootCause.confidence}%
+                        </span>
+                      </div>
+
+                      <ErrorLocationPanel location={activeDiagnosis.location} />
+
+                      {activeDiagnosis.hasHistory && activeDiagnosis.concept && (
+                        <ConceptBulletsPanel concept={activeDiagnosis.concept} />
+                      )}
+
+                      <FailingTestsPanel tests={activeDiagnosis.tests} />
+                    </div>
+                  )}
+
+                  {/* Mode 2: Submission Review */}
+                  {activeDiagnosis?.kind === 'submission_review' && (
+                    <SubmissionReviewPanel review={activeDiagnosis} />
+                  )}
+
+                  {/* Mode 2B: Submission Accepted */}
+                  {activeDiagnosis?.kind === 'submission_accepted' && (
+                    <div className="p-6 flex flex-col gap-4">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 text-xs font-semibold self-start">
+                        <span>✓</span>
+                        <span>SUBMISSION ACCEPTED</span>
+                      </div>
+                      <h3 className="text-base font-bold text-[#f4f4f5]">
+                        {activeDiagnosis.problem.title}
+                      </h3>
+                      <p className="text-sm text-[#a1a1aa] leading-relaxed">
+                        {activeDiagnosis.message}
+                      </p>
+                      {(activeDiagnosis.runtime || activeDiagnosis.memory) && (
+                        <div className="flex gap-4 p-3 bg-[#18181b] border border-[#27272a] rounded-lg text-xs font-mono text-[#d4d4d8]">
+                          {activeDiagnosis.runtime && <span>Runtime: {activeDiagnosis.runtime} ms</span>}
+                          {activeDiagnosis.memory && <span>Memory: {(activeDiagnosis.memory / 1024).toFixed(1)} MB</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Mode 2C: No Submission */}
+                  {activeDiagnosis?.kind === 'no_submission' && (
+                    <div className="p-6 flex flex-col gap-4">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs font-semibold self-start">
+                        <span>ℹ</span>
+                        <span>NO SUBMISSION CAPTURED</span>
+                      </div>
+                      <h3 className="text-base font-bold text-[#f4f4f5]">
+                        No Submissions Captured Yet
+                      </h3>
+                      <p className="text-sm text-[#a1a1aa] leading-relaxed">
+                        {activeDiagnosis.message}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Mode 3: Plan */}
+                  {activeDiagnosis?.kind === 'plan' && (
+                    <PlanDiagramPanel initialPlan={activeDiagnosis} />
+                  )}
+
+                  {/* Mode 4: Explain */}
+                  {activeDiagnosis?.kind === 'explain' && (
+                    <div className="p-5 flex flex-col gap-4">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#ff5f52]">
+                        Pattern Breakdown
+                      </div>
+                      <h3 className="text-sm font-bold text-[#f4f4f5]">
+                        {activeDiagnosis.topic}
+                      </h3>
+                      <div className="flex flex-col gap-3 mt-2">
+                        {activeDiagnosis.bullets.map((b, i) => (
+                          <div key={i} className="p-3 bg-[#18181b] border border-[#27272a] rounded-lg text-xs">
+                            <div className="font-semibold text-[#f4f4f5] mb-1 flex items-center justify-between">
+                              <span>{b.label}</span>
+                              {b.evidenceIds.length > 0 && (
+                                <span className="text-[10px] text-[#71717a] font-mono">
+                                  {b.evidenceIds.length} evidence cited
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[#a1a1aa] leading-relaxed">{b.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mode 5: History */}
+                  {activeDiagnosis?.kind === 'history' && (
+                    <div className="p-6 flex flex-col gap-3">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#38bdf8]">
+                        Failure Timeline Summary
+                      </div>
+                      <p className="text-sm text-[#f4f4f5] leading-relaxed">
+                        {activeDiagnosis.summary}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setActivePanel('evidence')}
+                        className="mt-2 text-xs text-[#38bdf8] font-semibold hover:underline self-start cursor-pointer bg-transparent border-none p-0"
+                      >
+                        View all {activeDiagnosis.count} historical cases in RAG Evidence tab →
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Fallback when no v2 diagnosis available */}
+                  {!activeDiagnosis && (
+                    <div className="p-4 h-full">
+                      {explanationLoading ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
+                          <div style={{ width: 24, height: 24, border: '2px solid #1f1f1f', borderTop: '2px solid #ff5f52', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                          <span style={{ fontSize: 13, color: '#52525b' }}>Generating explanation…</span>
+                          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                        </div>
+                      ) : failureExplanation ? (
+                        <FailureExplanationCard explanation={failureExplanation as any} />
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, padding: 32 }}>
+                          <span style={{ fontSize: 40 }}>🧠</span>
+                          <span style={{ color: '#71717a', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>AI Diagnosis Ready</span>
+                          <span style={{ color: '#3f3f46', fontSize: 12, textAlign: 'center', lineHeight: 1.6 }}>
+                            Ask a question or paste your code snippet to see the error location, failing tests, and learning concepts.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activePanel === 'evidence' && (
+                <div className="h-full">
+                  {/* Code Review Mode */}
+                  {activeDiagnosis?.kind === 'code_review' && (
+                    <>
+                      {activeDiagnosis.hasHistory ? (
+                        <PastFailureTimeline
+                          headerText={activeDiagnosis.headerText}
+                          failures={lastResult?.similarFailures || []}
+                        />
+                      ) : (
+                        <FirstOccurrenceEmptyState />
+                      )}
+                    </>
+                  )}
+
+                  {/* Submission Review Mode */}
+                  {activeDiagnosis?.kind === 'submission_review' && (
+                    <PastFailureTimeline
+                      headerText={`Historical Failures on ${activeDiagnosis.problem.title}`}
+                      failures={lastResult?.similarFailures || []}
+                    />
+                  )}
+
+                  {/* History Mode */}
+                  {activeDiagnosis?.kind === 'history' && (
+                    <PastFailureTimeline
+                      headerText={activeDiagnosis.summary}
+                      failures={activeDiagnosis.timeline}
+                    />
+                  )}
+
+                  {/* Plan Mode: Topics Overview */}
+                  {activeDiagnosis?.kind === 'plan' && (
+                    <div className="p-5 flex flex-col gap-3">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#a855f7]">
+                        Plan Concepts & Focus Areas
+                      </div>
+                      <div className="flex flex-col gap-2.5">
+                        {activeDiagnosis.topics.map((topic, i) => (
+                          <div
+                            key={i}
+                            className="p-3 bg-[#18181b] border border-[#27272a] rounded-lg flex items-center justify-between text-xs"
+                          >
+                            <span className="font-semibold text-[#f4f4f5]">{topic.name}</span>
+                            <span className="text-[#a1a1aa] font-mono text-[11px]">Curated drill</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Explain Mode */}
+                  {activeDiagnosis?.kind === 'explain' && (
+                    <div className="p-5 flex flex-col gap-3">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#71717a]">
+                        Past Failures On This Cause ({activeDiagnosis.pastFailures.length})
+                      </div>
+                      <div className="flex flex-col gap-2.5">
+                        {activeDiagnosis.pastFailures.map((pf) => (
+                          <div key={pf.id} className="p-3 bg-[#18181b] border border-[#27272a] rounded-lg text-xs">
+                            <div className="flex items-center justify-between font-semibold text-[#f4f4f5]">
+                              <span>{pf.problemTitle}</span>
+                              <span className="text-[10px] text-[#71717a]">{pf.date}</span>
+                            </div>
+                            <div className="text-rose-400 text-[11px] mt-1">{pf.status}</div>
+                            {pf.snippet && (
+                              <div className="font-mono text-[10px] bg-[#121214] text-[#a1a1aa] p-1.5 rounded mt-1.5">
+                                {pf.snippet}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fallback to legacy evidence */}
+                  {!activeDiagnosis && <EvidencePanel result={lastResult} />}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </AppShell>
   );
 }

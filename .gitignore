@@ -57,3 +57,20 @@ Thumbs.db
 *.sqlite-journal
 .vercel
 .env*.local
+
+# Scratch and local migration scripts
+scripts/inspect-*
+scripts/backup-*
+scripts/compare-*
+scripts/check-schema-*
+scripts/check-local-*
+scripts/check-emb.*
+scripts/list-dbs.*
+scripts/migrate-historical-*
+scripts/test-local-*
+scripts/test-hr-*
+scripts/debug-*
+scripts/verify-migration.*
+scripts/check-responsive.*
+scripts/test-endpoints.*
+

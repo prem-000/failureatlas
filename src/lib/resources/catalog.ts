@@ -169,3 +169,133 @@ export const ROOT_CAUSE_RESOURCES: Record<RootCauseType, LearningResource[]> = {
     },
   ],
 };
+
+export const SKILL_RESOURCES: Record<string, LearningResource[]> = {
+  'binary-search': [
+    {
+      title: 'Binary Search Invariants & Template Guide',
+      type: 'docs',
+      url: 'https://cp-algorithms.com/num_methods/binary_search.html',
+      source: 'CP-Algorithms',
+    },
+    {
+      title: 'Mastering the 3 Binary Search Templates',
+      type: 'article',
+      url: 'https://leetcode.com/discuss/study-guide/786126/Python-Powerful-Ultimate-Binary-Search-Template',
+      source: 'LeetCode Discuss',
+    },
+    {
+      title: 'Binary Search Patterns and Edge Cases',
+      type: 'video',
+      url: 'https://www.youtube.com/watch?v=s4DPM8ct1pI',
+      source: 'NeetCode',
+    },
+  ],
+  'two-pointers': [
+    {
+      title: 'Two Pointers Technique for Array Problems',
+      type: 'article',
+      url: 'https://www.geeksforgeeks.org/two-pointers-technique/',
+      source: 'GeeksforGeeks',
+    },
+    {
+      title: 'Opposite-Direction and Same-Direction Pointers Invariants',
+      type: 'docs',
+      url: 'https://cp-algorithms.com/',
+      source: 'CP-Algorithms',
+    },
+  ],
+  'sliding-window': [
+    {
+      title: 'Window Invariant Mechanics & Dynamic Sizing',
+      type: 'article',
+      url: 'https://leetcode.com/discuss/study-guide/3630424/Sliding-Window-CheatSheet-with-Templates',
+      source: 'LeetCode Discuss',
+    },
+    {
+      title: 'Sliding Window Algorithm Explained with Examples',
+      type: 'video',
+      url: 'https://www.youtube.com/watch?v=jM2DHucURdA',
+      source: 'NeetCode',
+    },
+  ],
+  'dynamic-programming': [
+    {
+      title: 'Dynamic Programming: State Formulation and Transitions',
+      type: 'paper',
+      url: 'https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/',
+      source: 'MIT OCW',
+    },
+    {
+      title: 'Demystifying DP: Top-Down vs Bottom-Up Space Optimization',
+      type: 'article',
+      url: 'https://www.geeksforgeeks.org/dynamic-programming/',
+      source: 'GeeksforGeeks',
+    },
+  ],
+  'edge-case-reasoning': [
+    {
+      title: 'Edge Case Testing & Boundary Invariants in Algorithms',
+      type: 'docs',
+      url: 'https://cp-algorithms.com/num_methods/binary_search.html',
+      source: 'CP-Algorithms',
+    },
+    {
+      title: 'Testing Extremes: Empty, Single Element, and Wrap-Around Cases',
+      type: 'article',
+      url: 'https://www.geeksforgeeks.org/off-by-one-error/',
+      source: 'GeeksforGeeks',
+    },
+  ],
+  'prefix-sum': [
+    {
+      title: 'Prefix Sum Array: 1D and 2D Invariant Range Queries',
+      type: 'article',
+      url: 'https://www.geeksforgeeks.org/prefix-sum-array-implementation-applications_competitive-programming/',
+      source: 'GeeksforGeeks',
+    },
+  ],
+  'monotonic-stack': [
+    {
+      title: 'Monotonic Stack Pattern & Next Greater Element',
+      type: 'video',
+      url: 'https://www.youtube.com/watch?v=Dq_ObNwRN_A',
+      source: 'NeetCode',
+    },
+  ],
+  'tree-traversal': [
+    {
+      title: 'Tree Traversals (Inorder, Preorder, Postorder, BFS, DFS)',
+      type: 'docs',
+      url: 'https://cp-algorithms.com/graph/depth-first-search.html',
+      source: 'CP-Algorithms',
+    },
+  ],
+};
+
+export function getCuratedResourcesForSkillOrRootCause(
+  key: string,
+  resourceIds?: string[]
+): LearningResource[] {
+  const normKey = (key || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const fromSkill = SKILL_RESOURCES[normKey];
+  if (fromSkill && fromSkill.length > 0) return fromSkill;
+
+  const fromRoot = ROOT_CAUSE_RESOURCES[normKey as RootCauseType];
+  if (fromRoot && fromRoot.length > 0) return fromRoot;
+
+  // Fallback match by substring
+  for (const [sKey, resources] of Object.entries(SKILL_RESOURCES)) {
+    if (normKey.includes(sKey) || sKey.includes(normKey)) {
+      return resources;
+    }
+  }
+
+  for (const [rKey, resources] of Object.entries(ROOT_CAUSE_RESOURCES)) {
+    if (normKey.includes(rKey) || rKey.includes(normKey)) {
+      return resources;
+    }
+  }
+
+  return SKILL_RESOURCES['edge-case-reasoning'];
+}

@@ -88,6 +88,14 @@ export async function GET(request: NextRequest) {
       recentSubmissionQuery,
     ] as const);
 
+    const failures = totalSubmissions - acceptedSubmissions;
+    console.log(`[Dashboard Stats]`);
+    console.log(`userId: ${userId}`);
+    console.log(`totalSubmissions: ${totalSubmissions}`);
+    console.log(`accepted: ${acceptedSubmissions}`);
+    console.log(`failures: ${failures}`);
+    console.log(`recentSubmissions: ${recentSubmissions.length}`);
+
     const weaknesses = activeWeaknessIds.size;
     const acceptanceRate =
       totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;

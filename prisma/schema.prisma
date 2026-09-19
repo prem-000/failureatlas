@@ -32,6 +32,7 @@ model User {
   notifications          Notification[]
   emailLogs              EmailLog[]
   notificationPreference NotificationPreference?
+  replaySessions         ReplaySession[]
 
   @@map("users")
 }
@@ -84,6 +85,7 @@ model SubmissionEvent {
   networkEvidence   NetworkEvidence?
   codeEvidence      CodeEvidence?
   failureExplanation FailureExplanation?
+  replaySession      ReplaySession?
   problem           Problem           @relation(fields: [problemId], references: [id], onDelete: Cascade)
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -682,3 +684,30 @@ model NotificationPreference {
 
   @@map("notification_preferences")
 }
+
+model ReplaySession {
+  id              String           @id @default(cuid())
+  userId          String
+  submissionId    String           @unique
+  problemId       String
+  status          String           @default("active") // 'active' | 'resolved'
+  currentLevel    Int              @default(1)
+  hintLevel       Int              @default(0)
+  analysisVersion String           @default("v1")
+  failureEvidence Json             @default("{}")
+  targetedTests   Json             @default("[]")
+  conditionFlow   Json             @default("[]")
+  hints           Json             @default("[]")
+  traceData       Json?
+  reasoningState  Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submission      SubmissionEvent  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([problemId])
+  @@map("replay_sessions")
+}
+

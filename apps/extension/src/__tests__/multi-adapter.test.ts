@@ -190,4 +190,74 @@ describe('Praxis Multi-Adapter Intelligence Tests', () => {
       }).not.toThrow();
     });
   });
+
+  describe('HackerRank Problem Metadata Extraction & Normalization', () => {
+    it('prefers response.model.name and response.model.slug when available', () => {
+      const adapter = new HackerRankAdapter();
+      const mockResponse = {
+        model: {
+          name: 'Arrays - DS',
+          slug: 'arrays-ds',
+          challenge_slug: 'arrays-ds',
+          status: 'Accepted'
+        }
+      };
+
+      const problem = adapter.captureProblem(mockResponse);
+      expect(problem.title).toBe('Arrays - DS');
+      expect(problem.slug).toBe('arrays-ds');
+      expect(problem.url).toBe('https://www.hackerrank.com/challenges/arrays-ds/problem');
+    });
+
+    it('falls back to URL and document.title when response is not provided', () => {
+      const adapter = new HackerRankAdapter();
+      // Set location and document title
+      delete (window as any).location;
+      (window as any).location = new URL('https://www.hackerrank.com/challenges/arrays-ds/problem?isFullScreen=true');
+      document.title = 'Arrays - DS | HackerRank';
+
+      const problem = adapter.captureProblem();
+      expect(problem.title).toBe('Arrays - DS');
+      expect(problem.slug).toBe('arrays-ds');
+      expect(problem.url).toBe('https://www.hackerrank.com/challenges/arrays-ds/problem');
+    });
+
+    it('produces normalized canonical submission with all required fields', () => {
+      const adapter = new HackerRankAdapter();
+      const mockResponse = {
+        model: {
+          name: 'Arrays - DS',
+          slug: 'arrays-ds',
+          challenge_slug: 'arrays-ds',
+          status: 'Accepted'
+        }
+      };
+
+      const problem = adapter.captureProblem(mockResponse);
+      const canonical = EvidenceMerger.merge({
+        platform: 'hackerrank',
+        sessionId: 'session-hr-test',
+        problem,
+        bufferSnapshot: {
+          code: 'def reverseArray(a):\n    return a[::-1]',
+          language: 'python3',
+          source: 'buffer',
+          timestamp: Date.now()
+        },
+        result: {
+          status: 'Accepted',
+          rawStatus: 'Accepted',
+          timestamp: Date.now()
+        }
+      });
+
+      expect(canonical).not.toBeNull();
+      expect(canonical?.problem.title).toBe('Arrays - DS');
+      expect(canonical?.problem.slug).toBe('arrays-ds');
+      expect(canonical?.problem.url).toBe('https://www.hackerrank.com/challenges/arrays-ds/problem');
+      expect(canonical?.submissionStatus).toBe('Accepted');
+      expect(canonical?.language).toBe('python3');
+      expect(canonical?.code).toBe('def reverseArray(a):\n    return a[::-1]');
+    });
+  });
 });
