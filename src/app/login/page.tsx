@@ -76,7 +76,6 @@ export default function LoginPage() {
 
         .login-layout-wrapper {
           width: 100%;
-          max-width: 1120px;
           margin: 0 auto;
           display: flex;
           flex-direction: column;
@@ -87,25 +86,31 @@ export default function LoginPage() {
           z-index: 2;
         }
 
-        /* Desktop & Laptop layout (>= 1024px) */
-        @media (min-width: 1024px) {
+        /* Large Desktop (>= 1536px) */
+        @media (min-width: 1536px) {
           .login-layout-wrapper {
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
-            gap: clamp(36px, 5vw, 72px);
+            max-width: 1520px;
+            gap: clamp(48px, 5vw, 84px);
+            padding: 0 24px;
           }
           .illustration-section {
-            flex: 1.15;
-            max-width: 580px;
+            flex: 1 1 0%;
+            width: 100%;
+            max-width: 980px;
             display: flex !important;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             animation: fadeUp 0.6s ease forwards;
           }
+          .illustration-card-frame {
+            width: 100%;
+          }
           .form-section {
-            flex: 0.85;
+            flex: 0 0 420px;
             max-width: 420px;
             width: 100%;
             animation: fadeUp 0.5s ease forwards;
@@ -115,14 +120,108 @@ export default function LoginPage() {
           }
         }
 
-        /* Mobile & Tablet layout (< 1024px) */
-        @media (max-width: 1023px) {
+        /* Desktop & Laptop (1280px to 1535px) */
+        @media (min-width: 1280px) and (max-width: 1535px) {
           .login-layout-wrapper {
-            max-width: 430px;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1340px;
+            gap: clamp(36px, 4vw, 64px);
+            padding: 0 20px;
+          }
+          .illustration-section {
+            flex: 1 1 0%;
+            width: 100%;
+            max-width: 840px;
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeUp 0.6s ease forwards;
+          }
+          .illustration-card-frame {
+            width: 100%;
+          }
+          .form-section {
+            flex: 0 0 410px;
+            max-width: 410px;
+            width: 100%;
+            animation: fadeUp 0.5s ease forwards;
+          }
+          .mobile-brand-header {
+            display: none !important;
+          }
+        }
+
+        /* Laptop & Small Desktop (1024px to 1279px) */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+          .login-layout-wrapper {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1140px;
+            gap: 36px;
+            padding: 0 16px;
+          }
+          .illustration-section {
+            flex: 1 1 0%;
+            width: 100%;
+            max-width: 660px;
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeUp 0.6s ease forwards;
+          }
+          .illustration-card-frame {
+            width: 100%;
+          }
+          .form-section {
+            flex: 0 0 390px;
+            max-width: 390px;
+            width: 100%;
+            animation: fadeUp 0.5s ease forwards;
+          }
+          .mobile-brand-header {
+            display: none !important;
+          }
+        }
+
+        /* Tablet (768px to 1023px) */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .login-layout-wrapper {
+            max-width: 580px;
+            gap: 28px;
           }
           .illustration-section {
             width: 100%;
-            max-width: clamp(240px, 65vw, 340px);
+            max-width: 520px;
+            margin: 0 auto;
+            animation: fadeUp 0.5s ease forwards;
+          }
+          .form-section {
+            width: 100%;
+            max-width: 420px;
+            animation: fadeUp 0.6s ease forwards;
+          }
+          .desktop-illustration-footer {
+            display: none !important;
+          }
+          .desktop-brand-header {
+            display: none !important;
+          }
+        }
+
+        /* Mobile (< 768px) */
+        @media (max-width: 767px) {
+          .login-layout-wrapper {
+            max-width: 430px;
+            gap: 20px;
+          }
+          .illustration-section {
+            width: 100%;
+            max-width: 380px;
             margin: 0 auto;
             animation: fadeUp 0.5s ease forwards;
           }
@@ -136,6 +235,13 @@ export default function LoginPage() {
           }
           .desktop-brand-header {
             display: none !important;
+          }
+        }
+
+        /* Small Mobile (< 480px) */
+        @media (max-width: 479px) {
+          .illustration-section {
+            max-width: 100%;
           }
         }
 
@@ -208,13 +314,13 @@ export default function LoginPage() {
                 style={{
                   position: 'relative',
                   zIndex: 1,
-                  maxWidth: '100%',
+                  width: '100%',
                 }}
               />
             </div>
 
             {/* Desktop-only subtle brand tagline under illustration */}
-            <div className="desktop-illustration-footer" style={{ marginTop: 24, textAlign: 'center', maxWidth: 440 }}>
+            <div className="desktop-illustration-footer" style={{ marginTop: 20, textAlign: 'center', maxWidth: 580 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc', letterSpacing: '-0.01em' }}>
                 Competitive Programming Failure Intelligence
               </p>
