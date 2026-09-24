@@ -307,13 +307,11 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Left Column (Desktop) / Second Item (Mobile): Animated SVG Illustration */}
+          {/* Left Column (Desktop) / Second Item (Mobile): Praxis Illustration */}
           <div className="illustration-section">
             <div className="illustration-card-frame">
               <PraxisLoginIllustration
                 style={{
-                  position: 'relative',
-                  zIndex: 1,
                   width: '100%',
                 }}
               />
