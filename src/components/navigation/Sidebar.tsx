@@ -28,6 +28,7 @@ const MOBILE_NAV_ITEMS = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/problems',  icon: ListChecks,      label: 'Problems'   },
   { href: '/graph',     icon: GitFork,          label: 'Graph'      },
+  { href: '/diagnosis', icon: Stethoscope,      label: 'Diagnosis'  },
   { href: '/workspace', icon: BookOpen,         label: 'Workspace'  },
   { href: '/settings',  icon: Settings,         label: 'Settings'   },
 ];
@@ -143,16 +144,17 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
             left: 0;
             right: 0;
             z-index: 100;
-            background: rgba(13, 13, 15, 0.92);
+            background: rgba(13, 13, 15, 0.94);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255, 255, 255, 0.07);
-            height: calc(64px + env(safe-area-inset-bottom, 0px));
-            padding: 0 2px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            height: calc(62px + env(safe-area-inset-bottom, 0px));
+            padding: 0 4px;
             padding-bottom: env(safe-area-inset-bottom, 0px);
             align-items: center;
             justify-content: space-around;
             animation: slide-up-nav 0.3s ease;
+            box-sizing: border-box;
           }
         }
 
@@ -161,23 +163,23 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 3px;
-          flex: 1;
+          gap: 2px;
+          flex: 1 1 0;
+          min-width: 0;
           height: 100%;
-          border-radius: 12px;
+          border-radius: 10px;
           text-decoration: none;
-          color: #52525b;
-          font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 0.02em;
+          color: #71717a;
           transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
-          min-height: 44px;
-          min-width: 44px;
           border: none;
           background: transparent;
           cursor: pointer;
           -webkit-tap-highlight-color: transparent;
           position: relative;
+          padding: 4px 1px 2px 1px;
+        }
+        .mobile-tab-item:hover {
+          color: #e4e4e7;
         }
         .mobile-tab-item.active {
           color: #ff5f52;
@@ -188,7 +190,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           top: 0;
           left: 50%;
           transform: translateX(-50%);
-          width: 28px;
+          width: 24px;
           height: 2px;
           border-radius: 0 0 2px 2px;
           background: #ff5f52;
@@ -198,13 +200,43 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
           background: rgba(255, 255, 255, 0.04);
         }
 
+        .mobile-tab-label {
+          font-size: 10px;
+          font-weight: 500;
+          line-height: 1.15;
+          letter-spacing: -0.015em;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: clip;
+          text-align: center;
+          max-width: 100%;
+          display: block;
+        }
+        .mobile-tab-item.active .mobile-tab-label {
+          font-weight: 600;
+        }
+
+        @media (max-width: 350px) {
+          .mobile-tab-bar {
+            padding: 0 1px;
+          }
+          .mobile-tab-item {
+            gap: 1px;
+            padding: 3px 0.5px 1px 0.5px;
+          }
+          .mobile-tab-label {
+            font-size: 9.5px;
+            letter-spacing: -0.025em;
+          }
+        }
+
         .mobile-tab-active-dot {
-          width: 4px;
-          height: 4px;
+          width: 3px;
+          height: 3px;
           border-radius: 50%;
           background: #ff5f52;
           box-shadow: 0 0 6px #ff5f52;
-          margin-top: 2px;
+          margin-top: 1px;
           opacity: 0;
           transition: opacity 200ms ease;
         }
@@ -326,8 +358,8 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
               className={`mobile-tab-item${active ? ' active' : ''}`}
               aria-label={label}
             >
-              <Icon size={19} strokeWidth={active ? 2.2 : 1.7} />
-              <span style={{ fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', padding: '0 4px' }}>
+              <Icon size={18} strokeWidth={active ? 2.2 : 1.7} />
+              <span className="mobile-tab-label">
                 {label}
               </span>
               <span className="mobile-tab-active-dot" aria-hidden="true" />
