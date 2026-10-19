@@ -9,7 +9,14 @@
  */
 
 import { useState } from 'react';
-import type { FailureExplanation, ExplanationEvidenceItem, ExplanationTestCase, RecurringPattern } from '@/types';
+import type {
+  FailureExplanation,
+  ExplanationEvidenceItem,
+  ExplanationTestCase,
+  RecurringPattern,
+  AIEvidenceNote,
+  RAGEvidenceItem,
+} from '@/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -256,6 +263,303 @@ function RecurringPatternsPanel({ patterns }: { patterns: RecurringPattern[] }) 
   );
 }
 
+// ─── AI Evidence Component (No-Link-First Technical Guidance) ──────────────────
+
+function AIEvidencePanel({ notes }: { notes: AIEvidenceNote[] }) {
+  if (!notes || notes.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 11, color: '#a855f7', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          🧠 AI Evidence · Technical Learning Guidance
+        </div>
+        <span style={{ fontSize: 11, color: '#71717a', fontFamily: 'monospace' }}>
+          SCORE-DRIVEN · NO-LINK-FIRST
+        </span>
+      </div>
+
+      {notes.map((note, idx) => {
+        const qualityColor =
+          note.informationQuality === 'high'
+            ? '#22c55e'
+            : note.informationQuality === 'medium'
+            ? '#f59e0b'
+            : '#ef4444';
+
+        return (
+          <div
+            key={idx}
+            style={{
+              background: '#111113',
+              borderRadius: 12,
+              border: '1px solid #27272a',
+              padding: '18px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+            }}
+          >
+            {/* 1. Topic Title and Meaningful Relevance Label */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: 17, fontWeight: 600, color: '#f4f4f5' }}>
+                {note.topic}
+              </div>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  background: `${qualityColor}18`,
+                  color: qualityColor,
+                  border: `1px solid ${qualityColor}40`,
+                  fontWeight: 600,
+                }}
+              >
+                {(note.relevanceScore * 100).toFixed(0)}% Relevance · {note.informationQuality.toUpperCase()}
+              </span>
+            </div>
+
+            {/* 2. Short Explanation */}
+            <p style={{ margin: 0, fontSize: 14, color: '#d4d4d8', lineHeight: 1.6 }}>
+              {note.shortExplanation}
+            </p>
+
+            {/* 3. Why the Concept Matters */}
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#a1a1aa', marginBottom: 4 }}>
+                Why This Concept Matters
+              </div>
+              <p style={{ margin: 0, fontSize: 13, color: '#a1a1aa', lineHeight: 1.6 }}>
+                {note.whyItMatters}
+              </p>
+            </div>
+
+            {/* 4. Connection to Current Failure */}
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#a1a1aa', marginBottom: 4 }}>
+                Connection to Current Failure
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  color: '#e4e4e7',
+                  lineHeight: 1.6,
+                  background: '#18181b',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  borderLeft: '3px solid #ff5f52',
+                }}
+              >
+                {note.connectionToCurrentFailure}
+              </p>
+            </div>
+
+            {/* 5. Key Takeaway */}
+            <div
+              style={{
+                background: 'rgba(34, 197, 94, 0.06)',
+                border: '1px solid rgba(34, 197, 94, 0.2)',
+                borderRadius: 8,
+                padding: '12px 14px',
+              }}
+            >
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                Key Takeaway
+              </div>
+              <div style={{ fontSize: 13, color: '#d4d4d8', lineHeight: 1.5 }}>
+                {note.keyTakeaway}
+              </div>
+            </div>
+
+            {/* 6. Related Topics & Supporting Evidence References */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 10,
+                paddingTop: 6,
+                borderTop: '1px solid #1f1f23',
+              }}
+            >
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#71717a' }}>Related Topics:</span>
+                {note.relatedTopics.map((rt, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      fontSize: 11,
+                      background: '#18181b',
+                      color: '#a1a1aa',
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      border: '1px solid #27272a',
+                    }}
+                  >
+                    {rt}
+                  </span>
+                ))}
+              </div>
+
+              {note.supportingEvidenceIds.length > 0 && (
+                <span style={{ fontSize: 11, color: '#52525b', fontFamily: 'monospace' }}>
+                  Evidence: {note.supportingEvidenceIds.slice(0, 2).join(', ')}
+                </span>
+              )}
+            </div>
+
+            {/* Uncertainty Note if applicable */}
+            {note.uncertaintyNote && (
+              <div
+                style={{
+                  padding: '8px 12px',
+                  background: 'rgba(245, 158, 11, 0.08)',
+                  borderRadius: 6,
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  fontSize: 12,
+                  color: '#f59e0b',
+                }}
+              >
+                ⚠️ {note.uncertaintyNote}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── RAG Evidence Component (Failure Mechanism Demonstration) ─────────────────
+
+function RAGEvidencePanel({ items }: { items: RAGEvidenceItem[] }) {
+  if (!items || items.length === 0) return null;
+
+  const TYPE_BADGES: Record<string, { label: string; color: string }> = {
+    direct_code: { label: 'Direct Code', color: '#3b82f6' },
+    test_outcome: { label: 'Test Outcome', color: '#f59e0b' },
+    graph_inference: { label: 'Graph Inference', color: '#a855f7' },
+    historical_analogy: { label: 'Historical Analogy', color: '#06b6d4' },
+    learning_catalog: { label: 'Learning Concept', color: '#22c55e' },
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 11, color: '#3b82f6', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          🔍 RAG Evidence · Failure Support
+        </div>
+        <span style={{ fontSize: 11, color: '#71717a', fontFamily: 'monospace' }}>
+          {items.length} ACCEPTED EVIDENCE ITEM{items.length === 1 ? '' : 'S'}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {items.map((ev, i) => {
+          const badge = TYPE_BADGES[ev.evidenceType] || { label: ev.evidenceType, color: '#71717a' };
+
+          return (
+            <div
+              key={i}
+              style={{
+                background: '#111113',
+                borderRadius: 10,
+                border: '1px solid #27272a',
+                padding: '14px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
+              {/* Header: Badge, Related Problem, Scores */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: 12,
+                      background: `${badge.color}15`,
+                      color: badge.color,
+                      border: `1px solid ${badge.color}40`,
+                    }}
+                  >
+                    {badge.label}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#f4f4f5' }}>
+                    {ev.relatedProblem}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#a1a1aa', background: '#18181b', padding: '2px 6px', borderRadius: 4, border: '1px solid #27272a' }}>
+                    Relevance: {(ev.retrievalRelevanceScore * 100).toFixed(0)}%
+                  </span>
+                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#a1a1aa', background: '#18181b', padding: '2px 6px', borderRadius: 4, border: '1px solid #27272a' }}>
+                    Support: {(ev.rootCauseSupportScore * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Observed Signal */}
+              <div style={{ fontSize: 12, color: '#d4d4d8', lineHeight: 1.5 }}>
+                <span style={{ color: '#71717a', fontWeight: 600 }}>Observed Signal: </span>
+                {ev.observedSignal}
+              </div>
+
+              {/* Code Evidence if present */}
+              {ev.codeEvidence && (
+                <pre
+                  style={{
+                    margin: 0,
+                    fontSize: 12,
+                    color: '#e4e4e7',
+                    background: '#18181b',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    overflowX: 'auto',
+                    fontFamily: 'monospace',
+                    border: '1px solid #27272a',
+                  }}
+                >
+                  {ev.codeEvidence}
+                </pre>
+              )}
+
+              {/* Failure Mechanism */}
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#a1a1aa',
+                  lineHeight: 1.5,
+                  background: '#141416',
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  borderLeft: `3px solid ${badge.color}`,
+                }}
+              >
+                <span style={{ color: '#f4f4f5', fontWeight: 500 }}>Mechanism: </span>
+                {ev.failureMechanism}
+              </div>
+
+              {/* Provenance Metadata */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#52525b', fontFamily: 'monospace', paddingTop: 2 }}>
+                <span>ID: {ev.evidenceId}</span>
+                <span>Provenance: {ev.provenance?.sourceType || 'system'}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 interface FailureExplanationCardProps {
@@ -267,6 +571,42 @@ export function FailureExplanationCard({ explanation, problemTitle }: FailureExp
   const [expanded, setExpanded] = useState(true);
   const verdictColor = VERDICT_COLORS[explanation.verdict] ?? '#ef4444';
   const categoryColor = CATEGORY_COLORS[explanation.rootCauseCategory] ?? '#71717a';
+
+  const resolvedAiEvidence: AIEvidenceNote[] = explanation.aiEvidence && explanation.aiEvidence.length > 0
+    ? explanation.aiEvidence
+    : [
+        {
+          topic: explanation.learningConcept || explanation.rootCause,
+          shortExplanation: explanation.logicBreakdown || explanation.reason,
+          whyItMatters: `Understanding ${explanation.rootCauseCategory} prevents recurring failures in competitive programming problems.`,
+          connectionToCurrentFailure: `Your submission failed under verdict "${explanation.verdict}": ${explanation.reason}`,
+          keyTakeaway: explanation.recommendation || 'Verify loop invariants and test boundary edge cases.',
+          relatedTopics: [explanation.rootCauseCategory, 'Invariant Verification', 'Edge Cases'],
+          relevanceScore: Math.min(1.0, Math.max(0.6, explanation.confidence / 100)),
+          supportingEvidenceIds: explanation.evidenceItems.map((_, idx) => `ev_${idx + 1}`),
+          informationQuality: explanation.confidence >= 80 ? 'high' : explanation.confidence >= 60 ? 'medium' : 'low',
+        },
+      ];
+
+  const resolvedRagEvidence: RAGEvidenceItem[] = explanation.ragEvidence && explanation.ragEvidence.length > 0
+    ? explanation.ragEvidence
+    : explanation.evidenceItems.map((item, idx) => ({
+        evidenceId: `ev_obs_${idx + 1}`,
+        relatedProblem: problemTitle || 'Current Problem',
+        observedSignal: item.label,
+        failureMechanism: explanation.reason,
+        supportedRootCause: explanation.rootCause,
+        relatedWeakness: explanation.rootCauseCategory,
+        retrievalRelevanceScore: item.confirmed ? 0.95 : 0.65,
+        rootCauseSupportScore: item.confirmed ? 0.90 : 0.60,
+        evidenceType: item.source === 'diff' ? 'direct_code' : item.source === 'network' ? 'test_outcome' : 'historical_analogy',
+        provenance: {
+          sourceType: item.source,
+          sourceId: `item_${idx + 1}`,
+          retrievalTimestamp: explanation.generatedAt,
+          queryUsed: 'failure_explanation',
+        },
+      }));
 
   return (
     <div
@@ -440,6 +780,12 @@ export function FailureExplanationCard({ explanation, problemTitle }: FailureExp
               </div>
             </div>
           )}
+
+          {/* ── RAG Evidence (Why Failure Occurred) ────────────────── */}
+          <RAGEvidencePanel items={resolvedRagEvidence} />
+
+          {/* ── AI Evidence (Technical Learning Guidance) ───────────── */}
+          <AIEvidencePanel notes={resolvedAiEvidence} />
 
           {/* ── Learning Concept + Recommendation ────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

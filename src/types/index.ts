@@ -1,3 +1,5 @@
+export * from './diagnosis-agentic';
+
 // Submission types
 export type SubmissionStatus =
   | 'Accepted'
@@ -240,7 +242,15 @@ export type DiagnosisStage =
   | 'retrieving_embeddings'
   | 'traversing_graph'
   | 'fusing_evidence'
-  | 'reasoning';
+  | 'reasoning'
+  // Agentic RAG and verification stages
+  | 'plan'
+  | 'retrieve'
+  | 'grade'
+  | 'correct'
+  | 'generate'
+  | 'verify'
+  | 'accept';
 
 export const STAGE_LABELS: Record<DiagnosisStage, string> = {
   routing: 'Understanding your question',
@@ -253,6 +263,13 @@ export const STAGE_LABELS: Record<DiagnosisStage, string> = {
   traversing_graph: 'Traversing your knowledge graph',
   fusing_evidence: 'Building evidence context',
   reasoning: 'Reasoning through the diagnosis',
+  plan: 'Planning targeted retrieval',
+  retrieve: 'Retrieving failure evidence & concepts',
+  grade: 'Grading evidence relevance and support',
+  correct: 'Applying corrective retrieval for gaps',
+  generate: 'Synthesizing evidence-grounded diagnosis',
+  verify: 'Verifying claims and factual grounding',
+  accept: 'Diagnosis accepted and finalized',
 };
 
 export interface DiagnosisResult {
@@ -742,8 +759,15 @@ export interface FailureExplanation {
   // Historical patterns
   recurringPatterns: RecurringPattern[];
 
-  // Recommended Learning Resources
+  // Recommended Learning Resources (legacy)
   resources?: LearningResource[];
+
+  // Agentic & CRAG Evidence
+  aiEvidence?: import('./diagnosis-agentic').AIEvidenceNote[];
+  ragEvidence?: import('./diagnosis-agentic').RAGEvidenceItem[];
+  retrievalMetadata?: import('./diagnosis-agentic').AgenticRetrievalMetadata;
+  verificationMetadata?: import('./diagnosis-agentic').VerificationResult;
+  evaluationMetadata?: Record<string, unknown>;
 
   generatedAt: string; // ISO timestamp
 }

@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import {
+  aiEvidenceNoteSchema,
+  ragEvidenceItemSchema,
+  verificationResultSchema,
+  type AIEvidenceNote,
+  type RAGEvidenceItem,
+  type VerificationResult,
+  type AgenticRetrievalMetadata,
+} from './diagnosis-agentic';
 
 export type DiagnosisStageV2 =
   | 'routing'
@@ -6,7 +15,15 @@ export type DiagnosisStageV2 =
   | 'classify'
   | 'searching'
   | 'graph'
-  | 'writing';
+  | 'writing'
+  // Controlled Agentic Workflow stages
+  | 'plan'
+  | 'retrieve'
+  | 'grade'
+  | 'correct'
+  | 'generate'
+  | 'verify'
+  | 'accept';
 
 export const STAGE_LABELS_V2: Record<DiagnosisStageV2, string> = {
   routing: 'Understanding your question',
@@ -15,6 +32,13 @@ export const STAGE_LABELS_V2: Record<DiagnosisStageV2, string> = {
   searching: 'Searching similar past failures',
   graph: 'Tracing the knowledge graph',
   writing: 'Writing the answer',
+  plan: 'Planning targeted retrieval',
+  retrieve: 'Retrieving failure evidence & concepts',
+  grade: 'Grading evidence relevance and support',
+  correct: 'Applying corrective retrieval for gaps',
+  generate: 'Synthesizing evidence-grounded diagnosis',
+  verify: 'Verifying claims and factual grounding',
+  accept: 'Diagnosis accepted and finalized',
 };
 
 // Word counter utility
@@ -71,6 +95,10 @@ export const codeReviewSchema = z
     concept: codeReviewConceptSchema.optional(),
     historyIds: z.array(z.string()).default([]),
     headerText: z.string().optional(),
+    aiEvidence: z.array(aiEvidenceNoteSchema).optional(),
+    ragEvidence: z.array(ragEvidenceItemSchema).optional(),
+    retrievalMetadata: z.any().optional(),
+    verificationMetadata: verificationResultSchema.optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.hasHistory && data.concept !== undefined) {
@@ -179,6 +207,10 @@ export const submissionReviewSchema = z.object({
     .max(3),
   fixAvailable: z.boolean().default(true), // server-owned
   submissionId: z.string().optional(),
+  aiEvidence: z.array(aiEvidenceNoteSchema).optional(),
+  ragEvidence: z.array(ragEvidenceItemSchema).optional(),
+  retrievalMetadata: z.any().optional(),
+  verificationMetadata: verificationResultSchema.optional(),
 });
 
 export type SubmissionReviewDiagnosis = z.infer<typeof submissionReviewSchema>;
@@ -274,6 +306,10 @@ export const explainSchema = z.object({
       })
     )
     .default([]),
+  aiEvidence: z.array(aiEvidenceNoteSchema).optional(),
+  ragEvidence: z.array(ragEvidenceItemSchema).optional(),
+  retrievalMetadata: z.any().optional(),
+  verificationMetadata: verificationResultSchema.optional(),
 });
 
 export type ExplainDiagnosis = z.infer<typeof explainSchema>;

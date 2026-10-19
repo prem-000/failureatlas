@@ -12,6 +12,8 @@ import { prisma } from '@/lib/db/prisma';
 import { groqClient } from '@/lib/api/groq-client';
 import { routeUserMessage, type DiagnosisMode } from './intent-router';
 import { classifyPreliminaryRootCause } from './preliminary-classifier';
+import { executeAgenticDiagnosis } from './agentic-engine';
+import type { SubmissionEvent } from '@/types';
 import { checkFailureHistory } from './history-checker';
 import { resolveTestCases, verifyCodeLocation, sanitizeAntiCode } from './test-case-runner';
 import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
@@ -189,21 +191,24 @@ export async function generateDiagnosisV2(
   // ── 5. WRITING ───────────────────────────────────────────────────────────────
   await onStage?.('writing');
 
+  let diagResult: QueryAwareDiagnosis;
   switch (mode) {
     case 'SUBMISSION_REVIEW':
-      return await generateSubmissionReviewDiagnosis({
+      diagResult = await generateSubmissionReviewDiagnosis({
         targetSubmission,
         preliminaryCause,
       });
+      break;
 
     case 'CODE_REVIEW':
-      return await generateCodeReviewDiagnosis({
+      diagResult = await generateCodeReviewDiagnosis({
         code: rawCode,
         userQuery,
         targetSubmission,
         preliminaryCause,
         historyResult,
       });
+      break;
 
     case 'PLAN':
       return await generatePlanDiagnosis({
@@ -213,11 +218,12 @@ export async function generateDiagnosisV2(
       });
 
     case 'EXPLAIN':
-      return await generateExplainDiagnosis({
+      diagResult = await generateExplainDiagnosis({
         userQuery,
         preliminaryCause,
         historyResult,
       });
+      break;
 
     case 'HISTORY':
       return generateHistoryDiagnosis({
@@ -225,6 +231,51 @@ export async function generateDiagnosisV2(
         historyResult,
       });
   }
+
+  // Augment with Agentic RAG & Self-Correction Evidence
+  try {
+    const mappedSub: SubmissionEvent | null = targetSubmission ? {
+      eventId: targetSubmission.eventId,
+      sessionId: targetSubmission.sessionId || 'session',
+      timestamp: targetSubmission.timestamp,
+      problemSlug: targetSubmission.problem?.slug || 'problem',
+      problemTitle: targetSubmission.problem?.title || 'Problem',
+      problemDifficulty: (targetSubmission.problem?.difficulty as any) || 'Medium',
+      problemTopics: targetSubmission.problem?.topics || [],
+      problemUrl: targetSubmission.problem?.url || '',
+      submissionStatus: (targetSubmission.status as any) || 'Wrong Answer',
+      submissionLanguage: targetSubmission.language || 'python',
+      submissionCode: rawCode,
+      runtime: targetSubmission.runtime ?? undefined,
+      memory: targetSubmission.memory ?? undefined,
+      testCasesPassed: targetSubmission.testCasesPassed ?? undefined,
+      totalTestCases: targetSubmission.totalTestCases ?? undefined,
+      failedTestCase: targetSubmission.failedTestCase ?? undefined,
+      timeSpent: targetSubmission.timeSpent || 60,
+      attemptNumber: targetSubmission.attemptNumber || 1,
+      rapidSubmission: targetSubmission.rapidSubmission || false,
+    } : null;
+
+    const agenticOutput = await executeAgenticDiagnosis({
+      userId,
+      userQuery,
+      submission: mappedSub,
+      onStage: onStage as any,
+    });
+
+    (diagResult as any).aiEvidence = agenticOutput.aiEvidence;
+    (diagResult as any).ragEvidence = agenticOutput.ragEvidence;
+    (diagResult as any).retrievalMetadata = agenticOutput.retrievalMetadata;
+    (diagResult as any).verificationMetadata = agenticOutput.verificationMetadata;
+
+    if ('rootCause' in diagResult && diagResult.rootCause) {
+      diagResult.rootCause.confidence = agenticOutput.confidence;
+    }
+  } catch (err) {
+    console.warn('[GeneratorV2] executeAgenticDiagnosis non-fatal error:', err);
+  }
+
+  return diagResult;
 }
 
 // ─── 1. SUBMISSION REVIEW GENERATION ──────────────────────────────────────────

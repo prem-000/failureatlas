@@ -16,6 +16,7 @@ import { acquireLock, releaseLock } from '@/lib/lock';
 import { rateLimit } from '@/lib/rate-limit';
 import { delRoadmapCache } from '@/lib/cache/roadmap';
 import { generateDiagnosisV2 } from '@/lib/diagnosis/generator-v2';
+import { executeAgenticDiagnosis } from '@/lib/diagnosis/agentic-engine';
 
 
 export async function OPTIONS(request: NextRequest) {
@@ -109,19 +110,36 @@ export async function POST(request: NextRequest) {
             onStage: onStage as any,
           });
 
+          const aiEvidence = (v2Result as any)?.aiEvidence ?? [];
+          const ragEvidence = (v2Result as any)?.ragEvidence ?? [];
+          const retrievalMetadata = (v2Result as any)?.retrievalMetadata;
+          const verificationMetadata = (v2Result as any)?.verificationMetadata;
+
           await sendSse('result', {
             type: 'answer',
             content: v2Result.kind === 'code_review' ? v2Result.verdict : 'Analysis complete',
             diagnosisV2: v2Result,
+            aiEvidence,
+            ragEvidence,
+            retrievalMetadata,
+            verificationMetadata,
             evidence: {
               analysis: 'Analysis complete',
-              confidence: 90,
+              confidence: (v2Result as any)?.rootCause?.confidence ?? 90,
               diagnosisV2: v2Result,
+              aiEvidence,
+              ragEvidence,
+              retrievalMetadata,
+              verificationMetadata,
             },
             data: {
               analysis: 'Analysis complete',
-              confidence: 90,
+              confidence: (v2Result as any)?.rootCause?.confidence ?? 90,
               diagnosisV2: v2Result,
+              aiEvidence,
+              ragEvidence,
+              retrievalMetadata,
+              verificationMetadata,
             },
           });
         } catch (pipelineErr) {
@@ -160,14 +178,27 @@ export async function POST(request: NextRequest) {
       userQuery,
     });
 
+    const aiEvidence = (v2Result as any)?.aiEvidence ?? [];
+    const ragEvidence = (v2Result as any)?.ragEvidence ?? [];
+    const retrievalMetadata = (v2Result as any)?.retrievalMetadata;
+    const verificationMetadata = (v2Result as any)?.verificationMetadata;
+
     return NextResponse.json({
       success: true,
       data: {
         analysis: 'Analysis complete',
-        confidence: 90,
+        confidence: (v2Result as any)?.rootCause?.confidence ?? 90,
         diagnosisV2: v2Result,
+        aiEvidence,
+        ragEvidence,
+        retrievalMetadata,
+        verificationMetadata,
       },
       diagnosisV2: v2Result,
+      aiEvidence,
+      ragEvidence,
+      retrievalMetadata,
+      verificationMetadata,
     });
 
   } catch (error) {

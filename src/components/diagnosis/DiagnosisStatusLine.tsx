@@ -30,10 +30,12 @@ export const STAGES: Record<StageKey, StageConfig> = {
 function normalizeStage(stage: DiagnosisStage | null): StageKey {
   if (!stage) return 'routing';
   if (stage in STAGES) return stage as StageKey;
-  if (stage === 'retrieving_embeddings') return 'searching';
-  if (stage === 'traversing_graph') return 'graph';
-  if (stage === 'fusing_evidence') return 'graph';
-  if (stage === 'reasoning') return 'writing';
+  if (stage === 'retrieving_embeddings' || stage === 'retrieve' || stage === 'correct') return 'searching';
+  if (stage === 'traversing_graph' || stage === 'fusing_evidence') return 'graph';
+  if (stage === 'grade') return 'classify';
+  if (stage === 'plan') return 'routing';
+  if (stage === 'verify') return 'reading';
+  if (stage === 'reasoning' || stage === 'generate' || stage === 'accept') return 'writing';
   return 'routing';
 }
 
