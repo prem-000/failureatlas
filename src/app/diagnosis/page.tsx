@@ -15,6 +15,8 @@ import { PastFailureTimeline } from '@/components/diagnosis/panels/PastFailureTi
 import { FirstOccurrenceEmptyState } from '@/components/diagnosis/panels/FirstOccurrenceEmptyState';
 import { PlanDiagramPanel } from '@/components/diagnosis/panels/PlanDiagramPanel';
 import { SubmissionReviewPanel } from '@/components/diagnosis/panels/SubmissionReviewPanel';
+import { DynamicExplanationPanel } from '@/components/diagnosis/panels/DynamicExplanationPanel';
+import { DynamicRAGEvidencePanel } from '@/components/diagnosis/panels/DynamicRAGEvidencePanel';
 import type { QueryAwareDiagnosis } from '@/types/diagnosis-v2';
 
 type DiagnosisResult = DiagnosisData;
@@ -454,6 +456,11 @@ export default function DiagnosisPage() {
                     </div>
                   )}
 
+                  {/* Mode 6: Dynamic Query */}
+                  {activeDiagnosis?.kind === 'dynamic_query' && (
+                    <DynamicExplanationPanel diagnosis={activeDiagnosis} />
+                  )}
+
                   {/* Fallback when no v2 diagnosis available */}
                   {!activeDiagnosis && (
                     <div className="p-4 h-full">
@@ -554,6 +561,11 @@ export default function DiagnosisPage() {
                         ))}
                       </div>
                     </div>
+                  )}
+
+                  {/* Dynamic Query Mode RAG Evidence */}
+                  {activeDiagnosis?.kind === 'dynamic_query' && (
+                    <DynamicRAGEvidencePanel diagnosis={activeDiagnosis} />
                   )}
 
                   {/* Fallback to legacy evidence */}

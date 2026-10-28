@@ -338,6 +338,84 @@ export const historySchema = z.object({
 
 export type HistoryDiagnosis = z.infer<typeof historySchema>;
 
+// ─── 6. DYNAMIC QUERY & ADAPTIVE RAG SCHEMA ───────────────────────────────────
+
+export const historicalEvidenceItemSchema = z.object({
+  id: z.string(),
+  problemTitle: z.string(),
+  problemSlug: z.string(),
+  platform: z.string().default('leetcode'),
+  difficulty: z.string().default('Medium'),
+  status: z.string(),
+  timestamp: z.string(),
+  topic: z.string(),
+  rootCauseOrPattern: z.string(),
+  relevanceScore: z.number().min(0).max(100),
+  selectionReason: z.string(),
+  codeSnippet: z.string().optional(),
+  provenance: z.object({
+    sourceId: z.string(),
+    retrievalTimestamp: z.string(),
+    queryUsed: z.string(),
+  }),
+});
+
+export type HistoricalEvidenceItem = z.infer<typeof historicalEvidenceItemSchema>;
+
+export const webEvidenceItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  url: z.string(),
+  domain: z.string(),
+  snippet: z.string(),
+  extractedFact: z.string().optional(),
+  isVerified: z.boolean().default(true),
+});
+
+export type WebEvidenceItem = z.infer<typeof webEvidenceItemSchema>;
+
+export const dynamicQuerySchema = z.object({
+  kind: z.literal('dynamic_query'),
+  title: z.string(),
+  query: z.string(),
+  route: z.enum(['personal_history', 'general_technical', 'combined', 'submission_code', 'follow_up']),
+  explanation: z.string(),
+  tasksAnswered: z.array(z.string()).default([]),
+  keyConcepts: z.array(z.string()).default([]),
+  suggestedTestCases: z
+    .array(
+      z.object({
+        input: z.string(),
+        expected: z.string(),
+        reason: z.string(),
+      })
+    )
+    .optional(),
+  correctiveGuidance: z.string().optional(),
+  complexityAnalysis: z
+    .object({
+      time: z.string(),
+      space: z.string(),
+      explanation: z.string(),
+    })
+    .optional(),
+  historyState: z.enum(['matches_found', 'no_relevant_evidence', 'no_history', 'not_requested']),
+  historicalEvidence: z.array(historicalEvidenceItemSchema).default([]),
+  webEvidence: z.array(webEvidenceItemSchema).default([]),
+  confidence: z.number().min(0).max(100).default(85),
+  validationMetadata: z
+    .object({
+      isValid: z.boolean(),
+      failedChecks: z.array(z.string()),
+      correctionsApplied: z.number(),
+    })
+    .optional(),
+  aiEvidence: z.array(aiEvidenceNoteSchema).optional(),
+  ragEvidence: z.array(ragEvidenceItemSchema).optional(),
+});
+
+export type DynamicQueryDiagnosis = z.infer<typeof dynamicQuerySchema>;
+
 // ─── UNIFIED DISCRIMINATED UNION ──────────────────────────────────────────────
 
 export const queryAwareDiagnosisSchema = z.discriminatedUnion('kind', [
@@ -348,6 +426,7 @@ export const queryAwareDiagnosisSchema = z.discriminatedUnion('kind', [
   planSchema,
   explainSchema,
   historySchema,
+  dynamicQuerySchema,
 ]);
 
 export type QueryAwareDiagnosis = z.infer<typeof queryAwareDiagnosisSchema>;

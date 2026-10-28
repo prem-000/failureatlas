@@ -69,11 +69,15 @@ export async function POST(request: NextRequest) {
     let userQuery = '';
     let forceRegenerate = false;
     let streamRequested = request.headers.get('accept')?.includes('text/event-stream') || false;
+    let conversationHistory: Array<{ role: string; content?: string }> = [];
     try {
       const body = await request.json();
       userQuery = typeof body?.query === 'string' ? body.query.trim() : '';
       forceRegenerate = Boolean(body?.force || body?.regenerate);
       if (body?.stream === true) streamRequested = true;
+      if (Array.isArray(body?.conversationHistory)) {
+        conversationHistory = body.conversationHistory;
+      }
     } catch {
       // empty body is fine
     }
@@ -107,40 +111,52 @@ export async function POST(request: NextRequest) {
           const v2Result = await generateDiagnosisV2({
             userId,
             userQuery,
+            conversationHistory,
             onStage: onStage as any,
           });
 
           const aiEvidence = (v2Result as any)?.aiEvidence ?? [];
           const ragEvidence = (v2Result as any)?.ragEvidence ?? [];
+          const historicalEvidence = (v2Result as any)?.historicalEvidence ?? [];
+          const webEvidence = (v2Result as any)?.webEvidence ?? [];
           const retrievalMetadata = (v2Result as any)?.retrievalMetadata;
           const verificationMetadata = (v2Result as any)?.verificationMetadata;
 
-          await sendSse('result', {
-            type: 'answer',
-            content: v2Result.kind === 'code_review' ? v2Result.verdict : 'Analysis complete',
+          let answerContent = 'Analysis complete';
+          if (v2Result.kind === 'dynamic_query') {
+            answerContent = v2Result.explanation;
+          } else if (v2Result.kind === 'code_review') {
+            answerContent = v2Result.verdict;
+          } else if (v2Result.kind === 'submission_review') {
+            answerContent = v2Result.verdict;
+          } else if ('message' in v2Result && typeof (v2Result as any).message === 'string') {
+            answerContent = (v2Result as any).message;
+          }
+
+          const responseData = {
+            analysis: answerContent,
+            confidence: (v2Result as any)?.confidence ?? (v2Result as any)?.rootCause?.confidence ?? 90,
             diagnosisV2: v2Result,
             aiEvidence,
             ragEvidence,
+            historicalEvidence,
+            webEvidence,
             retrievalMetadata,
             verificationMetadata,
-            evidence: {
-              analysis: 'Analysis complete',
-              confidence: (v2Result as any)?.rootCause?.confidence ?? 90,
-              diagnosisV2: v2Result,
-              aiEvidence,
-              ragEvidence,
-              retrievalMetadata,
-              verificationMetadata,
-            },
-            data: {
-              analysis: 'Analysis complete',
-              confidence: (v2Result as any)?.rootCause?.confidence ?? 90,
-              diagnosisV2: v2Result,
-              aiEvidence,
-              ragEvidence,
-              retrievalMetadata,
-              verificationMetadata,
-            },
+          };
+
+          await sendSse('result', {
+            type: 'answer',
+            content: answerContent,
+            diagnosisV2: v2Result,
+            aiEvidence,
+            ragEvidence,
+            historicalEvidence,
+            webEvidence,
+            retrievalMetadata,
+            verificationMetadata,
+            evidence: responseData,
+            data: responseData,
           });
         } catch (pipelineErr) {
           console.error('[diagnosis]', requestId, 'failed at', currentStage, pipelineErr);
@@ -176,27 +192,45 @@ export async function POST(request: NextRequest) {
     const v2Result = await generateDiagnosisV2({
       userId,
       userQuery,
+      conversationHistory,
     });
 
     const aiEvidence = (v2Result as any)?.aiEvidence ?? [];
     const ragEvidence = (v2Result as any)?.ragEvidence ?? [];
+    const historicalEvidence = (v2Result as any)?.historicalEvidence ?? [];
+    const webEvidence = (v2Result as any)?.webEvidence ?? [];
     const retrievalMetadata = (v2Result as any)?.retrievalMetadata;
     const verificationMetadata = (v2Result as any)?.verificationMetadata;
+
+    let nonStreamAnswer = 'Analysis complete';
+    if (v2Result.kind === 'dynamic_query') {
+      nonStreamAnswer = v2Result.explanation;
+    } else if (v2Result.kind === 'code_review') {
+      nonStreamAnswer = v2Result.verdict;
+    } else if (v2Result.kind === 'submission_review') {
+      nonStreamAnswer = v2Result.verdict;
+    } else if ('message' in v2Result && typeof (v2Result as any).message === 'string') {
+      nonStreamAnswer = (v2Result as any).message;
+    }
 
     return NextResponse.json({
       success: true,
       data: {
-        analysis: 'Analysis complete',
-        confidence: (v2Result as any)?.rootCause?.confidence ?? 90,
+        analysis: nonStreamAnswer,
+        confidence: (v2Result as any)?.confidence ?? (v2Result as any)?.rootCause?.confidence ?? 90,
         diagnosisV2: v2Result,
         aiEvidence,
         ragEvidence,
+        historicalEvidence,
+        webEvidence,
         retrievalMetadata,
         verificationMetadata,
       },
       diagnosisV2: v2Result,
       aiEvidence,
       ragEvidence,
+      historicalEvidence,
+      webEvidence,
       retrievalMetadata,
       verificationMetadata,
     });

@@ -19,6 +19,14 @@ import { resolveTestCases, verifyCodeLocation, sanitizeAntiCode } from './test-c
 import { retrieveSimilarFailures } from '@/lib/rag/retrieval';
 import { computeWeaknessPageRank } from '@/lib/graph/pagerank';
 import { resolveProblemTarget } from './problem-resolver';
+import { interpretUserQuery } from './query-interpreter';
+import { retrieveHistoricalEvidence } from './historical-retrieval';
+import { evaluateEvidenceWithGroq } from './evidence-evaluator';
+import { defaultWebSearchProvider, type WebSearchResult } from '../search/web-search';
+import { defaultPlaywrightExtractor } from '../search/playwright-extractor';
+import { generateQueryExplanation } from './query-explainer';
+import { verifyAndSelfCorrectAnswer } from './answer-verifier';
+import { getUserFeedbackWeights } from './feedback-loop';
 import {
   type DiagnosisStageV2,
   type QueryAwareDiagnosis,
@@ -29,6 +37,9 @@ import {
   type PlanDiagnosis,
   type ExplainDiagnosis,
   type HistoryDiagnosis,
+  type DynamicQueryDiagnosis,
+  type HistoricalEvidenceItem,
+  type WebEvidenceItem,
   type LlmReview,
   llmReviewSchema,
   codeReviewSchema,
@@ -38,6 +49,7 @@ import {
   planSchema,
   explainSchema,
   historySchema,
+  dynamicQuerySchema,
   countWords,
   clampWords,
 } from '@/types/diagnosis-v2';
@@ -46,6 +58,7 @@ export interface GenerateDiagnosisV2Params {
   userId: string;
   userQuery: string;
   submissionEventId?: string;
+  conversationHistory?: Array<{ role: string; content?: string }>;
   onStage?: (stage: DiagnosisStageV2) => Promise<void> | void;
 }
 
@@ -54,12 +67,159 @@ export async function generateDiagnosisV2(
 ): Promise<QueryAwareDiagnosis> {
   const { userId, userQuery, submissionEventId, onStage } = params;
 
-  // ── 1. ROUTING ───────────────────────────────────────────────────────────────
+  // ── 1. ROUTING & DYNAMIC QUERY UNDERSTANDING ────────────────────────────────
   await onStage?.('routing');
+  const interpreted = await interpretUserQuery(userQuery, {
+    conversationHistory: params.conversationHistory,
+    authenticatedUserId: userId,
+  });
+
   const routeResult = await routeUserMessage(userQuery);
   const mode: DiagnosisMode = routeResult.mode;
 
-  // ── 2. READING ───────────────────────────────────────────────────────────────
+  // If query is an open-ended natural query, learning question, historical analysis,
+  // optimization, follow-up, or general technical question without raw code payload:
+  const isRawCodePayload = routeResult.codeResult?.hasCode && routeResult.codeResult.score >= 0.7 && !userQuery.toLowerCase().includes('teach me') && !userQuery.toLowerCase().includes('explain');
+
+  if (
+    !isRawCodePayload &&
+    (interpreted.route === 'general_technical' ||
+      interpreted.route === 'combined' ||
+      interpreted.route === 'personal_history' ||
+      interpreted.route === 'follow_up' ||
+      interpreted.requestedTasks.some((t) =>
+        ['optimization', 'complexity_analysis', 'test_generation', 'practice_planning', 'historical_analysis', 'debugging', 'concept_explanation'].includes(t)
+      ) ||
+      userQuery.trim().length > 0)
+  ) {
+    // ── STAGE 2: READING & CONSTRAINT RESOLUTION ──────────────────────────────
+    await onStage?.('reading');
+    const feedbackWeights = await getUserFeedbackWeights(userId);
+
+    // ── STAGE 3: SEARCHING (HISTORICAL RETRIEVAL WITH SELECTION REASONS) ─────
+    await onStage?.('searching');
+    const historicalOutcome = await retrieveHistoricalEvidence(userId, interpreted, feedbackWeights, 4);
+
+    // ── STAGE 4: CLASSIFY & GRADE (GROQ INTERNAL EVIDENCE EVALUATION) ─────────
+    await onStage?.('classify');
+    const evidenceEval = await evaluateEvidenceWithGroq(interpreted, historicalOutcome.items);
+
+    // ── STAGE 5: GRAPH & EXTERNAL RESEARCH (DUCKDUCKGO + PLAYWRIGHT) ──────────
+    await onStage?.('graph');
+    let validatedWebEvidence: WebEvidenceItem[] = [];
+
+    if (evidenceEval.needsWebSearch || interpreted.requiresExternalSearch) {
+      try {
+        const searchQuery = `${interpreted.mainTopic} algorithm cp tutorial`;
+        const searchResults = await defaultWebSearchProvider.search(searchQuery, { maxResults: 3 });
+
+        for (let i = 0; i < Math.min(searchResults.length, 2); i++) {
+          const res = searchResults[i];
+          try {
+            const extracted = await defaultPlaywrightExtractor.extractPageContent(res.url, res.title);
+            if (extracted && extracted.extractedText) {
+              res.content = extracted.extractedText.slice(0, 300);
+            }
+          } catch {
+            // non-fatal
+          }
+        }
+
+        validatedWebEvidence = searchResults.map((r, idx) => ({
+          id: `web_${idx}_${Date.now()}`,
+          title: r.title,
+          url: r.url,
+          domain: r.domain,
+          snippet: r.snippet,
+          extractedFact: r.content || r.snippet,
+          isVerified: r.isVerified,
+        }));
+      } catch (searchErr) {
+        console.warn('[GeneratorV2] External research non-fatal error:', searchErr);
+      }
+    }
+
+    // ── STAGE 6: WRITING (QUERY-SPECIFIC EXPLANATION) ─────────────────────────
+    await onStage?.('writing');
+    const generatedExplanation = await generateQueryExplanation({
+      query: interpreted,
+      historicalEvidence: historicalOutcome.items,
+      webEvidence: validatedWebEvidence,
+      conversationContext: interpreted.resolvedContext || undefined,
+    });
+
+    // ── STAGE 7: VERIFY & SELF-CORRECT ────────────────────────────────────────
+    await onStage?.('verify');
+    const { finalExplanation, validation, correctionCycles } = await verifyAndSelfCorrectAnswer(
+      interpreted,
+      generatedExplanation,
+      historicalOutcome.items,
+      validatedWebEvidence,
+      2
+    );
+
+    await onStage?.('accept');
+
+    const mappedRagEvidence = historicalOutcome.items.map((h) => ({
+      evidenceId: h.id,
+      relatedProblem: h.problemTitle,
+      problemId: h.problemSlug,
+      observedSignal: h.selectionReason,
+      codeEvidence: h.codeSnippet,
+      failureMechanism: h.selectionReason,
+      supportedRootCause: h.rootCauseOrPattern,
+      relatedWeakness: h.topic,
+      retrievalRelevanceScore: h.relevanceScore / 100,
+      rootCauseSupportScore: h.relevanceScore / 100,
+      evidenceType: 'historical_analogy' as const,
+      provenance: {
+        sourceType: 'SubmissionEvent',
+        sourceId: h.provenance.sourceId,
+        retrievalTimestamp: h.provenance.retrievalTimestamp,
+        queryUsed: h.provenance.queryUsed,
+      },
+    }));
+
+    const dynamicDiagnosis: DynamicQueryDiagnosis = {
+      kind: 'dynamic_query',
+      title: finalExplanation.title,
+      query: userQuery,
+      route: interpreted.route,
+      explanation: finalExplanation.explanation,
+      tasksAnswered: finalExplanation.tasksAnswered,
+      keyConcepts: finalExplanation.keyConcepts,
+      suggestedTestCases: finalExplanation.suggestedTestCases,
+      correctiveGuidance: finalExplanation.correctiveGuidance,
+      complexityAnalysis: finalExplanation.complexityAnalysis,
+      historyState: historicalOutcome.state,
+      historicalEvidence: historicalOutcome.items,
+      webEvidence: validatedWebEvidence,
+      confidence: finalExplanation.confidence,
+      validationMetadata: {
+        isValid: validation.isValid,
+        failedChecks: validation.failedChecks,
+        correctionsApplied: correctionCycles,
+      },
+      ragEvidence: mappedRagEvidence,
+      aiEvidence: [
+        {
+          topic: finalExplanation.keyConcepts[0] || interpreted.mainTopic,
+          shortExplanation: finalExplanation.explanation.slice(0, 150),
+          whyItMatters: finalExplanation.correctiveGuidance || 'Core algorithmic pattern for optimal execution.',
+          connectionToCurrentFailure: historicalOutcome.items[0]?.selectionReason || 'Establishes verified invariants.',
+          keyTakeaway: finalExplanation.correctiveGuidance || 'Verify edge cases and invariants before execution.',
+          relatedTopics: finalExplanation.keyConcepts.slice(1),
+          relevanceScore: finalExplanation.confidence / 100,
+          supportingEvidenceIds: historicalOutcome.items.map((h) => h.id),
+          informationQuality: 'high',
+        },
+      ],
+    };
+
+    return dynamicQuerySchema.parse(dynamicDiagnosis);
+  }
+
+  // ── 2. READING (LEGACY CODE PAYLOADS) ────────────────────────────────────────
   await onStage?.('reading');
   let targetSubmission: any = null;
 

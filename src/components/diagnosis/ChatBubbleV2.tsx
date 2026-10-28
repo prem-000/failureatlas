@@ -185,6 +185,36 @@ export const ChatBubbleV2: React.FC<ChatBubbleV2Props> = ({
               </div>
             </>
           )}
+
+          {/* Mode 6: DYNAMIC QUERY */}
+          {v2.kind === 'dynamic_query' && (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-[#f4f4f5] text-sm">
+                  {v2.title}
+                </div>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#ff5f52]/15 text-[#ff5f52] border border-[#ff5f52]/30 uppercase">
+                  {v2.route.replace('_', ' ')}
+                </span>
+              </div>
+              <div className="text-[#a1a1aa] text-xs line-clamp-2 leading-relaxed">
+                {v2.explanation}
+              </div>
+              <div className="mt-1 flex items-center justify-between text-xs">
+                <span className="text-[11px] text-[#71717a]">
+                  {v2.historicalEvidence?.length > 0
+                    ? `${v2.historicalEvidence.length} RAG case${v2.historicalEvidence.length > 1 ? 's' : ''} evaluated`
+                    : v2.webEvidence?.length > 0
+                    ? `${v2.webEvidence.length} web source${v2.webEvidence.length > 1 ? 's' : ''} cited`
+                    : 'Verified technical analysis'}
+                </span>
+                <div className="inline-flex items-center gap-1 font-semibold text-[#ff5f52] hover:text-[#ff8a80] transition-colors">
+                  <span>View diagnosis →</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         // Plain non-clickable bubble for legacy/welcome text

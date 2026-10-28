@@ -20,7 +20,7 @@ class MultiKeyGroqClient {
   private maxRetries = 3;
   private timeoutMs = 30000;
   private strategy: 'round-robin' | 'failover' | 'least-used' = 'round-robin';
-  private defaultModel = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
+  private defaultModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
 
   constructor() {
     this.initKeys();
@@ -201,10 +201,14 @@ class MultiKeyGroqClient {
         if (!res.ok) {
           const errText = await res.text().catch(() => '');
           console.warn(`[GroqClient] HTTP ${res.status} error from ${activeKey.name}: ${errText}`);
+          if (res.status === 401 || errText.includes('invalid_api_key')) {
+            this.markKeyUnhealthy(activeKey, 86400000);
+            throw new Error(`[GroqClient] Invalid API Key on ${activeKey.name}`);
+          }
           if (res.status === 404 || errText.includes('model_not_found') || errText.includes('does not exist')) {
             // Deprecated/missing model requested — failover to active supported model
-            payload.model = 'qwen/qwen3.8-27b';
-            this.defaultModel = 'qwen/qwen3.8-27b';
+            payload.model = 'llama-3.1-8b-instant';
+            this.defaultModel = 'llama-3.1-8b-instant';
             attempt++;
             continue;
           }

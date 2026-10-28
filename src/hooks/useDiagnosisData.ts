@@ -151,7 +151,14 @@ export function useDiagnosisData() {
         const res = await fetch('/api/diagnosis/generate', {
           method: 'POST',
           headers,
-          body: JSON.stringify({ query, stream: true }),
+          body: JSON.stringify({
+            query,
+            stream: true,
+            conversationHistory: messages.map((m) => ({
+              role: m.role,
+              content: m.content || (m.diagnosisV2 as any)?.explanation || '',
+            })),
+          }),
         });
 
         if (!res.ok && !res.headers.get('content-type')?.includes('text/event-stream')) {
