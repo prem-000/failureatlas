@@ -374,6 +374,35 @@ export const webEvidenceItemSchema = z.object({
 
 export type WebEvidenceItem = z.infer<typeof webEvidenceItemSchema>;
 
+export const externalEvidenceItemSchema = z.object({
+  id: z.string(),
+  documentId: z.string(),
+  problemTitle: z.string(),
+  slug: z.string(),
+  difficulty: z.string(),
+  topics: z.array(z.string()),
+  companies: z.array(z.string()),
+  isCompanyVerified: z.boolean(),
+  contentSnippet: z.string(),
+  sourceUrl: z.string(),
+  repository: z.string(),
+  filePath: z.string(),
+  relevanceScore: z.number(),
+  retrievalPath: z.string(),
+});
+
+export type ExternalEvidenceItem = z.infer<typeof externalEvidenceItemSchema>;
+
+export const practiceRecommendationSchema = z.object({
+  problemTitle: z.string(),
+  difficulty: z.string(),
+  url: z.string(),
+  reason: z.string(),
+  company: z.string().optional(),
+});
+
+export type PracticeRecommendation = z.infer<typeof practiceRecommendationSchema>;
+
 export const dynamicQuerySchema = z.object({
   kind: z.literal('dynamic_query'),
   title: z.string(),
@@ -402,6 +431,11 @@ export const dynamicQuerySchema = z.object({
   historyState: z.enum(['matches_found', 'no_relevant_evidence', 'no_history', 'not_requested']),
   historicalEvidence: z.array(historicalEvidenceItemSchema).default([]),
   webEvidence: z.array(webEvidenceItemSchema).default([]),
+  externalEvidence: z.array(externalEvidenceItemSchema).optional(),
+  diagram: z.any().optional(),
+  inferredSkill: z.any().optional(),
+  uncertaintyNotice: z.string().optional(),
+  practiceRecommendations: z.array(practiceRecommendationSchema).optional(),
   confidence: z.number().min(0).max(100).default(85),
   validationMetadata: z
     .object({

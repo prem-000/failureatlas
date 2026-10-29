@@ -711,3 +711,92 @@ model ReplaySession {
   @@map("replay_sessions")
 }
 
+model KnowledgeSource {
+  id                String             @id @default(cuid())
+  owner             String
+  repo              String
+  url               String
+  branch            String             @default("main")
+  license           String?
+  lastScannedCommit String?
+  lastScannedAt     DateTime?
+  status            String             @default("pending") // 'pending' | 'scanning' | 'synced' | 'failed'
+  errorMessage      String?
+  isVerified        Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  documents         ExternalDocument[]
+  ingestionJobs     IngestionJob[]
+
+  @@unique([owner, repo])
+  @@map("knowledge_sources")
+}
+
+model ExternalDocument {
+  id                String          @id @default(cuid())
+  sourceId          String
+  sourceType        String          @default("github") // 'github' | 'csv' | 'leetcode'
+  repository        String
+  filePath          String
+  problemTitle      String
+  slug              String?
+  normalizedContent String          @db.Text
+  platform          String          @default("leetcode")
+  topics            String[]
+  difficulty        String          @default("Medium") // 'Easy' | 'Medium' | 'Hard' | 'Unknown'
+  language          String?
+  companyTags       String[]
+  isCompanyVerified Boolean         @default(false)
+  contentType       String          @default("question_and_solution") // 'question' | 'solution' | 'explanation' | 'dataset_row'
+  sourceUrl         String
+  contentHash       String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  chunks            ExternalChunk[]
+  source            KnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, filePath, contentHash])
+  @@index([sourceId])
+  @@index([problemTitle])
+  @@index([difficulty])
+  @@index([contentHash])
+  @@map("external_documents")
+}
+
+model ExternalChunk {
+  id          String           @id @default(cuid())
+  documentId  String
+  chunkText   String           @db.Text
+  chunkIndex  Int
+  embedding   Json?            // Array of numbers for portable JSON/fallback query
+  metadata    Json?            // Filter metadata { topics, companyTags, difficulty, isVerified, problemTitle }
+  sourceUrl   String?
+  createdAt   DateTime         @default(now())
+  document    ExternalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([chunkIndex])
+  @@map("external_chunks")
+}
+
+model IngestionJob {
+  id               String           @id @default(cuid())
+  sourceId         String?
+  jobType          String           // 'repo_scan' | 'csv_import' | 'webhook_sync' | 'scheduled_discovery'
+  status           String           @default("queued") // 'queued' | 'in_progress' | 'completed' | 'failed'
+  progress         Int              @default(0) // 0-100%
+  recordsProcessed Int              @default(0)
+  recordsCreated   Int              @default(0)
+  retryCount       Int              @default(0)
+  errorDetails     String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  source           KnowledgeSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([sourceId])
+  @@index([status])
+  @@map("ingestion_jobs")
+}
+

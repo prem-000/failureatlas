@@ -1,9 +1,19 @@
-'use client';
-
 import React, { useState } from 'react';
 import type { DynamicQueryDiagnosis } from '@/types/diagnosis-v2';
 import { getAuthToken } from '@/lib/api/client';
-import { ThumbsUp, ThumbsDown, CheckCircle2, ShieldCheck, ExternalLink, Lightbulb, Zap } from 'lucide-react';
+import {
+  ThumbsUp,
+  ThumbsDown,
+  CheckCircle2,
+  ShieldCheck,
+  ExternalLink,
+  Lightbulb,
+  Zap,
+  GraduationCap,
+  Compass,
+  AlertTriangle,
+} from 'lucide-react';
+import { DynamicGraphPanel } from './DynamicGraphPanel';
 
 export interface DynamicExplanationPanelProps {
   diagnosis: DynamicQueryDiagnosis;
@@ -48,6 +58,20 @@ export const DynamicExplanationPanel: React.FC<DynamicExplanationPanelProps> = (
           <h2 className="text-base font-bold text-[#f4f4f5] tracking-tight">{diagnosis.title}</h2>
         </div>
         <div className="flex items-center gap-2">
+          {diagnosis.inferredSkill && (
+            <span
+              className="text-[10px] font-mono font-bold px-2 py-0.5 rounded flex items-center gap-1 border"
+              style={{
+                backgroundColor: diagnosis.inferredSkill.isProvisional ? '#27272a' : '#1e1b4b',
+                color: diagnosis.inferredSkill.isProvisional ? '#a1a1aa' : '#818cf8',
+                borderColor: diagnosis.inferredSkill.isProvisional ? '#3f3f46' : '#6366f1',
+              }}
+              title={diagnosis.inferredSkill.rationale}
+            >
+              <GraduationCap className="w-3 h-3" />
+              <span>{diagnosis.inferredSkill.level}</span>
+            </span>
+          )}
           <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#27272a] text-[#a1a1aa] uppercase border border-[#3f3f46]">
             {diagnosis.route.replace('_', ' ')}
           </span>
@@ -132,6 +156,63 @@ export const DynamicExplanationPanel: React.FC<DynamicExplanationPanelProps> = (
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Actionable Rule</span>
             <p className="text-xs leading-relaxed text-[#d1fae5]">{diagnosis.correctiveGuidance}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Diagram / Algorithm Flowchart */}
+      {diagnosis.diagram && (
+        <div className="flex flex-col gap-2">
+          <DynamicGraphPanel diagram={diagnosis.diagram} />
+        </div>
+      )}
+
+      {/* Practice Recommendations from Verified DSA Knowledge */}
+      {diagnosis.practiceRecommendations && diagnosis.practiceRecommendations.length > 0 && (
+        <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-4 flex flex-col gap-2.5">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#38bdf8] flex items-center gap-1.5">
+            <Compass className="w-3.5 h-3.5 text-[#38bdf8]" />
+            <span>Targeted Practice Recommendations</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {diagnosis.practiceRecommendations.map((rec, idx) => (
+              <a
+                key={idx}
+                href={rec.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 bg-[#131316] border border-[#222228] hover:border-[#38bdf8]/50 rounded-lg flex items-center justify-between text-inherit no-underline transition-all group"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-xs text-[#f4f4f5] group-hover:text-[#38bdf8] transition-colors">
+                      {rec.problemTitle}
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-[#27272a] text-[#a1a1aa]">
+                      {rec.difficulty}
+                    </span>
+                    {rec.company && (
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/30">
+                        {rec.company}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-[#71717a]">{rec.reason}</span>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-[#71717a] group-hover:text-[#38bdf8] shrink-0" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Uncertainty Notice if retrieval was limited or community reported */}
+      {diagnosis.uncertaintyNotice && (
+        <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-900/40 text-amber-300 flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Grounding Transparency</span>
+            <p className="text-[11px] leading-relaxed text-[#fef3c7]">{diagnosis.uncertaintyNotice}</p>
           </div>
         </div>
       )}

@@ -63,7 +63,8 @@ export type EvidenceSourceType =
   | 'test_outcome'
   | 'graph_inference'
   | 'historical_analogy'
-  | 'learning_catalog';
+  | 'learning_catalog'
+  | 'external_knowledge';
 
 export interface GradedEvidenceItem {
   evidenceId: string;
@@ -160,6 +161,7 @@ export const ragEvidenceItemSchema = z.object({
     'graph_inference',
     'historical_analogy',
     'learning_catalog',
+    'external_knowledge',
   ]),
   provenance: z.object({
     sourceType: z.string(),

@@ -27,6 +27,7 @@ import { defaultPlaywrightExtractor } from '../search/playwright-extractor';
 import { generateQueryExplanation } from './query-explainer';
 import { verifyAndSelfCorrectAnswer } from './answer-verifier';
 import { getUserFeedbackWeights } from './feedback-loop';
+import { AdaptiveQueryRouter } from './adaptive-router';
 import {
   type DiagnosisStageV2,
   type QueryAwareDiagnosis,
@@ -95,10 +96,12 @@ export async function generateDiagnosisV2(
     // ── STAGE 2: READING & CONSTRAINT RESOLUTION ──────────────────────────────
     await onStage?.('reading');
     const feedbackWeights = await getUserFeedbackWeights(userId);
+    const adaptiveDecision = await AdaptiveQueryRouter.routeQuery(userQuery, interpreted, userId);
 
-    // ── STAGE 3: SEARCHING (HISTORICAL RETRIEVAL WITH SELECTION REASONS) ─────
+    // ── STAGE 3: SEARCHING (INTERNAL HISTORICAL + EXTERNAL KNOWLEDGE RAG) ────
     await onStage?.('searching');
     const historicalOutcome = await retrieveHistoricalEvidence(userId, interpreted, feedbackWeights, 4);
+    const boundedExternal = await AdaptiveQueryRouter.retrieveWithSelfCorrection(userQuery, interpreted, adaptiveDecision);
 
     // ── STAGE 4: CLASSIFY & GRADE (GROQ INTERNAL EVIDENCE EVALUATION) ─────────
     await onStage?.('classify');
@@ -145,6 +148,10 @@ export async function generateDiagnosisV2(
       query: interpreted,
       historicalEvidence: historicalOutcome.items,
       webEvidence: validatedWebEvidence,
+      externalEvidence: boundedExternal.evidenceItems,
+      inferredSkill: adaptiveDecision.inferredSkill,
+      diagramTitle: boundedExternal.diagram?.title,
+      uncertaintyNotice: boundedExternal.uncertaintyNotice,
       conversationContext: interpreted.resolvedContext || undefined,
     });
 
@@ -180,6 +187,34 @@ export async function generateDiagnosisV2(
       },
     }));
 
+    const mappedExternalRag = boundedExternal.evidenceItems.map((ext) => ({
+      evidenceId: ext.id,
+      relatedProblem: ext.problemTitle,
+      problemId: ext.slug,
+      observedSignal: `[${ext.provenance.sourceType.toUpperCase()}] ${ext.repository}/${ext.filePath} (Difficulty: ${ext.difficulty}${ext.companies.length > 0 ? ` · Companies: ${ext.companies.join(', ')}` : ''})`,
+      codeEvidence: ext.contentSnippet,
+      failureMechanism: ext.contentSnippet,
+      supportedRootCause: ext.topics.join(', '),
+      relatedWeakness: ext.topics[0] || 'Data Structures',
+      retrievalRelevanceScore: ext.similarityScore,
+      rootCauseSupportScore: ext.similarityScore,
+      evidenceType: 'external_knowledge' as const,
+      provenance: {
+        sourceType: ext.provenance.sourceType === 'csv' ? 'CSVDataset' : 'GitHubRepo',
+        sourceId: `${ext.repository}/${ext.filePath}`,
+        retrievalTimestamp: new Date().toISOString(),
+        queryUsed: userQuery,
+      },
+    }));
+
+    const practiceRecommendations = boundedExternal.evidenceItems.slice(0, 3).map((item) => ({
+      problemTitle: item.problemTitle,
+      difficulty: item.difficulty,
+      url: item.sourceUrl,
+      reason: `Recommended based on ${item.topics.join(', ')} pattern practice.`,
+      company: item.companies[0],
+    }));
+
     const dynamicDiagnosis: DynamicQueryDiagnosis = {
       kind: 'dynamic_query',
       title: finalExplanation.title,
@@ -194,13 +229,18 @@ export async function generateDiagnosisV2(
       historyState: historicalOutcome.state,
       historicalEvidence: historicalOutcome.items,
       webEvidence: validatedWebEvidence,
+      externalEvidence: boundedExternal.evidenceItems,
+      diagram: boundedExternal.diagram || undefined,
+      inferredSkill: adaptiveDecision.inferredSkill,
+      uncertaintyNotice: boundedExternal.uncertaintyNotice,
+      practiceRecommendations: practiceRecommendations.length > 0 ? practiceRecommendations : undefined,
       confidence: finalExplanation.confidence,
       validationMetadata: {
         isValid: validation.isValid,
         failedChecks: validation.failedChecks,
         correctionsApplied: correctionCycles,
       },
-      ragEvidence: mappedRagEvidence,
+      ragEvidence: [...mappedRagEvidence, ...mappedExternalRag],
       aiEvidence: [
         {
           topic: finalExplanation.keyConcepts[0] || interpreted.mainTopic,

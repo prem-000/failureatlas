@@ -7,13 +7,18 @@
  */
 
 import { groqClient } from '@/lib/api/groq-client';
-import type { HistoricalEvidenceItem, WebEvidenceItem } from '@/types/diagnosis-v2';
+import type { HistoricalEvidenceItem, WebEvidenceItem, ExternalEvidenceItem } from '@/types/diagnosis-v2';
 import type { InterpretedQuery } from './query-interpreter';
+import type { InferredSkillProfile } from './skill-inference';
 
 export interface ExplanationGenerationInput {
   query: InterpretedQuery;
   historicalEvidence: HistoricalEvidenceItem[];
   webEvidence: WebEvidenceItem[];
+  externalEvidence?: ExternalEvidenceItem[];
+  inferredSkill?: InferredSkillProfile;
+  diagramTitle?: string;
+  uncertaintyNotice?: string;
   conversationContext?: string;
 }
 
@@ -234,10 +239,48 @@ export function synthesizeDeterministicExplanation(
     explanation = `For ${topic}, correctness requires identifying the core data structure invariant and systematically evaluating boundary constraints. Ensure you separate the search or traversal phase from the aggregation phase, and verify extreme inputs such as empty collections or maximum constraint limits.`;
   }
 
+  // If external knowledge records are available (e.g. company questions or dataset problems)
+  if (input.externalEvidence && input.externalEvidence.length > 0) {
+    const ext = input.externalEvidence;
+    const company = ext.find((e) => e.companies.length > 0)?.companies[0];
+    const isCompanyQuery = query.originalQuery.toLowerCase().includes('company') ||
+      query.originalQuery.toLowerCase().includes('interview') ||
+      query.originalQuery.toLowerCase().includes('amazon') ||
+      query.originalQuery.toLowerCase().includes('google') ||
+      query.originalQuery.toLowerCase().includes('meta');
+
+    if (isCompanyQuery && company) {
+      title = `${company} DSA Questions & Interview Pattern Breakdown`;
+      const problemList = ext.slice(0, 4).map((p) => `${p.problemTitle} (${p.difficulty} - ${p.topics.join(', ')})`).join('; ');
+      explanation = `Based on curated repository datasets, representative ${company} DSA interview questions include: ${problemList}. These problems predominantly test hash map invariants, sliding window window-shrink rules, and topological cycle checks. Each pattern relies on strict single-pass bounds rather than brute-force quadratic searches.`;
+      correctiveGuidance = `Practice ${ext[0]?.problemTitle} with a focus on boundary conditions and time complexity constraints.`;
+      keyConcepts.push(`${company} Patterns`, ...ext[0].topics);
+    } else if (!hasHistory && !explanation) {
+      const topDoc = ext[0];
+      title = `${topDoc.problemTitle} & ${topic} Analysis`;
+      explanation = `For ${topDoc.problemTitle} (${topDoc.difficulty}), the primary pattern centers on ${topDoc.topics.join(', ')}. Invariants require verifying boundary states and maintaining optimal time complexity. Detailed solution records indicate using standard traversal and state tracking.`;
+      keyConcepts.push(...topDoc.topics);
+    }
+  }
+
+  // If skill inference is available, tailor guidance
+  if (input.inferredSkill && !input.inferredSkill.isProvisional) {
+    explanation += ` [Profile: Inferred ${input.inferredSkill.level} proficiency based on ${input.inferredSkill.metrics.totalSubmissions} submissions].`;
+  }
+
+  // If a diagram is attached, mention the visualization
+  if (input.diagramTitle) {
+    explanation += ` An interactive execution diagram for "${input.diagramTitle}" is provided above to trace state transitions.`;
+  }
+
   // If web evidence was consulted, reference findings
   if (webEvidence.length > 0) {
     const verifiedSource = webEvidence[0];
     explanation += ` Validated against ${verifiedSource.domain} documentation (${verifiedSource.title}).`;
+  }
+
+  if (input.uncertaintyNotice) {
+    explanation += ` Note: ${input.uncertaintyNotice}`;
   }
 
   return {
@@ -248,6 +291,6 @@ export function synthesizeDeterministicExplanation(
     suggestedTestCases,
     correctiveGuidance,
     complexityAnalysis,
-    confidence: hasHistory ? 90 : 85,
+    confidence: hasHistory || (input.externalEvidence && input.externalEvidence.length > 0) ? 90 : 85,
   };
 }
