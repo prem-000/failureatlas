@@ -148,10 +148,19 @@ export class AdaptiveQueryRouter {
       }
     }
 
-    // Generate dynamic diagram if requested
+    // Generate dynamic diagram if requested or if query warrants visual representation
     let diagram: StructuredDiagram | null = null;
-    if (decision.wantsVisualization || decision.target === 'algorithm_visualization') {
-      diagram = DynamicGraphGenerator.generateDiagram(userQuery, interpreted, items);
+    if (
+      decision.wantsVisualization ||
+      decision.target === 'algorithm_visualization' ||
+      DynamicGraphGenerator.shouldGenerateDiagram(userQuery, interpreted)
+    ) {
+      diagram = DynamicGraphGenerator.generateDiagram(
+        userQuery,
+        interpreted,
+        items,
+        decision.inferredSkill
+      );
     }
 
     // Transparent uncertainty notice if evidence was sparse
